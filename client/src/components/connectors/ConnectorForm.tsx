@@ -85,7 +85,10 @@ export function ConnectorForm({ initialData, onSubmit, onCancel }: ConnectorForm
         alert("Username and Password are required for Basic Authentication");
         return;
       }
-      auth = { username, password };
+      auth = { 
+        username: username.trim(), 
+        password: password.trim() 
+      };
     } else if (authType === "oauth2") {
       if (!tokenUrl.trim() || !clientId.trim() || !clientSecret.trim()) {
         alert("Token URL, Client ID, and Client Secret are required for OAuth 2.0");
@@ -94,9 +97,9 @@ export function ConnectorForm({ initialData, onSubmit, onCancel }: ConnectorForm
       
       auth = {
         oauth2Type,
-        tokenUrl,
-        clientId,
-        clientSecret,
+        tokenUrl: tokenUrl.trim(),
+        clientId: clientId.trim(),
+        clientSecret: clientSecret.trim(),
         tokenLocation,
         caseSensitiveHeaders
       };
@@ -110,17 +113,17 @@ export function ConnectorForm({ initialData, onSubmit, onCancel }: ConnectorForm
         
         auth = {
           ...auth,
-          authorizationUrl,
-          redirectUri,
-          scope: scope.trim() || undefined
+          authorizationUrl: authorizationUrl.trim(),
+          redirectUri: redirectUri.trim(),
+          scope: scope.trim() || ""
         };
       }
     }
     
     // Prepare final data
     const connectorData = {
-      name,
-      baseUrl: baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`,
+      name: name.trim(),
+      baseUrl: baseUrl.trim().endsWith("/") ? baseUrl.trim() : `${baseUrl.trim()}/`,
       authType,
       auth,
       headers: filteredHeaders
