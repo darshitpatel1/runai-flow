@@ -1,0 +1,307 @@
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { collection, doc, addDoc, updateDoc, deleteDoc, getDocs, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { ConnectorForm } from "@/components/connectors/ConnectorForm";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { PlusIcon, Loader2Icon, TrashIcon, PencilIcon } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+export default function Connectors() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [location, setLocation] = useLocation();
+  const [connectors, setConnectors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [editingConnector, setEditingConnector] = useState<any>(null);
+  
+  // Get edit parameter from URL
+  const params = new URLSearchParams(location.split('?')[1]);
+  const editId = params.get('edit');
+  
+  useEffect(() => {
+    const fetchConnectors = async () => {
+      if (!user) return;
+      
+      try {
+        const connectorsRef = collection(db, "users", user.uid, "connectors");
+        const snapshot = await getDocs(connectorsRef);
+        const connectorsData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setConnectors(connectorsData);
+        
+        // If edit parameter is present, load that connector for editing
+        if (editId) {
+          const connectorDoc = await getDoc(doc(db, "users", user.uid, "connectors", editId));
+          if (connectorDoc.exists()) {
+            setEditingConnector({
+              id: connectorDoc.id,
+              ...connectorDoc.data()
+            });
+            setOpenDialog(true);
+          }
+        }
+      } catch (error: any) {
+        toast({
+          title: "Error loading connectors",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchConnectors();
+  }, [user, toast, editId]);
+  
+  const handleCreateConnector = async (connectorData: any) => {
+    if (!user) return;
+    
+    try {
+      const connectorsRef = collection(db, "users", user.uid, "connectors");
+      const docRef = await addDoc(connectorsRef, {
+        ...connectorData,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      const newConnector = {
+        id: docRef.id,
+        ...connectorData,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      setConnectors([...connectors, newConnector]);
+      setOpenDialog(false);
+      
+      toast({
+        title: "Connector created",
+        description: `Successfully created connector: ${connectorData.name}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error creating connector",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleUpdateConnector = async (connectorData: any) => {
+    if (!user || !editingConnector) return;
+    
+    try {
+      const connectorRef = doc(db, "users", user.uid, "connectors", editingConnector.id);
+      await updateDoc(connectorRef, {
+        ...connectorData,
+        updatedAt: new Date()
+      });
+      
+      setConnectors(connectors.map(c => 
+        c.id === editingConnector.id 
+          ? { ...c, ...connectorData, updatedAt: new Date() } 
+          : c
+      ));
+      
+      setOpenDialog(false);
+      setEditingConnector(null);
+      
+      // Remove edit parameter from URL
+      setLocation("/connectors");
+      
+      toast({
+        title: "Connector updated",
+        description: `Successfully updated connector: ${connectorData.name}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error updating connector",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleDeleteConnector = async (connectorId: string) => {
+    if (!user) return;
+    
+    try {
+      const connectorRef = doc(db, "users", user.uid, "connectors", connectorId);
+      await deleteDoc(connectorRef);
+      
+      setConnectors(connectors.filter(c => c.id !== connectorId));
+      
+      toast({
+        title: "Connector deleted",
+        description: "Successfully deleted the connector",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error deleting connector",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const openEditDialog = (connector: any) => {
+    setEditingConnector(connector);
+    setOpenDialog(true);
+  };
+  
+  const closeDialog = () => {
+    setOpenDialog(false);
+    setEditingConnector(null);
+    
+    // Remove edit parameter from URL if it exists
+    if (editId) {
+      setLocation("/connectors");
+    }
+  };
+  
+  return (
+    <AppLayout>
+      <div className="p-6 max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold">API Connectors</h1>
+            <p className="text-muted-foreground">Manage your API connections for flows</p>
+          </div>
+          
+          <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center gap-2">
+                <PlusIcon className="h-4 w-4" />
+                New Connector
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingConnector ? "Edit Connector" : "Create New Connector"}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingConnector 
+                    ? "Update your API connector settings"
+                    : "Configure a new API connection for your automation flows"}
+                </DialogDescription>
+              </DialogHeader>
+              <ConnectorForm 
+                initialData={editingConnector}
+                onSubmit={editingConnector ? handleUpdateConnector : handleCreateConnector}
+                onCancel={closeDialog}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+        
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : connectors.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {connectors.map(connector => (
+              <Card key={connector.id}>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>{connector.name}</span>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => openEditDialog(connector)}
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                      </Button>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-destructive">
+                            <TrashIcon className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Connector</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{connector.name}"? This action cannot be undone and may break flows that use this connector.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleDeleteConnector(connector.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </CardTitle>
+                  <CardDescription className="truncate">
+                    {connector.baseUrl}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">
+                      {connector.authType || "No Auth"}
+                    </Badge>
+                    {connector.authType === "oauth2" && (
+                      <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-100">
+                        OAuth 2.0
+                      </Badge>
+                    )}
+                    {connector.authType === "basic" && (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-100">
+                        Basic Auth
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Created: {connector.createdAt?.toDate ? new Date(connector.createdAt.toDate()).toLocaleDateString() : 'Unknown'}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card className="text-center p-6">
+            <div className="mb-4">
+              <svg className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium mb-2">No connectors yet</h3>
+            <p className="text-muted-foreground mb-4">Create your first API connector to get started</p>
+            <Button onClick={() => setOpenDialog(true)}>Create Connector</Button>
+          </Card>
+        )}
+      </div>
+    </AppLayout>
+  );
+}

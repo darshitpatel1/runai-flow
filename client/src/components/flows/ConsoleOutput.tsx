@@ -1,0 +1,150 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PlayIcon, XIcon, Loader2Icon } from "lucide-react";
+
+interface ConsoleOutputProps {
+  logs: any[];
+  isRunning: boolean;
+  onRunTest: () => void;
+}
+
+export function ConsoleOutput({ logs, isRunning, onRunTest }: ConsoleOutputProps) {
+  const [autoScroll, setAutoScroll] = useState(true);
+  const [logFilter, setLogFilter] = useState("all");
+  const consoleRef = React.useRef<HTMLDivElement>(null);
+  
+  // Auto-scroll logic
+  React.useEffect(() => {
+    if (autoScroll && consoleRef.current) {
+      consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
+    }
+  }, [logs, autoScroll]);
+  
+  // Filter logs based on selected filter
+  const filteredLogs = logs.filter(log => {
+    if (logFilter === "all") return true;
+    if (logFilter === "errors" && log.type === "error") return true;
+    if (logFilter === "http" && log.type === "http") return true;
+    if (logFilter === "custom" && log.type === "log") return true;
+    return false;
+  });
+  
+  const clearLogs = () => {
+    // This would need to be implemented via a prop or state in the parent component
+    // For now, just show a message that it's not implemented
+    alert("Clear functionality would be implemented here");
+  };
+  
+  // Helper to format the timestamp
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+  };
+  
+  // Get log type styles
+  const getLogTypeStyles = (type: string) => {
+    switch (type) {
+      case "info":
+        return "text-blue-500";
+      case "error":
+        return "text-red-500";
+      case "success":
+        return "text-green-500";
+      case "http":
+        return "text-purple-500";
+      case "log":
+        return "text-yellow-500";
+      default:
+        return "text-slate-500";
+    }
+  };
+  
+  return (
+    <div className="h-64 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col">
+      <div className="flex items-center justify-between p-2 border-b border-slate-200 dark:border-slate-700">
+        <div className="flex space-x-4">
+          <Button 
+            className="flex items-center gap-2"
+            onClick={onRunTest}
+            disabled={isRunning}
+          >
+            {isRunning ? (
+              <>
+                <Loader2Icon className="h-4 w-4 animate-spin" />
+                Running...
+              </>
+            ) : (
+              <>
+                <PlayIcon className="h-4 w-4" />
+                Run Test
+              </>
+            )}
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={clearLogs}
+          >
+            Clear Console
+          </Button>
+        </div>
+        
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="auto-scroll" className="text-xs">Auto-scroll</Label>
+            <Switch 
+              id="auto-scroll" 
+              checked={autoScroll} 
+              onCheckedChange={setAutoScroll}
+            />
+          </div>
+          
+          <Select value={logFilter} onValueChange={setLogFilter}>
+            <SelectTrigger className="w-[150px] h-8 text-xs">
+              <SelectValue placeholder="Log Filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Logs</SelectItem>
+              <SelectItem value="errors">Errors Only</SelectItem>
+              <SelectItem value="http">HTTP Requests</SelectItem>
+              <SelectItem value="custom">Custom Logs</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      
+      <div 
+        ref={consoleRef}
+        className="flex-1 overflow-y-auto p-2 font-mono text-xs bg-slate-50 dark:bg-slate-900"
+      >
+        {filteredLogs.length > 0 ? (
+          filteredLogs.map((log, index) => (
+            <div key={index} className="mb-1 flex">
+              <span className="text-slate-400 inline-block w-20">
+                [{formatTime(log.timestamp)}]
+              </span>
+              <span className={getLogTypeStyles(log.type)}>
+                {log.type.toUpperCase()}
+              </span>
+              <span className="text-slate-700 dark:text-slate-300 ml-2">
+                {log.message}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-4 text-slate-400">
+            <p>No logs to display. Run your flow to see execution details.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

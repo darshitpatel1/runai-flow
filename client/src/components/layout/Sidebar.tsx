@@ -1,0 +1,125 @@
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
+import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+
+export function Sidebar() {
+  const [location] = useLocation();
+  const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
+  const [loggingOut, setLoggingOut] = useState(false);
+  
+  const handleSignOut = async () => {
+    setLoggingOut(true);
+    try {
+      await signOut(auth);
+      toast({
+        title: "Signed out",
+        description: "You have been successfully signed out",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Sign out failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+  
+  return (
+    <>
+      {/* Logo Section */}
+      <div className="h-16 flex items-center px-4 border-b border-slate-200 dark:border-slate-700">
+        <svg className="w-8 h-8 text-primary fill-current md:mr-3" viewBox="0 0 24 24">
+          <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6M12,8A4,4 0 0,0 8,12A4,4 0 0,0 12,16A4,4 0 0,0 16,12A4,4 0 0,0 12,8Z" />
+        </svg>
+        <span className="text-lg font-semibold">FlowForge</span>
+      </div>
+      
+      {/* Navigation Menu */}
+      <nav className="flex-1 py-4 space-y-1 overflow-y-auto">
+        <Link href="/dashboard" className={`flex items-center px-4 py-3 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 ${location === '/dashboard' ? 'bg-slate-100 dark:bg-slate-700/50 text-primary border-r-4 border-primary' : ''}`}>
+          <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+          </svg>
+          <span>Dashboard</span>
+        </Link>
+        
+        <Link href="/flow-builder" className={`flex items-center px-4 py-3 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 ${location.startsWith('/flow-builder') ? 'bg-slate-100 dark:bg-slate-700/50 text-primary border-r-4 border-primary' : ''}`}>
+          <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+          <span>Flows</span>
+        </Link>
+        
+        <Link href="/connectors" className={`flex items-center px-4 py-3 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 ${location === '/connectors' ? 'bg-slate-100 dark:bg-slate-700/50 text-primary border-r-4 border-primary' : ''}`}>
+          <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01"></path>
+          </svg>
+          <span>Connectors</span>
+        </Link>
+        
+        <Link href="/history" className={`flex items-center px-4 py-3 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 ${location === '/history' ? 'bg-slate-100 dark:bg-slate-700/50 text-primary border-r-4 border-primary' : ''}`}>
+          <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>History</span>
+        </Link>
+      </nav>
+      
+      {/* User Section */}
+      <div className="p-4 border-t border-slate-200 dark:border-slate-700">
+        <div className="flex items-center">
+          <Avatar className="h-8 w-8 mr-3">
+            <AvatarImage 
+              src={user?.photoURL || undefined} 
+              alt={user?.displayName || "User"} 
+            />
+            <AvatarFallback>
+              {user?.displayName 
+                ? user.displayName.substring(0, 2).toUpperCase() 
+                : user?.email
+                  ? user.email.substring(0, 2).toUpperCase()
+                  : "U"}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">
+              {user?.displayName || user?.email || "User"}
+            </p>
+            <Button 
+              variant="link" 
+              className="p-0 h-auto text-xs text-muted-foreground"
+              onClick={handleSignOut}
+              disabled={loggingOut}
+            >
+              {loggingOut ? "Signing out..." : "Sign out"}
+            </Button>
+          </div>
+        </div>
+      </div>
+      
+      {/* Dark Mode Toggle */}
+      <div className="p-4 border-t border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="dark-mode">Dark Mode</Label>
+          <Switch 
+            id="dark-mode" 
+            checked={theme === "dark"}
+            onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+          />
+        </div>
+      </div>
+    </>
+  );
+}
