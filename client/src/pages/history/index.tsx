@@ -29,6 +29,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { ExecutionDetail } from "@/components/flows/ExecutionDetail";
 
 export default function History() {
   const { user } = useAuth();
@@ -391,10 +392,11 @@ export default function History() {
                         <TableRow>
                           <TableCell colSpan={6} className="bg-muted/30 p-0">
                             <div className="p-4">
-                              <h3 className="font-medium mb-2">Execution Details</h3>
-                              <div className="bg-card rounded-md p-4 font-mono text-xs overflow-x-auto">
-                                <pre>{JSON.stringify(execution.logs || {}, null, 2)}</pre>
-                              </div>
+                              {/* Import the ExecutionDetail component at the top of the file */}
+                              <ExecutionDetail 
+                                execution={execution} 
+                                flowData={flowsMap[execution.flowId]} 
+                              />
                             </div>
                           </TableCell>
                         </TableRow>

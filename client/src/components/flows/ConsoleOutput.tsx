@@ -138,7 +138,23 @@ export function ConsoleOutput({ logs, isRunning, onRunTest }: ConsoleOutputProps
                 {log.type.toUpperCase()}
               </span>
               <span className="text-slate-700 dark:text-slate-300 ml-2">
-                {log.message}
+                {log.message.startsWith('Response Data:') ? (
+                  <div className="pl-2 border-l-2 border-blue-400 mt-1">
+                    <div className="text-xs text-blue-500 font-semibold mb-1">Response Data:</div>
+                    <pre className="whitespace-pre-wrap break-all bg-slate-100 dark:bg-slate-800 p-2 rounded-md">
+                      {log.message.replace('Response Data: ', '')}
+                    </pre>
+                  </div>
+                ) : log.message.startsWith('Request Body:') ? (
+                  <div className="pl-2 border-l-2 border-purple-400 mt-1">
+                    <div className="text-xs text-purple-500 font-semibold mb-1">Request Body:</div>
+                    <pre className="whitespace-pre-wrap break-all bg-slate-100 dark:bg-slate-800 p-2 rounded-md">
+                      {log.message.replace('Request Body: ', '')}
+                    </pre>
+                  </div>
+                ) : (
+                  log.message
+                )}
               </span>
             </div>
           ))

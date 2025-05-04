@@ -11,6 +11,9 @@ import ReactFlow, {
   Edge
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { collection, addDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { db } from "@/lib/firebase";
 import { NodePanel } from "./NodePanel";
 import { NodeConfiguration } from "./NodeConfiguration";
 import { ConsoleOutput } from "./ConsoleOutput";
@@ -167,29 +170,54 @@ export function FlowBuilder({
       return;
     }
     
-    setIsTestRunning(true);
-    setLogs([
-      {
-        timestamp: new Date(),
-        type: "info",
-        message: "Starting flow execution..."
-      }
-    ]);
+    if (!flowId) {
+      toast({
+        title: "Save Flow First",
+        description: "Please save your flow before testing",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    // TODO: Add real flow execution logic for testing
+    setIsTestRunning(true);
+    const initialLog = {
+      timestamp: new Date(),
+      type: "info",
+      message: "Starting flow execution..."
+    };
+    
+    // Initialize logs array
+    const executionLogs = [initialLog];
+    setLogs([initialLog]);
     
     // Mock execution for demonstration
     const mockExecution = async () => {
+      const startTime = new Date();
+      let hasError = false;
+      const auth = getAuth();
+      const user = auth.currentUser;
+      
+      if (!user) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to run tests",
+          variant: "destructive",
+        });
+        setIsTestRunning(false);
+        return;
+      }
+      
       // Simulate some node executions
       for (const node of nodes) {
-        setLogs((logs) => [
-          ...logs,
-          {
-            timestamp: new Date(),
-            type: "info",
-            message: `Executing node: "${node.data.label}" (${node.type})`
-          }
-        ]);
+        const nodeLog = {
+          timestamp: new Date(),
+          type: "info",
+          nodeId: node.id,
+          message: `Executing node: "${node.data.label}" (${node.type})`
+        };
+        
+        executionLogs.push(nodeLog);
+        setLogs((logs) => [...logs, nodeLog]);
         
         // Simulate API call if it's an HTTP node
         if (node.type === 'httpRequest') {
@@ -198,25 +226,27 @@ export function FlowBuilder({
           const connector = node.data.connector || 'No connector';
           
           // Log the request details
-          setLogs((logs) => [
-            ...logs,
-            {
-              timestamp: new Date(),
-              type: "http",
-              message: `${method} ${endpoint} using connector: ${connector}`
-            }
-          ]);
+          const requestLog = {
+            timestamp: new Date(),
+            type: "http",
+            nodeId: node.id,
+            message: `${method} ${endpoint} using connector: ${connector}`
+          };
+          
+          executionLogs.push(requestLog);
+          setLogs((logs) => [...logs, requestLog]);
           
           // If it's a POST or PUT request with a body, show the request body
           if ((method === 'POST' || method === 'PUT') && node.data.body) {
-            setLogs((logs) => [
-              ...logs,
-              {
-                timestamp: new Date(),
-                type: "http",
-                message: `Request Body: ${node.data.body}`
-              }
-            ]);
+            const bodyLog = {
+              timestamp: new Date(),
+              type: "http",
+              nodeId: node.id,
+              message: `Request Body: ${node.data.body}`
+            };
+            
+            executionLogs.push(bodyLog);
+            setLogs((logs) => [...logs, bodyLog]);
           }
           
           // Simulate API call delay
@@ -225,46 +255,51 @@ export function FlowBuilder({
           // Different response scenarios based on connector and method
           if (node.data.connector) {
             // OAuth connectors (simulate successful authentication)
-            setLogs((logs) => [
-              ...logs,
-              {
-                timestamp: new Date(),
-                type: "success",
-                message: `Response: 200 OK (authenticated with ${node.data.connector})`
-              }
-            ]);
+            const responseLog = {
+              timestamp: new Date(),
+              type: "success",
+              nodeId: node.id,
+              message: `Response: 200 OK (authenticated with ${node.data.connector})`
+            };
+            
+            executionLogs.push(responseLog);
+            setLogs((logs) => [...logs, responseLog]);
             
             // Add mock response data
-            setLogs((logs) => [
-              ...logs,
-              {
-                timestamp: new Date(),
-                type: "info",
-                message: method === 'GET' 
-                  ? `Response Data: {"success": true, "data": {"items": [{"id": 1, "name": "Item 1"}, {"id": 2, "name": "Item 2"}]}}`
-                  : `Response Data: {"success": true, "message": "Operation completed successfully", "id": ${Date.now()}}`
-              }
-            ]);
+            const dataLog = {
+              timestamp: new Date(),
+              type: "info",
+              nodeId: node.id,
+              message: method === 'GET' 
+                ? `Response Data: {"success": true, "data": {"items": [{"id": 1, "name": "Item 1"}, {"id": 2, "name": "Item 2"}]}}`
+                : `Response Data: {"success": true, "message": "Operation completed successfully", "id": ${Date.now()}}`
+            };
+            
+            executionLogs.push(dataLog);
+            setLogs((logs) => [...logs, dataLog]);
           } else {
             // No connector selected - higher chance of failure
             if (Math.random() > 0.5) {
-              setLogs((logs) => [
-                ...logs,
-                {
-                  timestamp: new Date(),
-                  type: "success",
-                  message: "Response: 200 OK"
-                }
-              ]);
+              const successLog = {
+                timestamp: new Date(),
+                type: "success",
+                nodeId: node.id,
+                message: "Response: 200 OK"
+              };
+              
+              executionLogs.push(successLog);
+              setLogs((logs) => [...logs, successLog]);
             } else {
-              setLogs((logs) => [
-                ...logs,
-                {
-                  timestamp: new Date(),
-                  type: "error",
-                  message: "Request failed: 401 Unauthorized (No valid authentication)"
-                }
-              ]);
+              const errorLog = {
+                timestamp: new Date(),
+                type: "error",
+                nodeId: node.id,
+                message: "Request failed: 401 Unauthorized (No valid authentication)"
+              };
+              
+              hasError = true;
+              executionLogs.push(errorLog);
+              setLogs((logs) => [...logs, errorLog]);
             }
           }
         }
@@ -272,20 +307,49 @@ export function FlowBuilder({
         await new Promise(resolve => setTimeout(resolve, 500));
       }
       
-      setLogs((logs) => [
-        ...logs,
-        {
-          timestamp: new Date(),
-          type: "info",
-          message: "Flow execution completed"
-        }
-      ]);
+      const endTime = new Date();
+      const duration = endTime.getTime() - startTime.getTime();
+      
+      const completionLog = {
+        timestamp: new Date(),
+        type: "info",
+        message: "Flow execution completed"
+      };
+      
+      executionLogs.push(completionLog);
+      setLogs((logs) => [...logs, completionLog]);
+      
+      // Save execution result to Firebase
+      try {
+        const executionsRef = collection(db, "users", user.uid, "executions");
+        await addDoc(executionsRef, {
+          flowId: flowId,
+          status: hasError ? "failed" : "success",
+          startedAt: startTime,
+          finishedAt: endTime,
+          duration: duration,
+          logs: executionLogs
+        });
+        
+        toast({
+          title: "Execution Complete",
+          description: `Flow test ${hasError ? 'failed' : 'completed successfully'} in ${duration}ms`,
+          variant: hasError ? "destructive" : "default",
+        });
+      } catch (error) {
+        console.error("Error saving execution:", error);
+        toast({
+          title: "Error Saving Execution",
+          description: "Your test completed but we couldn't save the execution data",
+          variant: "destructive",
+        });
+      }
       
       setIsTestRunning(false);
     };
     
     mockExecution();
-  }, [nodes, toast]);
+  }, [nodes, toast, flowId]);
   
   return (
     <div className="flex flex-col h-full w-full">
