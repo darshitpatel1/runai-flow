@@ -265,14 +265,53 @@ export function FlowBuilder({
             executionLogs.push(responseLog);
             setLogs((logs) => [...logs, responseLog]);
             
-            // Add mock response data
+            // Add mock response data with more specific schema information
+            let responseData;
+            
+            // Check if it's a Workday connector with location query
+            if (node.data.connector === 'workday' && node.data.body && node.data.body.includes('locationType')) {
+              responseData = {
+                "Total Count": 1,
+                "data": {
+                  "Report_Entry": [
+                    {
+                      "locationType": "Corporate Office",
+                      "locationIdentifier": "1028",
+                      "locationName": "San Francisco HQ",
+                      "address": {
+                        "addressLine1": "123 Market Street",
+                        "city": "San Francisco",
+                        "region": "CA",
+                        "postalCode": "94105",
+                        "country": "USA"
+                      },
+                      "timeZone": "America/Los_Angeles",
+                      "status": "Active"
+                    }
+                  ]
+                },
+                "id": `req-${Date.now()}`,
+                "timestamp": new Date().toISOString()
+              };
+            } else if (method === 'GET') {
+              responseData = {
+                "success": true,
+                "data": {"items": [{"id": 1, "name": "Item 1"}, {"id": 2, "name": "Item 2"}]}
+              };
+            } else {
+              responseData = {
+                "success": true,
+                "message": "Operation completed successfully",
+                "id": `req-${Date.now()}`,
+                "timestamp": new Date().toISOString()
+              };
+            }
+            
             const dataLog = {
               timestamp: new Date(),
               type: "info",
               nodeId: node.id,
-              message: method === 'GET' 
-                ? `Response Data: {"success": true, "data": {"items": [{"id": 1, "name": "Item 1"}, {"id": 2, "name": "Item 2"}]}}`
-                : `Response Data: {"success": true, "message": "Operation completed successfully", "id": ${Date.now()}}`
+              message: `Response Data: ${JSON.stringify(responseData)}`
             };
             
             executionLogs.push(dataLog);

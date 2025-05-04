@@ -69,11 +69,61 @@ export function ExecutionDetail({ execution, flowData }: ExecutionDetailProps) {
   };
   
   // Function to pretty-print response data
-  const formatResponseData = (message: string) => {
+  const formatResponseData = (message: string, nodeData?: any) => {
     if (message.startsWith('Response Data:')) {
       try {
         const jsonStr = message.replace('Response Data: ', '');
         const json = JSON.parse(jsonStr);
+        const isWorkdayConnector = nodeData?.connector === 'workday';
+        
+        // Special handling for Workday location data
+        if (isWorkdayConnector && json.data?.Report_Entry) {
+          return (
+            <div className="mt-2">
+              <div className="text-xs text-blue-500 font-semibold mb-1">Response Data:</div>
+              <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded-md text-xs">
+                <h4 className="font-semibold mb-2">Location Details:</h4>
+                
+                {json.data.Report_Entry.map((entry: any, idx: number) => (
+                  <div key={idx} className="border-l-2 border-blue-400 pl-2 mb-2">
+                    <div className="grid grid-cols-2 gap-1">
+                      <div className="font-medium">Location Type:</div>
+                      <div>{entry.locationType}</div>
+                      
+                      <div className="font-medium">Location ID:</div>
+                      <div>{entry.locationIdentifier}</div>
+                      
+                      <div className="font-medium">Location Name:</div>
+                      <div>{entry.locationName}</div>
+                      
+                      <div className="font-medium">Status:</div>
+                      <div>{entry.status}</div>
+                      
+                      <div className="font-medium">Time Zone:</div>
+                      <div>{entry.timeZone}</div>
+                    </div>
+                    
+                    <div className="mt-2">
+                      <h5 className="font-medium mb-1">Address:</h5>
+                      <div className="pl-2">
+                        <div>{entry.address.addressLine1}</div>
+                        <div>{entry.address.city}, {entry.address.region} {entry.address.postalCode}</div>
+                        <div>{entry.address.country}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                <div className="mt-2 pt-2 border-t border-slate-300 dark:border-slate-600">
+                  <div className="text-xs text-slate-500">Request ID: {json.id}</div>
+                  <div className="text-xs text-slate-500">Timestamp: {json.timestamp}</div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        
+        // Default JSON formatting for other responses
         return (
           <div className="mt-2">
             <div className="text-xs text-blue-500 font-semibold mb-1">Response Data:</div>
@@ -91,6 +141,30 @@ export function ExecutionDetail({ execution, flowData }: ExecutionDetailProps) {
       try {
         const jsonStr = message.replace('Request Body: ', '');
         const json = JSON.parse(jsonStr);
+        
+        // Check if it's a Workday query
+        if (json.query && typeof json.query === 'string' && json.query.includes('SELECT')) {
+          return (
+            <div className="mt-2">
+              <div className="text-xs text-purple-500 font-semibold mb-1">Request Body:</div>
+              <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded-md text-xs">
+                <div className="font-medium mb-1">SQL Query:</div>
+                <pre className="bg-slate-200 dark:bg-slate-700 p-2 rounded text-xs text-blue-600 dark:text-blue-400 mb-2">
+                  {json.query}
+                </pre>
+                
+                {Object.keys(json).filter(key => key !== 'query').map(key => (
+                  <div key={key} className="grid grid-cols-2 gap-1">
+                    <div className="font-medium">{key}:</div>
+                    <div>{JSON.stringify(json[key])}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+        
+        // Default JSON formatting
         return (
           <div className="mt-2">
             <div className="text-xs text-purple-500 font-semibold mb-1">Request Body:</div>
@@ -167,7 +241,7 @@ export function ExecutionDetail({ execution, flowData }: ExecutionDetailProps) {
                                     {log.type}
                                   </span>
                                   <div className="flex-1">
-                                    {formatResponseData(log.message)}
+                                    {formatResponseData(log.message, node.data)}
                                   </div>
                                 </div>
                               </div>
