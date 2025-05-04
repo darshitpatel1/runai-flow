@@ -267,11 +267,11 @@ export function ConnectorForm({ initialData, onSubmit, onCancel }: ConnectorForm
                     id="redirectUri" 
                     value={redirectUri} 
                     onChange={(e) => setRedirectUri(e.target.value)} 
-                    placeholder="https://yourapp.com/oauth/callback"
+                    placeholder={window.location.origin + "/api/oauth/callback"}
                     required={oauth2Type === "authorization_code"}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    This URI should be registered in your OAuth provider settings
+                    Use <strong>{window.location.origin}/api/oauth/callback</strong> as your registered redirect URI in the OAuth provider
                   </p>
                 </div>
                 

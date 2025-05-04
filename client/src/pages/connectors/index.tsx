@@ -195,12 +195,6 @@ export default function Connectors() {
         throw new Error("Connector not found");
       }
       
-      // Make a simple GET request to test the connection
-      let url = connector.baseUrl;
-      if (!url.startsWith('http')) {
-        url = `https://${url}`;
-      }
-      
       // Send the request to the server which will make the actual API call
       const response = await fetch('/api/test-connector', {
         method: 'POST',
@@ -212,18 +206,96 @@ export default function Connectors() {
         })
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to connect");
+        throw new Error(data.message || "Failed to connect");
       }
       
-      // If we get here, the connection was successful
-      setConnectionResults(prev => ({ ...prev, [connectorId]: true }));
+      // Check if OAuth2 authorization is required
+      if (data.authRequired && data.authType === 'oauth2') {
+        // Open the authorization URL in a new window
+        const authWindow = window.open(data.authUrl, '_blank', 'width=800,height=600');
+        
+        if (!authWindow) {
+          throw new Error("Please allow popups to complete OAuth authorization");
+        }
+        
+        // Listen for the callback message from the OAuth window
+        const handleOAuthCallback = (event: MessageEvent) => {
+          // Validate the message source and format
+          if (event.data && event.data.type === 'oauth-callback') {
+            // Remove the event listener
+            window.removeEventListener('message', handleOAuthCallback);
+            
+            if (event.data.success) {
+              // Update UI to show successful connection
+              setConnectionResults(prev => ({ ...prev, [connectorId]: true }));
+              
+              toast({
+                title: "OAuth Authorization Successful",
+                description: `Successfully connected to ${connector.name}`,
+              });
+            } else {
+              // Show error
+              setConnectionResults(prev => ({ ...prev, [connectorId]: false }));
+              
+              toast({
+                title: "OAuth Authorization Failed",
+                description: event.data.message || "Authorization failed",
+                variant: "destructive",
+              });
+            }
+            
+            // Clear loading state
+            setTestingConnections(prev => {
+              const newState = { ...prev };
+              delete newState[connectorId];
+              return newState;
+            });
+          }
+        };
+        
+        window.addEventListener('message', handleOAuthCallback);
+        
+        // Set a timeout to clean up if the OAuth window is closed without completing
+        setTimeout(() => {
+          // Check if the window was closed
+          if (authWindow.closed) {
+            window.removeEventListener('message', handleOAuthCallback);
+            
+            setConnectionResults(prev => ({ ...prev, [connectorId]: false }));
+            
+            toast({
+              title: "OAuth Authorization Cancelled",
+              description: "The authorization window was closed before completion",
+              variant: "destructive",
+            });
+            
+            // Clear loading state
+            setTestingConnections(prev => {
+              const newState = { ...prev };
+              delete newState[connectorId];
+              return newState;
+            });
+          }
+        }, 60000); // 1 minute timeout
+        
+        return;
+      }
       
-      toast({
-        title: "Connection successful",
-        description: `Successfully connected to ${connector.name}`,
-      });
+      // For non-OAuth2 or client credentials flow, we can directly check the result
+      if (data.success || data.message) {
+        // If we get here, the connection was successful
+        setConnectionResults(prev => ({ ...prev, [connectorId]: true }));
+        
+        toast({
+          title: "Connection successful",
+          description: data.message || `Successfully connected to ${connector.name}`,
+        });
+      } else {
+        throw new Error("Unknown response from server");
+      }
     } catch (error: any) {
       // If there was an error, the connection failed
       setConnectionResults(prev => ({ ...prev, [connectorId]: false }));
@@ -234,7 +306,9 @@ export default function Connectors() {
         variant: "destructive",
       });
     } finally {
-      // Clear loading state
+      // Clear loading state (except for OAuth2 flow which has its own cleanup)
+      if (!testingConnections[connectorId]) return;
+      
       setTestingConnections(prev => {
         const newState = { ...prev };
         delete newState[connectorId];
@@ -242,6 +316,23 @@ export default function Connectors() {
       });
     }
   };
+  
+  // Add event listener for when the component mounts
+  useEffect(() => {
+    // Add global event listener for OAuth callbacks
+    const handleOAuthCallback = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'oauth-callback') {
+        console.log('Received OAuth callback:', event.data);
+      }
+    };
+    
+    window.addEventListener('message', handleOAuthCallback);
+    
+    // Clean up on unmount
+    return () => {
+      window.removeEventListener('message', handleOAuthCallback);
+    };
+  }, []);
   
   return (
     <AppLayout>
