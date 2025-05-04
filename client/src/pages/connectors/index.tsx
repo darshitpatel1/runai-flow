@@ -196,7 +196,7 @@ export default function Connectors() {
                 New Connector
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="sm:max-w-[600px] h-[90vh] overflow-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingConnector ? "Edit Connector" : "Create New Connector"}
