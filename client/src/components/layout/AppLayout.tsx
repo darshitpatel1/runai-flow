@@ -36,7 +36,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   };
   
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen w-screen overflow-hidden">
       {/* Mobile sidebar toggle */}
       {isMobile && (
         <Button
@@ -73,7 +73,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
       
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
+      <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900" style={{ height: '100vh' }}>
         {children}
       </div>
     </div>

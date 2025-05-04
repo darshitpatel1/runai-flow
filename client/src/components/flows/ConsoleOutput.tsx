@@ -67,22 +67,23 @@ export function ConsoleOutput({ logs, isRunning, onRunTest }: ConsoleOutputProps
   };
   
   return (
-    <div className="h-64 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col">
+    <div className="h-48 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col">
       <div className="flex items-center justify-between p-2 border-b border-slate-200 dark:border-slate-700">
-        <div className="flex space-x-4">
+        <div className="flex space-x-2">
           <Button 
-            className="flex items-center gap-2"
+            size="sm"
+            className="flex items-center gap-1 h-8"
             onClick={onRunTest}
             disabled={isRunning}
           >
             {isRunning ? (
               <>
-                <Loader2Icon className="h-4 w-4 animate-spin" />
+                <Loader2Icon className="h-3 w-3 animate-spin" />
                 Running...
               </>
             ) : (
               <>
-                <PlayIcon className="h-4 w-4" />
+                <PlayIcon className="h-3 w-3" />
                 Run Test
               </>
             )}
@@ -91,24 +92,26 @@ export function ConsoleOutput({ logs, isRunning, onRunTest }: ConsoleOutputProps
           <Button 
             variant="outline" 
             size="sm"
+            className="h-8 text-xs px-2"
             onClick={clearLogs}
           >
-            Clear Console
+            Clear
           </Button>
         </div>
         
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1">
             <Label htmlFor="auto-scroll" className="text-xs">Auto-scroll</Label>
             <Switch 
               id="auto-scroll" 
               checked={autoScroll} 
               onCheckedChange={setAutoScroll}
+              className="scale-75"
             />
           </div>
           
           <Select value={logFilter} onValueChange={setLogFilter}>
-            <SelectTrigger className="w-[150px] h-8 text-xs">
+            <SelectTrigger className="w-[120px] h-8 text-xs">
               <SelectValue placeholder="Log Filter" />
             </SelectTrigger>
             <SelectContent>

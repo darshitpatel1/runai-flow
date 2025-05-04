@@ -161,9 +161,9 @@ export default function FlowBuilderPage() {
   
   return (
     <AppLayout>
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full overflow-hidden">
         {/* Top Header */}
-        <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex-shrink-0">
           <div>
             <Input
               className="text-xl font-semibold bg-transparent border-0 p-0 h-auto focus-visible:ring-0"
@@ -209,7 +209,7 @@ export default function FlowBuilderPage() {
         </header>
         
         {/* Flow Builder Component */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden" style={{ height: 'calc(100% - 4rem)' }}>
           <FlowBuilder
             initialNodes={nodes}
             initialEdges={edges}

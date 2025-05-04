@@ -230,35 +230,38 @@ export function FlowBuilder({
   }, [nodes, toast]);
   
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 flex overflow-hidden">
+    <div className="flex flex-col h-full w-full">
+      <div className="flex flex-1 overflow-hidden">
         {/* Node Palette */}
         <NodePanel />
         
         {/* Flow Canvas */}
         <div className="flex-1 relative bg-slate-100 dark:bg-slate-800 overflow-hidden" ref={reactFlowWrapper}>
           <ReactFlowProvider>
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onInit={setReactFlowInstance}
-              onDrop={onDrop}
-              onDragOver={onDragOver}
-              onNodeClick={onNodeClick}
-              onEdgeClick={onEdgeClick}
-              nodeTypes={nodeTypes}
-              fitView
-              snapToGrid
-              snapGrid={[15, 15]}
-              defaultEdgeOptions={{ animated: true }}
-            >
-              <Controls />
-              <MiniMap />
-              <Background gap={12} size={1} />
-            </ReactFlow>
+            <div style={{ width: '100%', height: '100%' }}>
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onInit={setReactFlowInstance}
+                onDrop={onDrop}
+                onDragOver={onDragOver}
+                onNodeClick={onNodeClick}
+                onEdgeClick={onEdgeClick}
+                nodeTypes={nodeTypes}
+                fitView
+                snapToGrid
+                snapGrid={[15, 15]}
+                defaultEdgeOptions={{ animated: true }}
+                style={{ width: '100%', height: '100%' }}
+              >
+                <Controls />
+                <MiniMap />
+                <Background gap={12} size={1} />
+              </ReactFlow>
+            </div>
           </ReactFlowProvider>
         </div>
         
