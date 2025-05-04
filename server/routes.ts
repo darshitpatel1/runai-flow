@@ -438,12 +438,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Build the authorization URL with necessary parameters
           const authUrl = new URL(connector.auth.authorizationUrl);
           
-          // Add required OAuth2 parameters
-          authUrl.searchParams.append('client_id', connector.auth.clientId);
-          authUrl.searchParams.append('response_type', 'code');
-          authUrl.searchParams.append('redirect_uri', connector.auth.redirectUri);
+          // Add required OAuth2 parameters, checking if they already exist
+          if (!authUrl.searchParams.has('client_id')) {
+            authUrl.searchParams.append('client_id', connector.auth.clientId);
+          }
           
-          if (connector.auth.scope) {
+          if (!authUrl.searchParams.has('response_type')) {
+            authUrl.searchParams.append('response_type', 'code');
+          }
+          
+          if (!authUrl.searchParams.has('redirect_uri')) {
+            authUrl.searchParams.append('redirect_uri', connector.auth.redirectUri);
+          }
+          
+          if (connector.auth.scope && !authUrl.searchParams.has('scope')) {
             authUrl.searchParams.append('scope', connector.auth.scope);
           }
           

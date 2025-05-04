@@ -263,15 +263,27 @@ export function ConnectorForm({ initialData, onSubmit, onCancel }: ConnectorForm
                 
                 <div className="space-y-2">
                   <Label htmlFor="redirectUri">Redirect URI</Label>
-                  <Input 
-                    id="redirectUri" 
-                    value={redirectUri} 
-                    onChange={(e) => setRedirectUri(e.target.value)} 
-                    placeholder={window.location.origin + "/api/oauth/callback"}
-                    required={oauth2Type === "authorization_code"}
-                  />
+                  <div className="flex items-stretch gap-2">
+                    <Input 
+                      id="redirectUri" 
+                      value={redirectUri} 
+                      onChange={(e) => setRedirectUri(e.target.value)} 
+                      placeholder={window.location.origin + "/api/oauth/callback"}
+                      required={oauth2Type === "authorization_code"}
+                    />
+                    <Button 
+                      type="button" 
+                      size="sm"
+                      onClick={() => setRedirectUri(window.location.origin + "/api/oauth/callback")}
+                    >
+                      Use Default
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Use <strong>{window.location.origin}/api/oauth/callback</strong> as your registered redirect URI in the OAuth provider
+                    Use <strong>{window.location.origin}/api/oauth/callback</strong> as your registered redirect URI in the OAuth provider's settings
+                  </p>
+                  <p className="text-xs mt-1 text-amber-600 dark:text-amber-400">
+                    Important: This exact URI must be authorized in your OAuth provider's application settings
                   </p>
                 </div>
                 
