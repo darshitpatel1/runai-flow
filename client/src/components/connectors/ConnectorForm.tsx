@@ -28,6 +28,10 @@ export function ConnectorForm({ initialData, onSubmit, onCancel }: ConnectorForm
   const [clientSecret, setClientSecret] = useState(initialData?.auth?.clientSecret || "");
   const [tokenLocation, setTokenLocation] = useState(initialData?.auth?.tokenLocation || "header");
   const [caseSensitiveHeaders, setCaseSensitiveHeaders] = useState(initialData?.auth?.caseSensitiveHeaders || false);
+  const [oauth2Type, setOauth2Type] = useState(initialData?.auth?.oauth2Type || "client_credentials");
+  const [authorizationUrl, setAuthorizationUrl] = useState(initialData?.auth?.authorizationUrl || "");
+  const [redirectUri, setRedirectUri] = useState(initialData?.auth?.redirectUri || "");
+  const [scope, setScope] = useState(initialData?.auth?.scope || "");
   
   // Headers
   const [headers, setHeaders] = useState<{ key: string; value: string }[]>(
@@ -87,13 +91,30 @@ export function ConnectorForm({ initialData, onSubmit, onCancel }: ConnectorForm
         alert("Token URL, Client ID, and Client Secret are required for OAuth 2.0");
         return;
       }
+      
       auth = {
+        oauth2Type,
         tokenUrl,
         clientId,
         clientSecret,
         tokenLocation,
         caseSensitiveHeaders
       };
+      
+      // Add authorization code specific fields if that flow is selected
+      if (oauth2Type === "authorization_code") {
+        if (!authorizationUrl.trim() || !redirectUri.trim()) {
+          alert("Authorization URL and Redirect URI are required for OAuth 2.0 Authorization Code flow");
+          return;
+        }
+        
+        auth = {
+          ...auth,
+          authorizationUrl,
+          redirectUri,
+          scope: scope.trim() || undefined
+        };
+      }
     }
     
     // Prepare final data
@@ -160,7 +181,7 @@ export function ConnectorForm({ initialData, onSubmit, onCancel }: ConnectorForm
             <RadioGroupItem value="oauth2" id="oauth2" className="sr-only" />
             <Label htmlFor="oauth2" className="cursor-pointer">
               <div className="font-medium">OAuth 2.0</div>
-              <div className="text-xs text-muted-foreground mt-1">Client Credentials</div>
+              <div className="text-xs text-muted-foreground mt-1">Client Credentials & Auth Code</div>
             </Label>
           </div>
         </RadioGroup>
@@ -199,7 +220,19 @@ export function ConnectorForm({ initialData, onSubmit, onCancel }: ConnectorForm
         
         {authType === "oauth2" && (
           <div className="space-y-4">
-            <h3 className="font-medium text-sm">OAuth 2.0 (Client Credentials)</h3>
+            <div className="space-y-2">
+              <Label htmlFor="oauth2Type">OAuth 2.0 Grant Type</Label>
+              <Tabs 
+                value={oauth2Type} 
+                onValueChange={setOauth2Type}
+                className="w-full"
+              >
+                <TabsList className="grid grid-cols-2 w-full">
+                  <TabsTrigger value="client_credentials">Client Credentials</TabsTrigger>
+                  <TabsTrigger value="authorization_code">Authorization Code</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
             
             <div className="space-y-2">
               <Label htmlFor="tokenUrl">Token URL</Label>
@@ -211,6 +244,48 @@ export function ConnectorForm({ initialData, onSubmit, onCancel }: ConnectorForm
                 required={authType === "oauth2"}
               />
             </div>
+            
+            {oauth2Type === "authorization_code" && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="authorizationUrl">Authorization URL</Label>
+                  <Input 
+                    id="authorizationUrl" 
+                    value={authorizationUrl} 
+                    onChange={(e) => setAuthorizationUrl(e.target.value)} 
+                    placeholder="https://auth.example.com/oauth/authorize"
+                    required={oauth2Type === "authorization_code"}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="redirectUri">Redirect URI</Label>
+                  <Input 
+                    id="redirectUri" 
+                    value={redirectUri} 
+                    onChange={(e) => setRedirectUri(e.target.value)} 
+                    placeholder="https://yourapp.com/oauth/callback"
+                    required={oauth2Type === "authorization_code"}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This URI should be registered in your OAuth provider settings
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="scope">Scope (Optional)</Label>
+                  <Input 
+                    id="scope" 
+                    value={scope} 
+                    onChange={(e) => setScope(e.target.value)} 
+                    placeholder="read write profile"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Space-separated list of scopes to request
+                  </p>
+                </div>
+              </div>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
