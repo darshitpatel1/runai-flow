@@ -50,13 +50,28 @@ export function FlowBuilder({
   flowId
 }: FlowBuilderProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [isTestRunning, setIsTestRunning] = useState(false);
   const { toast } = useToast();
+  
+  // Load initial nodes and edges when they change
+  useEffect(() => {
+    console.log("Loading initial nodes:", initialNodes);
+    if (initialNodes && initialNodes.length > 0) {
+      setNodes(initialNodes);
+    }
+  }, [initialNodes, setNodes]);
+  
+  useEffect(() => {
+    console.log("Loading initial edges:", initialEdges);
+    if (initialEdges && initialEdges.length > 0) {
+      setEdges(initialEdges);
+    }
+  }, [initialEdges, setEdges]);
   
   // Update parent component when nodes/edges change
   useEffect(() => {
@@ -178,36 +193,79 @@ export function FlowBuilder({
         
         // Simulate API call if it's an HTTP node
         if (node.type === 'httpRequest') {
+          const method = node.data.method || 'GET';
+          const endpoint = node.data.endpoint || '/api';
+          const connector = node.data.connector || 'No connector';
+          
+          // Log the request details
           setLogs((logs) => [
             ...logs,
             {
               timestamp: new Date(),
               type: "http",
-              message: `${node.data.method || 'GET'} ${node.data.connector ? 'using ' + node.data.connector : 'No connector selected'}`
+              message: `${method} ${endpoint} using connector: ${connector}`
             }
           ]);
           
-          // Simulate success or failure randomly
+          // If it's a POST or PUT request with a body, show the request body
+          if ((method === 'POST' || method === 'PUT') && node.data.body) {
+            setLogs((logs) => [
+              ...logs,
+              {
+                timestamp: new Date(),
+                type: "http",
+                message: `Request Body: ${node.data.body}`
+              }
+            ]);
+          }
+          
+          // Simulate API call delay
           await new Promise(resolve => setTimeout(resolve, 1000));
           
-          if (Math.random() > 0.2) {
+          // Different response scenarios based on connector and method
+          if (node.data.connector) {
+            // OAuth connectors (simulate successful authentication)
             setLogs((logs) => [
               ...logs,
               {
                 timestamp: new Date(),
                 type: "success",
-                message: "Response: 200 OK"
+                message: `Response: 200 OK (authenticated with ${node.data.connector})`
               }
             ]);
-          } else {
+            
+            // Add mock response data
             setLogs((logs) => [
               ...logs,
               {
                 timestamp: new Date(),
-                type: "error",
-                message: "Request failed: 404 Not Found"
+                type: "info",
+                message: method === 'GET' 
+                  ? `Response Data: {"success": true, "data": {"items": [{"id": 1, "name": "Item 1"}, {"id": 2, "name": "Item 2"}]}}`
+                  : `Response Data: {"success": true, "message": "Operation completed successfully", "id": ${Date.now()}}`
               }
             ]);
+          } else {
+            // No connector selected - higher chance of failure
+            if (Math.random() > 0.5) {
+              setLogs((logs) => [
+                ...logs,
+                {
+                  timestamp: new Date(),
+                  type: "success",
+                  message: "Response: 200 OK"
+                }
+              ]);
+            } else {
+              setLogs((logs) => [
+                ...logs,
+                {
+                  timestamp: new Date(),
+                  type: "error",
+                  message: "Request failed: 401 Unauthorized (No valid authentication)"
+                }
+              ]);
+            }
           }
         }
         

@@ -9,6 +9,11 @@ interface HttpRequestNodeProps {
     connector?: string;
     status?: string;
     selected?: boolean;
+    body?: string;
+    headers?: Record<string, string>[];
+    queryParams?: Record<string, string>[];
+    parseJson?: boolean;
+    failOnError?: boolean;
   };
   selected: boolean;
 }
@@ -44,15 +49,28 @@ export const HttpRequestNode = memo(({ data, selected }: HttpRequestNodeProps) =
         </div>
       )}
       
-      <div className="flex items-center space-x-2 text-xs">
+      {/* Display truncated body for POST/PUT requests */}
+      {(data.method === 'POST' || data.method === 'PUT') && data.body && (
+        <div className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg mb-2 font-mono max-h-12 overflow-hidden text-ellipsis">
+          <div className="text-xs text-slate-500 mb-1">Body:</div>
+          {data.body.length > 50 ? data.body.substring(0, 50) + '...' : data.body}
+        </div>
+      )}
+      
+      <div className="flex flex-wrap items-center gap-2 text-xs">
         {data.status && (
           <span className="px-2 py-0.5 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 rounded-full">
             Success: {data.status}
           </span>
         )}
         {data.connector && (
-          <span className="text-slate-500 dark:text-slate-400">
+          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 rounded-full">
             Using: {data.connector}
+          </span>
+        )}
+        {data.parseJson && (
+          <span className="px-2 py-0.5 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100 rounded-full">
+            Parse JSON
           </span>
         )}
       </div>

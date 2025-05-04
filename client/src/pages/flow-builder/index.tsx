@@ -52,8 +52,16 @@ export default function FlowBuilderPage() {
             setFlowDescription(flowData.description || "");
             
             // Load saved nodes and edges
-            if (flowData.nodes) setNodes(flowData.nodes);
-            if (flowData.edges) setEdges(flowData.edges);
+            // Use the parsed data from firestore document
+            const savedNodes = Array.isArray(flowData.nodes) ? flowData.nodes : [];
+            const savedEdges = Array.isArray(flowData.edges) ? flowData.edges : [];
+            
+            console.log("Loading saved nodes:", savedNodes);
+            console.log("Loading saved edges:", savedEdges);
+            
+            // Update state
+            setNodes(savedNodes);
+            setEdges(savedEdges);
           } else {
             toast({
               title: "Flow not found",
