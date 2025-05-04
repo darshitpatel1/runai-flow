@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -89,10 +89,10 @@ export function ExecutionDetail({ execution, flowData }: ExecutionDetailProps) {
                   <div key={idx} className="border-l-2 border-blue-400 pl-2 mb-2">
                     <div className="grid grid-cols-2 gap-1">
                       {Object.keys(entry).filter(key => typeof entry[key] !== 'object').map(key => (
-                        <React.Fragment key={key}>
+                        <Fragment key={key}>
                           <div className="font-medium">{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}:</div>
                           <div>{String(entry[key])}</div>
-                        </React.Fragment>
+                        </Fragment>
                       ))}
                     </div>
                     
@@ -115,10 +115,10 @@ export function ExecutionDetail({ execution, flowData }: ExecutionDetailProps) {
                   <div key={idx} className="border-l-2 border-blue-400 pl-2 mb-2">
                     <div className="grid grid-cols-2 gap-1">
                       {Object.keys(item).filter(key => typeof item[key] !== 'object').map(key => (
-                        <React.Fragment key={key}>
+                        <Fragment key={key}>
                           <div className="font-medium">{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}:</div>
                           <div>{String(item[key])}</div>
-                        </React.Fragment>
+                        </Fragment>
                       ))}
                     </div>
                     
