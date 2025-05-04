@@ -501,11 +501,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // OAuth2 callback endpoint
   app.get('/api/oauth/callback', async (req, res) => {
     try {
-      const { code, state, connectorId } = req.query;
+      const { code, state, connectorId, region } = req.query;
       
-      if (!code || !connectorId) {
-        return res.status(400).send('Missing required parameters');
+      // We're going to be more lenient here - as long as we have a code, we consider it successful
+      // The connectorId might be passed through state in some OAuth providers
+      if (!code) {
+        return res.status(400).send('Missing authorization code parameter');
       }
+      
+      // Log the received parameters for debugging
+      console.log('OAuth callback received:', { 
+        code: typeof code === 'string' ? code.substring(0, 5) + '...' : 'undefined', 
+        state, 
+        region,
+        fullUrl: req.originalUrl 
+      });
       
       // In a real implementation, we would:
       // 1. Validate the state parameter to prevent CSRF attacks
@@ -513,31 +523,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 3. Store the tokens securely for future API calls
       // 4. Redirect back to the connector page
       
+      // Send a page that will communicate the authorization success to the opener
       res.send(`
         <html>
           <head>
             <title>OAuth Authorization Complete</title>
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              h2 { color: #4f46e5; }
+              .success { color: #10b981; font-weight: bold; }
+              .info { color: #6b7280; margin-top: 20px; }
+            </style>
             <script>
+              // We don't need the connectorId here, as we'll let the opener handle
+              // determining which connector was being authorized
               window.opener.postMessage({ 
                 type: 'oauth-callback', 
-                success: true, 
-                connectorId: '${connectorId}',
+                success: true,
+                code: '${code}',
+                state: '${state || ""}',
                 message: 'Authorization successful. You can now close this window.'
               }, '*');
+              
+              // Close the window after a short delay
               setTimeout(function() {
                 window.close();
-              }, 1000);
+              }, 3000);
             </script>
           </head>
           <body>
-            <h2>Authorization Successful</h2>
-            <p>You can close this window and return to the application.</p>
+            <div class="container">
+              <h2>Authorization Successful</h2>
+              <p class="success">You have successfully authorized the application.</p>
+              <p class="info">This window will automatically close in a few seconds. If it doesn't, you can close it manually.</p>
+              <p>Authorization code received: ${typeof code === 'string' ? code.substring(0, 5) + '...' : 'undefined'}</p>
+            </div>
           </body>
         </html>
       `);
     } catch (error: any) {
       console.error('OAuth callback error:', error);
-      res.status(500).send('Error processing OAuth callback');
+      res.status(500).send(`
+        <html>
+          <head>
+            <title>OAuth Error</title>
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              h2 { color: #ef4444; }
+              .error { color: #7f1d1d; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h2>OAuth Authorization Error</h2>
+              <p class="error">There was an error processing your authorization: ${error.message}</p>
+              <p>You can close this window and try again.</p>
+            </div>
+          </body>
+        </html>
+      `);
     }
   });
   

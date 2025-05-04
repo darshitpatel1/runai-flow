@@ -33,6 +33,8 @@ export default function Connectors() {
   const [editingConnector, setEditingConnector] = useState<any>(null);
   const [testingConnections, setTestingConnections] = useState<Record<string, boolean>>({});
   const [connectionResults, setConnectionResults] = useState<Record<string, boolean>>({});
+  // Keep track of which connector is associated with which state parameter
+  const [authStates, setAuthStates] = useState<Record<string, string>>({});
   
   // Get edit parameter from URL
   const params = new URLSearchParams(location.split('?')[1]);
@@ -214,6 +216,11 @@ export default function Connectors() {
       
       // Check if OAuth2 authorization is required
       if (data.authRequired && data.authType === 'oauth2') {
+        // Store the state parameter and associate it with this connector ID
+        if (data.state) {
+          setAuthStates(prev => ({ ...prev, [data.state]: connectorId }));
+        }
+        
         // Open the authorization URL in a new window
         const authWindow = window.open(data.authUrl, '_blank', 'width=800,height=600');
         
@@ -228,17 +235,36 @@ export default function Connectors() {
             // Remove the event listener
             window.removeEventListener('message', handleOAuthCallback);
             
+            // Determine which connector this callback is for
+            let targetConnectorId = connectorId;
+            
+            // If we have a state parameter, use it to look up the connector ID
+            if (event.data.state && authStates[event.data.state]) {
+              targetConnectorId = authStates[event.data.state];
+              
+              // Clean up the auth state
+              setAuthStates(prev => {
+                const newState = { ...prev };
+                delete newState[event.data.state];
+                return newState;
+              });
+            }
+            
             if (event.data.success) {
               // Update UI to show successful connection
-              setConnectionResults(prev => ({ ...prev, [connectorId]: true }));
+              setConnectionResults(prev => ({ ...prev, [targetConnectorId]: true }));
+              
+              // Find the connector name for the toast
+              const targetConnector = connectors.find(c => c.id === targetConnectorId);
+              const connectorName = targetConnector ? targetConnector.name : "the connector";
               
               toast({
                 title: "OAuth Authorization Successful",
-                description: `Successfully connected to ${connector.name}`,
+                description: `Successfully connected to ${connectorName}`,
               });
             } else {
               // Show error
-              setConnectionResults(prev => ({ ...prev, [connectorId]: false }));
+              setConnectionResults(prev => ({ ...prev, [targetConnectorId]: false }));
               
               toast({
                 title: "OAuth Authorization Failed",
@@ -250,7 +276,7 @@ export default function Connectors() {
             // Clear loading state
             setTestingConnections(prev => {
               const newState = { ...prev };
-              delete newState[connectorId];
+              delete newState[targetConnectorId];
               return newState;
             });
           }
@@ -323,6 +349,49 @@ export default function Connectors() {
     const handleOAuthCallback = (event: MessageEvent) => {
       if (event.data && event.data.type === 'oauth-callback') {
         console.log('Received OAuth callback:', event.data);
+        
+        // Handle case where connector-specific listener didn't catch it
+        // This could happen if the page was refreshed during OAuth flow
+        if (event.data.state && authStates[event.data.state]) {
+          const connectorId = authStates[event.data.state];
+          
+          // Clean up the auth state
+          setAuthStates(prev => {
+            const newState = { ...prev };
+            delete newState[event.data.state];
+            return newState;
+          });
+          
+          if (event.data.success) {
+            // Update UI to show successful connection
+            setConnectionResults(prev => ({ ...prev, [connectorId]: true }));
+            
+            // Find the connector name for the toast
+            const connector = connectors.find(c => c.id === connectorId);
+            const connectorName = connector ? connector.name : "the connector";
+            
+            toast({
+              title: "OAuth Authorization Successful",
+              description: `Successfully connected to ${connectorName}`,
+            });
+          } else {
+            // Show error
+            setConnectionResults(prev => ({ ...prev, [connectorId]: false }));
+            
+            toast({
+              title: "OAuth Authorization Failed",
+              description: event.data.message || "Authorization failed",
+              variant: "destructive",
+            });
+          }
+          
+          // Clear loading state
+          setTestingConnections(prev => {
+            const newState = { ...prev };
+            delete newState[connectorId];
+            return newState;
+          });
+        }
       }
     };
     
@@ -332,7 +401,7 @@ export default function Connectors() {
     return () => {
       window.removeEventListener('message', handleOAuthCallback);
     };
-  }, []);
+  }, [connectors, authStates, toast]);
   
   return (
     <AppLayout>
