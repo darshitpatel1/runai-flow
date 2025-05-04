@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -14,10 +14,10 @@ interface ConsoleOutputProps {
 export function ConsoleOutput({ logs, isRunning, onRunTest }: ConsoleOutputProps) {
   const [autoScroll, setAutoScroll] = useState(true);
   const [logFilter, setLogFilter] = useState("all");
-  const consoleRef = React.useRef<HTMLDivElement>(null);
+  const consoleRef = useRef<HTMLDivElement>(null);
   
   // Auto-scroll logic
-  React.useEffect(() => {
+  useEffect(() => {
     if (autoScroll && consoleRef.current) {
       consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
     }
