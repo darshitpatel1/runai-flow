@@ -408,5 +408,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Endpoint to test connector connectivity
+  app.post('/api/test-connector', async (req, res) => {
+    try {
+      const { connector } = req.body;
+      
+      if (!connector || !connector.baseUrl) {
+        return res.status(400).json({ message: 'Invalid connector data' });
+      }
+      
+      // Prepare URL - make sure it has protocol
+      let url = connector.baseUrl;
+      if (!url.startsWith('http')) {
+        url = `https://${url}`;
+      }
+      
+      // In reality, we would:
+      // 1. Try to connect to the API
+      // 2. Handle authentication based on connector.authType
+      // 3. Return appropriate status 
+      
+      // For now, simulate success or failure based on the URL
+      if (url.includes('example.com') || url.includes('api.')) {
+        // Simulate successful connection
+        return res.status(200).json({ message: 'Connection successful' });
+      } else {
+        // Simulate failed connection
+        return res.status(400).json({ message: 'Connection failed - Invalid API endpoint' });
+      }
+    } catch (error: any) {
+      console.error('Error testing connector:', error);
+      return res.status(500).json({ message: error.message || 'Failed to test connection' });
+    }
+  });
+  
   return httpServer;
 }

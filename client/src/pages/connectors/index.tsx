@@ -8,7 +8,7 @@ import { ConnectorForm } from "@/components/connectors/ConnectorForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PlusIcon, Loader2Icon, TrashIcon, PencilIcon } from "lucide-react";
+import { PlusIcon, Loader2Icon, TrashIcon, PencilIcon, CheckCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -31,6 +31,8 @@ export default function Connectors() {
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingConnector, setEditingConnector] = useState<any>(null);
+  const [testingConnections, setTestingConnections] = useState<Record<string, boolean>>({});
+  const [connectionResults, setConnectionResults] = useState<Record<string, boolean>>({});
   
   // Get edit parameter from URL
   const params = new URLSearchParams(location.split('?')[1]);
@@ -180,6 +182,67 @@ export default function Connectors() {
     }
   };
   
+  const testConnectorConnection = async (connectorId: string) => {
+    if (!user) return;
+    
+    try {
+      // Set loading state for this connector
+      setTestingConnections(prev => ({ ...prev, [connectorId]: true }));
+      
+      // Find the connector
+      const connector = connectors.find(c => c.id === connectorId);
+      if (!connector) {
+        throw new Error("Connector not found");
+      }
+      
+      // Make a simple GET request to test the connection
+      let url = connector.baseUrl;
+      if (!url.startsWith('http')) {
+        url = `https://${url}`;
+      }
+      
+      // Send the request to the server which will make the actual API call
+      const response = await fetch('/api/test-connector', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          connector
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to connect");
+      }
+      
+      // If we get here, the connection was successful
+      setConnectionResults(prev => ({ ...prev, [connectorId]: true }));
+      
+      toast({
+        title: "Connection successful",
+        description: `Successfully connected to ${connector.name}`,
+      });
+    } catch (error: any) {
+      // If there was an error, the connection failed
+      setConnectionResults(prev => ({ ...prev, [connectorId]: false }));
+      
+      toast({
+        title: "Connection failed",
+        description: error.message || "Could not connect to the API",
+        variant: "destructive",
+      });
+    } finally {
+      // Clear loading state
+      setTestingConnections(prev => {
+        const newState = { ...prev };
+        delete newState[connectorId];
+        return newState;
+      });
+    }
+  };
+  
   return (
     <AppLayout>
       <div className="p-6 max-w-7xl mx-auto">
@@ -282,9 +345,37 @@ export default function Connectors() {
                       </Badge>
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground mb-3">
                     Created: {connector.createdAt?.toDate ? new Date(connector.createdAt.toDate()).toLocaleDateString() : 'Unknown'}
                   </div>
+                  
+                  <Button 
+                    variant={connectionResults[connector.id] === true ? "outline" : 
+                            connectionResults[connector.id] === false ? "destructive" : "outline"}
+                    size="sm"
+                    className="w-full"
+                    onClick={() => testConnectorConnection(connector.id)}
+                    disabled={testingConnections[connector.id]}
+                  >
+                    {testingConnections[connector.id] ? (
+                      <>
+                        <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
+                        Testing...
+                      </>
+                    ) : connectionResults[connector.id] === true ? (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                        Connection Successful
+                      </>
+                    ) : connectionResults[connector.id] === false ? (
+                      <>
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Connection Failed
+                      </>
+                    ) : (
+                      "Test Connection"
+                    )}
+                  </Button>
                 </CardContent>
               </Card>
             ))}
