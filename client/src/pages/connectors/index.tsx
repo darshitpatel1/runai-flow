@@ -35,6 +35,8 @@ export default function Connectors() {
   const [connectionResults, setConnectionResults] = useState<Record<string, boolean>>({});
   // Keep track of which connector is associated with which state parameter
   const [authStates, setAuthStates] = useState<Record<string, string>>({});
+  // Store connection status persistently
+  const [persistentConnections, setPersistentConnections] = useState<Record<string, boolean>>({});
   
   // Get edit parameter from URL
   const params = new URLSearchParams(location.split('?')[1]);
@@ -253,6 +255,20 @@ export default function Connectors() {
             if (event.data.success) {
               // Update UI to show successful connection
               setConnectionResults(prev => ({ ...prev, [targetConnectorId]: true }));
+
+              // Also update the persistent connection state
+              setPersistentConnections(prev => {
+                const newState = { ...prev, [targetConnectorId]: true };
+                
+                // Save to localStorage for persistence across page refreshes
+                try {
+                  localStorage.setItem('connectorStatus', JSON.stringify(newState));
+                } catch (err) {
+                  console.error('Failed to save connector status to localStorage:', err);
+                }
+                
+                return newState;
+              });
               
               // Find the connector name for the toast
               const targetConnector = connectors.find(c => c.id === targetConnectorId);
@@ -262,9 +278,36 @@ export default function Connectors() {
                 title: "OAuth Authorization Successful",
                 description: `Successfully connected to ${connectorName}`,
               });
+
+              // Update connector in Firestore to store connection status
+              if (user && targetConnector) {
+                try {
+                  const connectorRef = doc(db, "users", user.uid, "connectors", targetConnectorId);
+                  updateDoc(connectorRef, {
+                    connectionStatus: 'connected',
+                    updatedAt: new Date()
+                  }).catch(err => console.error('Failed to update connector status:', err));
+                } catch (err) {
+                  console.error('Failed to update connector in Firestore:', err);
+                }
+              }
             } else {
               // Show error
               setConnectionResults(prev => ({ ...prev, [targetConnectorId]: false }));
+              
+              // Update the persistent connection state to reflect failure
+              setPersistentConnections(prev => {
+                const newState = { ...prev, [targetConnectorId]: false };
+                
+                // Save to localStorage for persistence across page refreshes
+                try {
+                  localStorage.setItem('connectorStatus', JSON.stringify(newState));
+                } catch (err) {
+                  console.error('Failed to save connector status to localStorage:', err);
+                }
+                
+                return newState;
+              });
               
               toast({
                 title: "OAuth Authorization Failed",
@@ -315,6 +358,33 @@ export default function Connectors() {
         // If we get here, the connection was successful
         setConnectionResults(prev => ({ ...prev, [connectorId]: true }));
         
+        // Also update the persistent connection state
+        setPersistentConnections(prev => {
+          const newState = { ...prev, [connectorId]: true };
+          
+          // Save to localStorage for persistence across page refreshes
+          try {
+            localStorage.setItem('connectorStatus', JSON.stringify(newState));
+          } catch (err) {
+            console.error('Failed to save connector status to localStorage:', err);
+          }
+          
+          return newState;
+        });
+        
+        // Update connector in Firestore to store connection status
+        if (user) {
+          try {
+            const connectorRef = doc(db, "users", user.uid, "connectors", connectorId);
+            updateDoc(connectorRef, {
+              connectionStatus: 'connected',
+              updatedAt: new Date()
+            }).catch(err => console.error('Failed to update connector status:', err));
+          } catch (err) {
+            console.error('Failed to update connector in Firestore:', err);
+          }
+        }
+        
         toast({
           title: "Connection successful",
           description: data.message || `Successfully connected to ${connector.name}`,
@@ -325,6 +395,20 @@ export default function Connectors() {
     } catch (error: any) {
       // If there was an error, the connection failed
       setConnectionResults(prev => ({ ...prev, [connectorId]: false }));
+      
+      // Update the persistent connection state to reflect failure
+      setPersistentConnections(prev => {
+        const newState = { ...prev, [connectorId]: false };
+        
+        // Save to localStorage for persistence across page refreshes
+        try {
+          localStorage.setItem('connectorStatus', JSON.stringify(newState));
+        } catch (err) {
+          console.error('Failed to save connector status to localStorage:', err);
+        }
+        
+        return newState;
+      });
       
       toast({
         title: "Connection failed",
@@ -342,6 +426,20 @@ export default function Connectors() {
       });
     }
   };
+  
+  // Load persistent connection status from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedStatus = localStorage.getItem('connectorStatus');
+      if (savedStatus) {
+        const parsed = JSON.parse(savedStatus);
+        setPersistentConnections(parsed);
+        setConnectionResults(parsed); // Also set to current connection results
+      }
+    } catch (err) {
+      console.error('Failed to load connector status from localStorage:', err);
+    }
+  }, []);
   
   // Add event listener for when the component mounts
   useEffect(() => {
@@ -366,6 +464,20 @@ export default function Connectors() {
             // Update UI to show successful connection
             setConnectionResults(prev => ({ ...prev, [connectorId]: true }));
             
+            // Also update the persistent connection state
+            setPersistentConnections(prev => {
+              const newState = { ...prev, [connectorId]: true };
+              
+              // Save to localStorage for persistence across page refreshes
+              try {
+                localStorage.setItem('connectorStatus', JSON.stringify(newState));
+              } catch (err) {
+                console.error('Failed to save connector status to localStorage:', err);
+              }
+              
+              return newState;
+            });
+            
             // Find the connector name for the toast
             const connector = connectors.find(c => c.id === connectorId);
             const connectorName = connector ? connector.name : "the connector";
@@ -374,9 +486,36 @@ export default function Connectors() {
               title: "OAuth Authorization Successful",
               description: `Successfully connected to ${connectorName}`,
             });
+            
+            // Update connector in Firestore to store connection status
+            if (user && connector) {
+              try {
+                const connectorRef = doc(db, "users", user.uid, "connectors", connectorId);
+                updateDoc(connectorRef, {
+                  connectionStatus: 'connected',
+                  updatedAt: new Date()
+                }).catch(err => console.error('Failed to update connector status:', err));
+              } catch (err) {
+                console.error('Failed to update connector in Firestore:', err);
+              }
+            }
           } else {
             // Show error
             setConnectionResults(prev => ({ ...prev, [connectorId]: false }));
+            
+            // Update the persistent connection state to reflect failure
+            setPersistentConnections(prev => {
+              const newState = { ...prev, [connectorId]: false };
+              
+              // Save to localStorage for persistence across page refreshes
+              try {
+                localStorage.setItem('connectorStatus', JSON.stringify(newState));
+              } catch (err) {
+                console.error('Failed to save connector status to localStorage:', err);
+              }
+              
+              return newState;
+            });
             
             toast({
               title: "OAuth Authorization Failed",
@@ -510,8 +649,8 @@ export default function Connectors() {
                   </div>
                   
                   <Button 
-                    variant={connectionResults[connector.id] === true ? "outline" : 
-                            connectionResults[connector.id] === false ? "destructive" : "outline"}
+                    variant={connectionResults[connector.id] === true || persistentConnections[connector.id] === true ? "outline" : 
+                            connectionResults[connector.id] === false || persistentConnections[connector.id] === false ? "destructive" : "outline"}
                     size="sm"
                     className="w-full"
                     onClick={() => testConnectorConnection(connector.id)}
@@ -522,12 +661,12 @@ export default function Connectors() {
                         <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
                         Testing...
                       </>
-                    ) : connectionResults[connector.id] === true ? (
+                    ) : connectionResults[connector.id] === true || persistentConnections[connector.id] === true ? (
                       <>
                         <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
                         Connection Successful
                       </>
-                    ) : connectionResults[connector.id] === false ? (
+                    ) : connectionResults[connector.id] === false || persistentConnections[connector.id] === false ? (
                       <>
                         <XCircle className="h-4 w-4 mr-2" />
                         Connection Failed
