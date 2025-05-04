@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -76,41 +76,63 @@ export function ExecutionDetail({ execution, flowData }: ExecutionDetailProps) {
         const json = JSON.parse(jsonStr);
         const isWorkdayConnector = nodeData?.connector === 'workday';
         
-        // Special handling for Workday location data
-        if (isWorkdayConnector && json.data?.Report_Entry) {
+        // Special handling for structured data with arrays
+        if (json.data?.Report_Entry || (json.data && Array.isArray(json.data.items))) {
           return (
             <div className="mt-2">
               <div className="text-xs text-blue-500 font-semibold mb-1">Response Data:</div>
               <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded-md text-xs">
-                <h4 className="font-semibold mb-2">Location Details:</h4>
+                <h4 className="font-semibold mb-2">{isWorkdayConnector ? "Location Details:" : "Response Details:"}</h4>
                 
-                {json.data.Report_Entry.map((entry: any, idx: number) => (
+                {/* Process Workday-specific location data */}
+                {json.data?.Report_Entry && json.data.Report_Entry.map((entry: any, idx: number) => (
                   <div key={idx} className="border-l-2 border-blue-400 pl-2 mb-2">
                     <div className="grid grid-cols-2 gap-1">
-                      <div className="font-medium">Location Type:</div>
-                      <div>{entry.locationType}</div>
-                      
-                      <div className="font-medium">Location ID:</div>
-                      <div>{entry.locationIdentifier}</div>
-                      
-                      <div className="font-medium">Location Name:</div>
-                      <div>{entry.locationName}</div>
-                      
-                      <div className="font-medium">Status:</div>
-                      <div>{entry.status}</div>
-                      
-                      <div className="font-medium">Time Zone:</div>
-                      <div>{entry.timeZone}</div>
+                      {Object.keys(entry).filter(key => typeof entry[key] !== 'object').map(key => (
+                        <React.Fragment key={key}>
+                          <div className="font-medium">{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}:</div>
+                          <div>{String(entry[key])}</div>
+                        </React.Fragment>
+                      ))}
                     </div>
                     
-                    <div className="mt-2">
-                      <h5 className="font-medium mb-1">Address:</h5>
-                      <div className="pl-2">
-                        <div>{entry.address.addressLine1}</div>
-                        <div>{entry.address.city}, {entry.address.region} {entry.address.postalCode}</div>
-                        <div>{entry.address.country}</div>
+                    {/* Display nested objects */}
+                    {Object.keys(entry).filter(key => typeof entry[key] === 'object' && entry[key] !== null).map(key => (
+                      <div key={key} className="mt-2">
+                        <h5 className="font-medium mb-1">{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}:</h5>
+                        <div className="pl-2">
+                          {Object.keys(entry[key]).map(subKey => (
+                            <div key={subKey}>{subKey}: {String(entry[key][subKey])}</div>
+                          ))}
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                ))}
+                
+                {/* Process regular array items from API responses */}
+                {json.data?.items && Array.isArray(json.data.items) && json.data.items.map((item: any, idx: number) => (
+                  <div key={idx} className="border-l-2 border-blue-400 pl-2 mb-2">
+                    <div className="grid grid-cols-2 gap-1">
+                      {Object.keys(item).filter(key => typeof item[key] !== 'object').map(key => (
+                        <React.Fragment key={key}>
+                          <div className="font-medium">{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}:</div>
+                          <div>{String(item[key])}</div>
+                        </React.Fragment>
+                      ))}
                     </div>
+                    
+                    {/* Display nested objects */}
+                    {Object.keys(item).filter(key => typeof item[key] === 'object' && item[key] !== null).map(key => (
+                      <div key={key} className="mt-2">
+                        <h5 className="font-medium mb-1">{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}:</h5>
+                        <div className="pl-2">
+                          {Object.keys(item[key]).map(subKey => (
+                            <div key={subKey}>{subKey}: {String(item[key][subKey])}</div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ))}
                 
