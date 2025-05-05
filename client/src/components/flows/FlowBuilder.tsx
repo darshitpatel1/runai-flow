@@ -13,8 +13,7 @@ import ReactFlow, {
   NodeChange,
   useReactFlow,
   getConnectedEdges,
-  Node,
-  ConnectionLineType
+  Node
 } from 'reactflow';
 
 // Define a custom type for position changes since not all NodeChange types have an ID
@@ -43,18 +42,16 @@ import { LoopNode } from "./nodes/LoopNode";
 import { SetVariableNode } from "./nodes/SetVariableNode";
 import { LogNode } from "./nodes/LogNode";
 import { DelayNode } from "./nodes/DelayNode";
-import { StopJobNode } from "./nodes/StopJobNode";
 import { useToast } from "@/hooks/use-toast";
 
 // Define custom node types
-const nodeTypes: {[key: string]: React.ComponentType<any>} = {
+const nodeTypes = {
   httpRequest: HttpRequestNode,
   ifElse: IfElseNode,
   loop: LoopNode,
   setVariable: SetVariableNode,
   log: LogNode,
-  delay: DelayNode,
-  stopJob: StopJobNode
+  delay: DelayNode
 };
 
 interface FlowBuilderProps {
@@ -81,62 +78,53 @@ export function FlowBuilder({
   // Grid size for snapping - should match the snapGrid value in ReactFlow component
   const gridSize = 15;
   
-  // Advanced node change handler with GPU acceleration and precise positioning
+  // Use a directly simplified node change handler with throttling to fix zigzag
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     try {
-      // Check for position changes that indicate dragging
-      const positionChanges = changes.filter(
-        change => change.type === 'position'
-      ) as NodePositionChange[];
+      // Check for drag start and drag end to manage state
+      const dragChange = changes.find(change => 
+        change.type === 'position' && 'dragging' in change
+      ) as NodePositionChange | undefined;
       
-      // Find explicit drag start/end markers
-      const dragChange = positionChanges.find(change => 'dragging' in change);
-            
-      // Handle drag states for stability
       if (dragChange) {
+        // Handle drag start
         if (dragChange.dragging === true) {
-          // Start of dragging - set flags for optimization
           isCurrentlyDragging = true;
           draggedNodeId = dragChange.id;
         } 
+        // Handle drag end with improved stability
         else if (dragChange.dragging === false && isCurrentlyDragging) {
-          // End of dragging - stabilize positions
           isCurrentlyDragging = false;
           
-          // Apply immediate stabilization with minimal delay
-          requestAnimationFrame(() => {
+          // On drag end, finalize all node positions with stable snapping
+          setTimeout(() => {
             setNodes(nodes => {
               try {
-                // Process all nodes with precise positioning
+                // Process all nodes to ensure consistent layout
                 const updatedNodes = nodes.map(node => {
                   if (!node || !node.position) return node;
                   
-                  // Get the most accurate position
+                  // Get the best position source
                   const position = node.positionAbsolute || node.position;
                   
-                  // Apply grid snapping with precise math
+                  // Snap to grid precisely
                   const x = Math.round(position.x / gridSize) * gridSize;
                   const y = Math.round(position.y / gridSize) * gridSize;
                   
-                  // Apply GPU acceleration and ensure position stability
+                  // Create a stable node with fixed position
                   return {
                     ...node,
                     position: { x, y },
                     positionAbsolute: { x, y },
-                    // Add GPU acceleration styles
-                    style: {
-                      ...node.style,
-                      transform: 'translate3d(0,0,0)',
-                      willChange: 'transform',
-                    },
-                    // Reset dynamic states
+                    // Clear any dynamic properties that might cause flicker
                     dragging: false,
                     selected: !!node.selected
                   };
                 });
                 
-                // Report changes to parent with minimal delay
+                // Report changes to parent
                 if (reportNodesChange && typeof reportNodesChange === 'function') {
+                  // Use a separate timeout to ensure UI is updated first
                   setTimeout(() => reportNodesChange(updatedNodes), 50);
                 }
                 
@@ -146,38 +134,24 @@ export function FlowBuilder({
                 return nodes;
               }
             });
-          });
+          }, 100); // Longer delay for improved position stability
         }
       }
       
-      // Smart throttling for performance
+      // Better throttling for smoother drag experience
       const now = Date.now();
-      if (isCurrentlyDragging && now - lastUpdateTime < 25) { // More forgiving timing (40fps)
-        // Skip rapid updates during dragging
+      if (isCurrentlyDragging && now - lastUpdateTime < 20) {
+        // Skip updates that are too close together
         return;
       }
       lastUpdateTime = now;
       
-      // Apply changes with optimization
+      // Apply changes directly for responsive UI
       setNodes(nds => {
         try {
-          // For all operations, ensure proper node position stabilization
+          // Create a safe copy of nodes with the changes applied
           const updatedNodes = applyNodeChanges(changes, nds);
-          
-          return updatedNodes.map(node => {
-            // Only add style enhancements if the node is valid
-            if (!node) return node;
-            
-            // Add GPU acceleration to all nodes for consistent rendering
-            return {
-              ...node,
-              style: {
-                ...node.style,
-                transform: 'translate3d(0,0,0)',
-                willChange: 'transform',
-              }
-            };
-          });
+          return updatedNodes;
         } catch (error) {
           console.error("Error applying node changes:", error);
           return nds;
@@ -285,12 +259,7 @@ export function FlowBuilder({
   }, [edges, reportEdgesChange]);
   
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ 
-      ...params, 
-      type: 'step',
-      animated: true, 
-      style: { stroke: '#4f46e5', strokeWidth: 2 } 
-    }, eds)),
+    (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: '#4f46e5', strokeWidth: 2 } }, eds)),
     [setEdges]
   );
   
@@ -355,23 +324,15 @@ export function FlowBuilder({
       // Create a unique ID for the node
       const newNodeId = `${nodeType}_${Date.now()}`;
       
-      // Create the new node with proper initial properties
+      // Create the new node
       const newNode = {
         id: newNodeId,
         type: nodeType,
         position,
-        positionAbsolute: position, // To ensure position stability
-        dragging: false,
-        selected: false,
         data: { 
           ...nodeData, 
           label: `New ${nodeData.label}`,
         },
-        // Add GPU acceleration styles for smoother rendering
-        style: {
-          transform: 'translate3d(0,0,0)',
-          willChange: 'transform',
-        }
       };
       
       // Add node first, then create connection
@@ -380,82 +341,62 @@ export function FlowBuilder({
           // First add the new node
           const updatedNodes = nds.concat(newNode);
           
-          // Improved node auto-connection logic with better timing
-          requestAnimationFrame(() => {
-            // We use requestAnimationFrame to ensure we have the latest DOM state
-            try {
-              // First, ensure the node is properly added to the graph
-              if (!nds || nds.length === 0) {
-                console.log("No existing nodes to connect to");
-                return;
-              }
-              
-              // Wait longer to ensure React Flow has properly rendered the new node
-              setTimeout(() => {
-                try {
-                  // Get the latest nodes from ReactFlow instance for accurate positions
-                  const currentNodes = reactFlowInstance.getNodes();
+          // Find the nearest node above this node to auto-connect
+          // Safe handling of empty node arrays
+          if (nds && nds.length > 0) {
+            // Use setTimeout to ensure the node is added to the graph before creating the edge
+            setTimeout(() => {
+              try {
+                // Find potential source nodes (any node above the new node)
+                const sourceNodes = nds.filter(node => 
+                  node && node.position && node.position.y < position.y
+                );
+                
+                if (sourceNodes.length > 0) {
+                  // Find the closest node above the new node
+                  const closestNode = sourceNodes.reduce((closest, current) => {
+                    // Safe distance calculation with fallbacks
+                    const closestDist = Math.hypot(
+                      (closest.position?.x || 0) - position.x,
+                      (closest.position?.y || 0) - position.y
+                    );
+                    const currentDist = Math.hypot(
+                      (current.position?.x || 0) - position.x,
+                      (current.position?.y || 0) - position.y
+                    );
+                    return currentDist < closestDist ? current : closest;
+                  }, sourceNodes[0]);
                   
-                  // Find nodes that would make sense to connect from (above the new node)
-                  const sourceNodes = currentNodes.filter((node: Node) => 
-                    node && 
-                    node.id !== newNodeId && // Don't connect to self
-                    node.position && 
-                    node.position.y < position.y - 50 // Must be significantly above
-                  );
-                  
-                  if (sourceNodes && sourceNodes.length > 0) {
-                    // Find the closest node that makes sense to connect from
-                    const closestNode = sourceNodes.reduce((closest: Node, current: Node) => {
-                      // Calculate Manhattan distance (more reliable for flow charts)
-                      const closestDist = 
-                        Math.abs((closest.position?.x || 0) - position.x) + 
-                        Math.abs((closest.position?.y || 0) - position.y);
-                      
-                      const currentDist = 
-                        Math.abs((current.position?.x || 0) - position.x) + 
-                        Math.abs((current.position?.y || 0) - position.y);
-                      
-                      return currentDist < closestDist ? current : closest;
-                    }, sourceNodes[0]);
-                    
-                    if (closestNode) {
-                      console.log("Creating connection from:", closestNode.id, "to:", newNodeId);
-                      
-                      // Determine appropriate source handle based on node type
-                      let sourceHandle = null;
-                      if (closestNode.type === 'ifElse') {
-                        // For if/else nodes, prefer connecting from the "true" path
-                        sourceHandle = 'true';
-                      }
-                      
-                      // Create a unique ID for the edge
-                      const edgeId = `e-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-                      
-                      // Create the connection parameters
-                      const params = {
-                        id: edgeId,
-                        source: closestNode.id,
-                        sourceHandle: sourceHandle,
-                        target: newNodeId,
-                        targetHandle: null, // Auto-select the default target handle
-                        type: 'step', // Match the type used in defaultEdgeOptions
-                        animated: true,
-                        style: { stroke: '#4f46e5', strokeWidth: 2 }
-                      };
-                      
-                      // Create the edge connection
-                      setEdges((eds) => addEdge(params, eds));
-                    }
+                  // Create connection from closest node to new node
+                  // Determine source handle based on node type
+                  let sourceHandle = null;
+                  if (closestNode.type === 'ifElse') {
+                    // For if/else nodes, connect to the "true" path
+                    sourceHandle = 'true';
                   }
-                } catch (error) {
-                  console.error("Error creating edge connection:", error);
+                  
+                  // Create a unique ID for the edge
+                  const edgeId = `e-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                  
+                  // Create the connection parameters
+                  const params = {
+                    id: edgeId,
+                    source: closestNode.id,
+                    sourceHandle: sourceHandle,
+                    target: newNodeId,
+                    targetHandle: null, // Auto-select the default target handle
+                    animated: true,
+                    style: { stroke: '#4f46e5', strokeWidth: 2 }
+                  };
+                  
+                  // Create the edge connection
+                  setEdges((eds) => addEdge(params, eds));
                 }
-              }, 200); // Longer timeout for more reliable connections
-            } catch (error) {
-              console.error("Error in auto-connection logic:", error);
-            }
-          });
+              } catch (error) {
+                console.error("Error creating edge connection:", error);
+              }
+            }, 100); // Increased timeout for better reliability
+          }
           
           return updatedNodes;
         } catch (error) {
@@ -1146,6 +1087,7 @@ export function FlowBuilder({
           <ReactFlowProvider>
             <div style={{ width: '100%', height: '100%' }} className="transform-gpu">
               <ReactFlow 
+                className="transform-gpu"
                 nodes={nodes}
                 edges={edges}
                 onNodesChange={onNodesChange}
@@ -1169,13 +1111,11 @@ export function FlowBuilder({
                 nodesDraggable={true}
                 elementsSelectable={true}
                 preventScrolling={false}
-                connectionLineType={ConnectionLineType.Step}
                 defaultEdgeOptions={{ 
-                  type: 'step',
                   animated: true,
                   style: { stroke: '#4f46e5', strokeWidth: 2 }
                 }}
-                style={{ background: 'transparent' }}
+                style={{ width: '100%', height: '100%' }}
                 defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
                 proOptions={{ hideAttribution: true }}
               >

@@ -12,7 +12,6 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { VariableSelector } from "./VariableSelector";
-import { StopJobConfig } from "./nodes/StopJobConfig";
 
 interface NodeConfigurationProps {
   node: any;
@@ -191,12 +190,6 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
         return renderLogConfig();
       case 'delay':
         return renderDelayConfig();
-      case 'stopJob':
-        return <StopJobConfig 
-          nodeData={nodeData} 
-          handleChange={handleChange} 
-          handleOpenVariableSelector={handleOpenVariableSelector} 
-        />;
       default:
         return <p>No configuration available for this node type.</p>;
     }
@@ -538,8 +531,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
-              variant="outline"
-              className={`justify-start ${isForEachLoop ? 'bg-green-500 hover:bg-green-600 text-white border-green-600' : ''}`}
+              variant={isForEachLoop ? "default" : "outline"}
+              className={`justify-start ${isForEachLoop ? 'bg-green-500 hover:bg-green-600' : ''}`}
               onClick={() => handleChange('loopType', 'forEach')}
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -549,8 +542,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
             </Button>
             <Button
               type="button"
-              variant="outline"
-              className={`justify-start ${isWhileLoop ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600' : ''}`}
+              variant={isWhileLoop ? "default" : "outline"}
+              className={`justify-start ${isWhileLoop ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
               onClick={() => handleChange('loopType', 'while')}
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
