@@ -24,7 +24,7 @@ export const DelayNode = memo(({ id, data, selected }: DelayNodeProps) => {
     bg-white dark:bg-black rounded-2xl shadow-lg p-3 
     border-2 ${selected ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-rose-500'} 
     ${data.selected ? 'node-highlight' : ''}
-    min-w-[280px] w-[280px]
+    min-w-[320px] w-[320px]
   `;
   
   const handleNodeDelete = (nodeId: string) => {

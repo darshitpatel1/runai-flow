@@ -31,7 +31,7 @@ export const HttpRequestNode = memo(({ id, data, selected }: HttpRequestNodeProp
     bg-white dark:bg-black rounded-2xl shadow-lg p-3 
     border-2 ${selected ? 'border-primary ring-2 ring-primary/20' : 'border-primary'} 
     ${data.selected ? 'node-highlight' : ''}
-    min-w-[280px] w-[280px]
+    min-w-[320px] w-[320px]
   `;
   
   const handleNodeDelete = (nodeId: string) => {
