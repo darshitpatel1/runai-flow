@@ -79,8 +79,8 @@ export function FlowBuilder({
   const gridSize = 15;
   
   // Use a directly simplified node change handler with throttling to fix zigzag
-  const onNodesChange = useCallback(
-    (changes: NodeChange[]) => {
+  const onNodesChange = useCallback((changes: NodeChange[]) => {
+    try {
       // Check for drag start and drag end to manage state
       const dragChange = changes.find(change => 
         change.type === 'position' && 'dragging' in change
@@ -91,48 +91,76 @@ export function FlowBuilder({
         if (dragChange.dragging === true) {
           isCurrentlyDragging = true;
           draggedNodeId = dragChange.id;
-          console.log('Drag started:', draggedNodeId);
         } 
-        // Handle drag end
+        // Handle drag end with improved stability
         else if (dragChange.dragging === false && isCurrentlyDragging) {
           isCurrentlyDragging = false;
-          console.log('Drag ended:', draggedNodeId);
           
-          // On drag end, we finalize all node positions
+          // On drag end, finalize all node positions with stable snapping
           setTimeout(() => {
             setNodes(nodes => {
-              return nodes.map(node => {
-                if (!node || !node.position) return node;
+              try {
+                // Process all nodes to ensure consistent layout
+                const updatedNodes = nodes.map(node => {
+                  if (!node || !node.position) return node;
+                  
+                  // Get the best position source
+                  const position = node.positionAbsolute || node.position;
+                  
+                  // Snap to grid precisely
+                  const x = Math.round(position.x / gridSize) * gridSize;
+                  const y = Math.round(position.y / gridSize) * gridSize;
+                  
+                  // Create a stable node with fixed position
+                  return {
+                    ...node,
+                    position: { x, y },
+                    positionAbsolute: { x, y },
+                    // Clear any dynamic properties that might cause flicker
+                    dragging: false,
+                    selected: !!node.selected
+                  };
+                });
                 
-                // Snap to grid for final position
-                const x = Math.round(node.position.x / gridSize) * gridSize;
-                const y = Math.round(node.position.y / gridSize) * gridSize;
+                // Report changes to parent
+                if (reportNodesChange && typeof reportNodesChange === 'function') {
+                  // Use a separate timeout to ensure UI is updated first
+                  setTimeout(() => reportNodesChange(updatedNodes), 50);
+                }
                 
-                return {
-                  ...node,
-                  position: { x, y },
-                  positionAbsolute: { x, y },
-                  dragging: false,
-                };
-              });
+                return updatedNodes;
+              } catch (error) {
+                console.error("Error stabilizing nodes:", error);
+                return nodes;
+              }
             });
-          }, 50); // slight delay to ensure final position is captured
+          }, 100); // Longer delay for improved position stability
         }
       }
       
-      // Simple throttling for position updates during drag
+      // Better throttling for smoother drag experience
       const now = Date.now();
-      if (isCurrentlyDragging && now - lastUpdateTime < 25) {
-        // Skip this update if we're dragging and it's too soon
+      if (isCurrentlyDragging && now - lastUpdateTime < 20) {
+        // Skip updates that are too close together
         return;
       }
       lastUpdateTime = now;
       
-      // Always apply the changes directly without manipulation during drag
-      setNodes(nds => applyNodeChanges(changes, nds));
-    },
-    [setNodes, gridSize]
-  );
+      // Apply changes directly for responsive UI
+      setNodes(nds => {
+        try {
+          // Create a safe copy of nodes with the changes applied
+          const updatedNodes = applyNodeChanges(changes, nds);
+          return updatedNodes;
+        } catch (error) {
+          console.error("Error applying node changes:", error);
+          return nds;
+        }
+      });
+    } catch (error) {
+      console.error("Error in onNodesChange:", error);
+    }
+  }, [setNodes, gridSize, reportNodesChange]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [selectedNode, setSelectedNode] = useState<any>(null);
@@ -1055,10 +1083,11 @@ export function FlowBuilder({
         <NodePanel />
         
         {/* Flow Canvas */}
-        <div className="flex-1 relative bg-slate-100 dark:bg-black overflow-hidden" ref={reactFlowWrapper}>
+        <div className="flex-1 relative bg-slate-100 dark:bg-black overflow-hidden transform-gpu" ref={reactFlowWrapper}>
           <ReactFlowProvider>
-            <div style={{ width: '100%', height: '100%' }}>
-              <ReactFlow
+            <div style={{ width: '100%', height: '100%' }} className="transform-gpu">
+              <ReactFlow 
+                className="transform-gpu"
                 nodes={nodes}
                 edges={edges}
                 onNodesChange={onNodesChange}
