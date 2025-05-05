@@ -72,12 +72,13 @@ export default function NewTablePage() {
   // Create table mutation
   const createTableMutation = useMutation({
     mutationFn: async (data: TableFormValues) => {
-      return await apiRequest('/api/tables', {
+      const response = await apiRequest('/api/tables', {
         method: 'POST',
         data,
       });
+      return response;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       toast({
         title: "Table created",
         description: "The table has been created successfully",
@@ -85,10 +86,11 @@ export default function NewTablePage() {
       queryClient.invalidateQueries({ queryKey: ['/api/tables'] });
       navigate(`/tables/${data.id}`);
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Failed to create table:", error);
       toast({
         title: "Error",
-        description: "Failed to create table",
+        description: "Failed to create table. Please check column configuration.",
         variant: "destructive",
       });
     }
@@ -163,31 +165,30 @@ export default function NewTablePage() {
   const onSubmit = (values: TableFormValues) => {
     // Clean up column data before submission
     const cleanedColumns = values.columns.map((column) => {
-      // Only include options for select-type columns
-      if (column.type !== 'select') {
-        return { ...column, options: [] };
-      }
+      // Process based on column type
+      let processedColumn = { ...column };
       
-      // Ensure default values match the column type
+      // Default value handling based on type
       let defaultValue = column.default;
       
-      switch (column.type) {
-        case 'text':
-        case 'select':
-          defaultValue = typeof defaultValue === 'string' ? defaultValue : '';
-          break;
-        case 'number':
-          defaultValue = typeof defaultValue === 'number' ? defaultValue : null;
-          break;
-        case 'boolean':
-          defaultValue = typeof defaultValue === 'boolean' ? defaultValue : false;
-          break;
-        case 'date':
-          defaultValue = defaultValue instanceof Date ? defaultValue : null;
-          break;
+      if (column.type === 'text' || column.type === 'select') {
+        defaultValue = typeof defaultValue === 'string' ? defaultValue : '';
+      } else if (column.type === 'number') {
+        defaultValue = typeof defaultValue === 'number' ? defaultValue : null;
+      } else if (column.type === 'boolean') {
+        defaultValue = typeof defaultValue === 'boolean' ? defaultValue : false;
+      } else if (column.type === 'date') {
+        defaultValue = defaultValue instanceof Date ? defaultValue : null;
       }
       
-      return { ...column, default: defaultValue };
+      processedColumn.default = defaultValue;
+      
+      // Only include options for select-type columns
+      if (column.type !== 'select') {
+        processedColumn.options = [];
+      }
+      
+      return processedColumn;
     });
     
     createTableMutation.mutate({
@@ -268,7 +269,7 @@ export default function NewTablePage() {
                 <CardDescription>Define your table's columns and data types</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {form.getValues("columns").map((_, index) => (
+                {form.watch("columns")?.map((_, index) => (
                   <div key={index} className="border rounded-lg p-4 space-y-4 relative">
                     <Button
                       type="button"
@@ -387,7 +388,7 @@ export default function NewTablePage() {
                     </div>
                     
                     {/* Select Options (Only for select type columns) */}
-                    {form.getValues(`columns.${index}.type`) === 'select' && (
+                    {form.watch(`columns.${index}.type`) === 'select' && (
                       <div className="space-y-2">
                         <FormLabel>Options</FormLabel>
                         <div className="flex space-x-2">
@@ -411,7 +412,7 @@ export default function NewTablePage() {
                         </div>
                         
                         <div className="flex flex-wrap gap-2 mt-2">
-                          {(form.getValues(`columns.${index}.options`) || []).map((option, optionIndex) => (
+                          {(form.watch(`columns.${index}.options`) || []).map((option, optionIndex) => (
                             <div 
                               key={optionIndex}
                               className="bg-secondary text-secondary-foreground px-3 py-1 rounded-full flex items-center text-sm"
@@ -429,7 +430,7 @@ export default function NewTablePage() {
                             </div>
                           ))}
                           
-                          {!form.getValues(`columns.${index}.options`)?.length && (
+                          {!(form.watch(`columns.${index}.options`)?.length) && (
                             <div className="text-sm text-muted-foreground">
                               No options added yet
                             </div>
