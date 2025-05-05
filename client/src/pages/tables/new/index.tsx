@@ -42,7 +42,7 @@ const tableFormSchema = z.object({
 type TableFormValues = z.infer<typeof tableFormSchema>;
 
 const defaultColumnValues = {
-  id: "",
+  id: "column_" + Date.now().toString(36),
   name: "",
   type: "text" as const,
   required: false,
@@ -99,7 +99,10 @@ export default function NewTablePage() {
   // Add column handler
   const addColumn = () => {
     const columns = form.getValues("columns") || [];
-    form.setValue("columns", [...columns, { ...defaultColumnValues }]);
+    form.setValue("columns", [...columns, { 
+      ...defaultColumnValues,
+      id: "column_" + Date.now().toString(36) + "_" + Math.random().toString(36).substr(2, 5)
+    }]);
   };
   
   // Remove column handler

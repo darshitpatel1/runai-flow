@@ -167,9 +167,9 @@ export default function AddRowPage() {
   
   // Handle form submission
   const onSubmit = (values: any) => {
-    // Wrap the form values in a 'data' object to match the expected server structure
-    addRowMutation.mutate({ data: values });
+    // Form values ARE the data object - don't nest it further
     console.log("Submitting row data:", values);
+    addRowMutation.mutate({ data: values });
   };
   
   // Format date for date fields
