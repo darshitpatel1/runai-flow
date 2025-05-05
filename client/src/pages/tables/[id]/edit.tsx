@@ -54,7 +54,7 @@ const tableFormSchema = z.object({
 type TableFormValues = z.infer<typeof tableFormSchema>;
 
 const defaultColumnValues = {
-  id: "",
+  id: "column_" + Date.now().toString(36),
   name: "",
   type: "text" as const,
   required: false,
@@ -221,7 +221,10 @@ export default function TableEditPage() {
   // Add column handler
   const addColumn = () => {
     const columns = form.getValues("columns") || [];
-    form.setValue("columns", [...columns, { ...defaultColumnValues }]);
+    form.setValue("columns", [...columns, { 
+      ...defaultColumnValues,
+      id: "column_" + Date.now().toString(36) // Ensure unique ID on every new column
+    }]);
   };
   
   // Remove column handler

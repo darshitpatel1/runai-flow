@@ -521,88 +521,86 @@ export default function TableDetailPage() {
                       {columns.map((column: ColumnDefinition) => (
                         <TableHead key={column.id} className="min-w-[150px]">
                           <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
+                            <div 
+                              className={`flex items-center gap-2 cursor-pointer hover:text-primary ${columnFilters[column.id] ? 'text-blue-500' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const popupDiv = document.createElement('div');
+                                popupDiv.className = 'absolute mt-1 bg-card border rounded-md shadow-md z-50 p-2 w-64';
+                                popupDiv.style.left = `${e.currentTarget.getBoundingClientRect().left}px`;
+                                popupDiv.style.top = `${e.currentTarget.getBoundingClientRect().bottom + window.scrollY}px`;
+                                
+                                const handleClickOutside = (evt: MouseEvent) => {
+                                  if (!popupDiv.contains(evt.target as Node)) {
+                                    document.body.removeChild(popupDiv);
+                                    document.removeEventListener('click', handleClickOutside, true);
+                                  }
+                                };
+                                
+                                // Create filter input
+                                const inputElement = document.createElement('input');
+                                inputElement.className = 'w-full p-2 text-sm border rounded-md mb-2 bg-background text-foreground';
+                                inputElement.placeholder = `Filter ${column.name}...`;
+                                inputElement.value = columnFilters[column.id] || '';
+                                inputElement.addEventListener('input', (inputEvent) => {
+                                  const inputEl = inputEvent.target as HTMLInputElement;
+                                  const newFilters = { ...columnFilters };
+                                  if (inputEl.value) {
+                                    newFilters[column.id] = inputEl.value;
+                                  } else {
+                                    delete newFilters[column.id];
+                                  }
+                                  setColumnFilters(newFilters);
+                                });
+                                
+                                // Create buttons
+                                const buttonDiv = document.createElement('div');
+                                buttonDiv.className = 'flex justify-between';
+                                
+                                // Clear button
+                                const clearButton = document.createElement('button');
+                                clearButton.className = 'px-2 py-1 text-xs bg-muted text-muted-foreground rounded-md hover:bg-muted/80';
+                                clearButton.textContent = 'Clear';
+                                clearButton.addEventListener('click', () => {
+                                  const newFilters = { ...columnFilters };
+                                  delete newFilters[column.id];
+                                  setColumnFilters(newFilters);
+                                  document.body.removeChild(popupDiv);
+                                });
+                                
+                                // Apply button
+                                const applyButton = document.createElement('button');
+                                applyButton.className = 'px-2 py-1 text-xs bg-primary text-primary-foreground rounded-md hover:bg-primary/90';
+                                applyButton.textContent = 'Apply';
+                                applyButton.addEventListener('click', () => {
+                                  document.body.removeChild(popupDiv);
+                                });
+                                
+                                buttonDiv.appendChild(clearButton);
+                                buttonDiv.appendChild(applyButton);
+                                
+                                popupDiv.appendChild(inputElement);
+                                popupDiv.appendChild(buttonDiv);
+                                document.body.appendChild(popupDiv);
+                                
+                                // Focus the input
+                                inputElement.focus();
+                                
+                                // Add event listener to handle clicks outside
+                                setTimeout(() => {
+                                  document.addEventListener('click', handleClickOutside, true);
+                                }, 100);
+                              }}
+                            >
                               {column.name}
                               {column.required && (
                                 <Badge variant="outline" className="ml-1 font-normal">
                                   Required
                                 </Badge>
                               )}
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className={`h-5 w-5 ml-auto p-0 ${columnFilters[column.id] ? 'text-blue-500' : 'text-muted-foreground'}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const popupDiv = document.createElement('div');
-                                  popupDiv.className = 'absolute mt-1 bg-popover border rounded-md shadow-md z-50 p-2 w-64';
-                                  popupDiv.style.left = `${e.currentTarget.getBoundingClientRect().left}px`;
-                                  popupDiv.style.top = `${e.currentTarget.getBoundingClientRect().bottom + window.scrollY}px`;
-                                  
-                                  const handleClickOutside = (evt: MouseEvent) => {
-                                    if (!popupDiv.contains(evt.target as Node)) {
-                                      document.body.removeChild(popupDiv);
-                                      document.removeEventListener('click', handleClickOutside, true);
-                                    }
-                                  };
-                                  
-                                  // Create filter input
-                                  const inputElement = document.createElement('input');
-                                  inputElement.className = 'w-full p-2 text-sm border rounded-md mb-2';
-                                  inputElement.placeholder = `Filter ${column.name}...`;
-                                  inputElement.value = columnFilters[column.id] || '';
-                                  inputElement.addEventListener('input', (inputEvent) => {
-                                    const inputEl = inputEvent.target as HTMLInputElement;
-                                    const newFilters = { ...columnFilters };
-                                    if (inputEl.value) {
-                                      newFilters[column.id] = inputEl.value;
-                                    } else {
-                                      delete newFilters[column.id];
-                                    }
-                                    setColumnFilters(newFilters);
-                                  });
-                                  
-                                  // Create buttons
-                                  const buttonDiv = document.createElement('div');
-                                  buttonDiv.className = 'flex justify-between';
-                                  
-                                  // Clear button
-                                  const clearButton = document.createElement('button');
-                                  clearButton.className = 'px-2 py-1 text-xs bg-muted text-muted-foreground rounded-md hover:bg-muted/80';
-                                  clearButton.textContent = 'Clear';
-                                  clearButton.addEventListener('click', () => {
-                                    const newFilters = { ...columnFilters };
-                                    delete newFilters[column.id];
-                                    setColumnFilters(newFilters);
-                                    document.body.removeChild(popupDiv);
-                                  });
-                                  
-                                  // Apply button
-                                  const applyButton = document.createElement('button');
-                                  applyButton.className = 'px-2 py-1 text-xs bg-primary text-primary-foreground rounded-md hover:bg-primary/90';
-                                  applyButton.textContent = 'Apply';
-                                  applyButton.addEventListener('click', () => {
-                                    document.body.removeChild(popupDiv);
-                                  });
-                                  
-                                  buttonDiv.appendChild(clearButton);
-                                  buttonDiv.appendChild(applyButton);
-                                  
-                                  popupDiv.appendChild(inputElement);
-                                  popupDiv.appendChild(buttonDiv);
-                                  document.body.appendChild(popupDiv);
-                                  
-                                  // Focus the input
-                                  inputElement.focus();
-                                  
-                                  // Add event listener to handle clicks outside
-                                  setTimeout(() => {
-                                    document.addEventListener('click', handleClickOutside, true);
-                                  }, 100);
-                                }}
-                              >
-                                <Filter className="h-3.5 w-3.5" />
-                              </Button>
+                              {columnFilters[column.id] && (
+                                <Filter className="h-3.5 w-3.5 ml-1 text-blue-500" />
+                              )}
                             </div>
                             {columnFilters[column.id] && (
                               <div className="text-xs text-blue-500 mt-1 flex items-center gap-1">
