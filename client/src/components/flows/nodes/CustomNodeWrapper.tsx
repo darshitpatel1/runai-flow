@@ -32,14 +32,7 @@ export function CustomNodeWrapper({
         </div>
       )}
       
-      {/* Node Context Menu */}
-      <NodeContextMenu 
-        nodeId={id} 
-        onDelete={onNodeDelete}
-        onSkip={onNodeSkip}
-      />
-      
-      {/* Original Node Content */}
+      {/* Original Node Content - Now context menu will be placed inside by the parent component */}
       <div className={isSkipped ? 'opacity-50' : ''}>
         {children}
       </div>
