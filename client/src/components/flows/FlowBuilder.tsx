@@ -368,7 +368,21 @@ export function FlowBuilder({
     if ((event.target as HTMLElement).closest('.context-menu-trigger')) {
       return;
     }
-    setSelectedNode(node);
+    
+    try {
+      // Make sure the node data is a clean object without reactflow-specific properties
+      // that might cause issues when used outside the ReactFlow context
+      const safeNode = {
+        ...node,
+        data: { ...node.data }
+      };
+      
+      // Set the selected node with this safe copy
+      setSelectedNode(safeNode);
+    } catch (error) {
+      console.error("Error selecting node:", error);
+      // If there's an error, don't update the selected node
+    }
   }, []);
   
   const updateNodeData = useCallback((nodeId: string, newData: any) => {
@@ -1037,7 +1051,7 @@ export function FlowBuilder({
         </div>
         
         {/* Node Configuration Panel */}
-        {selectedNode && (
+        {selectedNode && selectedNode.id && selectedNode.data && (
           <NodeConfiguration 
             node={selectedNode} 
             updateNodeData={updateNodeData} 
