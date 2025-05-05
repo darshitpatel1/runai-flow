@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { XIcon, PlayIcon, Code2Icon } from "lucide-react";
+import { XIcon, PlayIcon, Code2Icon, Variable } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { VariableSelector } from "./VariableSelector";
 
 interface NodeConfigurationProps {
   node: any;
@@ -27,6 +28,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
   const [showTestResult, setShowTestResult] = useState(false);
   const [isTestingNode, setIsTestingNode] = useState(false);
   const [showVariableDialog, setShowVariableDialog] = useState(false);
+  const [showVariableSelector, setShowVariableSelector] = useState(false);
+  const [activeInputField, setActiveInputField] = useState<string>("");
   const [transformScript, setTransformScript] = useState("");
   const [availableVariables, setAvailableVariables] = useState<string[]>([]);
   
@@ -190,11 +193,22 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
         <div>
           <Label className="block text-sm font-medium mb-1">Endpoint Path</Label>
           <div className="space-y-1">
-            <Input
-              value={nodeData.endpoint || ''}
-              onChange={(e) => handleChange('endpoint', e.target.value)}
-              placeholder="api/resource/{{id}}"
-            />
+            <div className="flex gap-2">
+              <Input
+                value={nodeData.endpoint || ''}
+                onChange={(e) => handleChange('endpoint', e.target.value)}
+                placeholder="api/resource/{{id}}"
+                className="flex-1"
+              />
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => handleOpenVariableSelector('endpoint')}
+                className="flex-shrink-0"
+              >
+                <Variable className="h-4 w-4" />
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">
               Variables like <code>{"{{stepX.result.id}}"}</code> will be replaced at runtime
             </p>
@@ -205,12 +219,22 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
         {(nodeData.method === 'POST' || nodeData.method === 'PUT' || nodeData.method === 'PATCH') && (
           <div>
             <Label className="block text-sm font-medium mb-1">Request Body</Label>
-            <Textarea
-              value={nodeData.body || ''}
-              onChange={(e) => handleChange('body', e.target.value)}
-              placeholder='{"key": "value", "dynamic": "{{step1.result.id}}"}'
-              className="font-mono text-sm h-24"
-            />
+            <div className="relative">
+              <Textarea
+                value={nodeData.body || ''}
+                onChange={(e) => handleChange('body', e.target.value)}
+                placeholder='{"key": "value", "dynamic": "{{step1.result.id}}"}'
+                className="font-mono text-sm h-24 pr-10"
+              />
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => handleOpenVariableSelector('body')}
+                className="absolute bottom-2 right-2"
+              >
+                <Variable className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         )}
         
@@ -315,11 +339,22 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           <TabsContent value="visual" className="space-y-4 mt-2">
             <div>
               <Label className="block text-sm font-medium mb-1">Variable</Label>
-              <Input
-                value={nodeData.variable || ''}
-                onChange={(e) => handleChange('variable', e.target.value)}
-                placeholder="response.data.status"
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={nodeData.variable || ''}
+                  onChange={(e) => handleChange('variable', e.target.value)}
+                  placeholder="response.data.status"
+                  className="flex-1"
+                />
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => handleOpenVariableSelector('variable')}
+                  className="flex-shrink-0"
+                >
+                  <Variable className="h-4 w-4" />
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Enter a variable name from previous steps
               </p>
@@ -719,6 +754,19 @@ return sourceData * 2;"
     setShowVariableDialog(false);
   };
   
+  // Handle selecting a variable from the variable selector
+  const handleOpenVariableSelector = (fieldName: string) => {
+    setActiveInputField(fieldName);
+    setShowVariableSelector(true);
+  };
+  
+  const handleSelectVariable = (variablePath: string) => {
+    if (activeInputField) {
+      handleChange(activeInputField, variablePath);
+    }
+    setShowVariableSelector(false);
+  };
+  
   return (
     <div className="w-80 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-black flex flex-col">
       <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
@@ -900,6 +948,13 @@ if (data.items) {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Global variable selector dialog */}
+      <VariableSelector 
+        open={showVariableSelector} 
+        onClose={() => setShowVariableSelector(false)} 
+        onSelectVariable={handleSelectVariable}
+      />
     </div>
   );
 }
