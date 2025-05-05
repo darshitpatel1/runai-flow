@@ -569,7 +569,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
                 <SelectValue placeholder="Select or create variable" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Create new variable</SelectItem>
+                <SelectItem value="__new__">Create new variable</SelectItem>
                 {/* Show existing variables from other SetVariable nodes with error handling */}
                 {(() => {
                   try {
@@ -587,7 +587,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
               </SelectContent>
             </Select>
             
-            {!nodeData.variableKey && (
+            {nodeData.variableKey === "__new__" && (
               <Input
                 value={nodeData.newVariableKey || ''}
                 onChange={(e) => handleChange('newVariableKey', e.target.value)}
