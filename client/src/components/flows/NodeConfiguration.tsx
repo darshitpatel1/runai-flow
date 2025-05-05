@@ -1290,8 +1290,10 @@ if (data.items) {
           open={showVariableSelector} 
           onClose={() => setShowVariableSelector(false)} 
           onSelectVariable={handleSelectVariable}
+          // Pass the current node being configured as a special property
+          currentNodeId={node.id}
           // If we're outside the FlowBuilder context, we need to pass nodes manually
-          manualNodes={[node]} // Just include the current node for safety
+          manualNodes={node?.data?.allNodes || [node]} 
         />
       )}
     </div>

@@ -15,11 +15,13 @@ interface VariableSelectorProps {
   open: boolean;
   onClose: () => void;
   onSelectVariable: (variablePath: string) => void;
+  // ID of the current node being configured
+  currentNodeId?: string;
   // Optional manual nodes for when used outside ReactFlow context
   manualNodes?: any[];
 }
 
-export function VariableSelector({ open, onClose, onSelectVariable, manualNodes }: VariableSelectorProps) {
+export function VariableSelector({ open, onClose, onSelectVariable, currentNodeId, manualNodes }: VariableSelectorProps) {
   // Safely try to use ReactFlow context, but don't crash if it's not available
   const reactFlowInstance = (() => {
     try {
@@ -274,25 +276,60 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
   
   // First, collect all the nodes and their positions to determine order
   const nodeOrder: Record<string, number> = {};
-  let nodeIndex = 0;
   
   // Get all nodes from the graph in their current order
   const nodes = getNodes();
+  
   if (Array.isArray(nodes)) {
-    // Sort nodes by their vertical position (top to bottom)
+    console.log("Total nodes in flow:", nodes.length);
+    
+    // First, identify if we're in a node configuration panel
+    // and which node is being configured
+    let configNodeId: string | null = null;
+    for (const node of nodes) {
+      if (node?.data?.allNodes && Array.isArray(node.data.allNodes)) {
+        configNodeId = node.id;
+        console.log("Found node being configured:", configNodeId);
+        break;
+      }
+    }
+    
+    // Get all edges to establish dependencies between nodes
+    let edges: any[] = [];
+    try {
+      // Try to get edges from window.edges if available
+      if ((window as any).edges && Array.isArray((window as any).edges)) {
+        edges = (window as any).edges;
+      }
+      // Or try to find edges in the allEdges data
+      else if (configNodeId) {
+        const configNode = nodes.find(n => n.id === configNodeId);
+        if (configNode?.data?.allEdges && Array.isArray(configNode.data.allEdges)) {
+          edges = configNode.data.allEdges;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to get edges:", e);
+    }
+    
+    console.log("Found edges:", edges);
+    
+    // Sort nodes by their y-position as a fallback
     const sortedNodes = [...nodes].sort((a, b) => {
-      // Use y position for sort order, with default to 0 if undefined
+      // First try to use position data
       const posA = a?.position?.y || 0;
       const posB = b?.position?.y || 0;
       return posA - posB;
     });
     
-    // Assign index to each node based on its sorted position
+    // Assign index to each node based on its position
     sortedNodes.forEach((node, index) => {
       if (node && node.id) {
         nodeOrder[node.id] = index;
       }
     });
+    
+    console.log("Node order based on positions:", nodeOrder);
   }
   
   // Now organize variables by node
@@ -313,30 +350,45 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
     return orderA - orderB;
   });
   
-  // Find the current node that's being configured
-  let currentNodeIndex = -1;
-  let currentNodeId = null;
+  // Important change: We're going to simplify and disable the filtering for now, as it's causing issues
+  // This will make all variables available while we debug the order detection
   
-  // Find the node that's currently being configured
-  for (const node of nodes) {
-    if (node?.data?.allNodes && Array.isArray(node.data.allNodes) && node.data.allNodes.length > 0) {
-      currentNodeId = node.id;
-      currentNodeIndex = nodeOrder[node.id] ?? -1;
-      console.log(`Current node being configured: ${node.id} at index ${currentNodeIndex}`);
-      break;
+  // Just for debugging - log all nodes and their properties
+  console.log("All available nodes:", nodes.map((n: any) => ({ 
+    id: n.id, 
+    type: n.type,
+    position: n.position,
+    data: {
+      label: n.data?.label,
+      isConfiguring: n.data?.isConfiguring || false,
+      hasAllNodes: n.data?.allNodes ? true : false
     }
+  })));
+  
+  // Use currentNodeId from props if available
+  console.log("Current node ID from props:", currentNodeId);
+  
+  // Get the index of the current node being configured
+  const currentIndex = currentNodeId ? nodeOrder[currentNodeId] : -1;
+  
+  if (currentNodeId && currentIndex >= 0) {
+    console.log(`Current node ${currentNodeId} is at position ${currentIndex}`);
+    
+    // Filter to only show variables from nodes that come before the current node
+    nodeVariableEntries = nodeVariableEntries.filter(([nodeId, _]) => {
+      const nodeIdx = nodeOrder[nodeId];
+      // If we can't determine node's position, include it to be safe
+      if (nodeIdx === undefined) return true;
+      
+      // Only include nodes that appear BEFORE the current node
+      return nodeIdx < currentIndex;
+    });
+    console.log("Filtered variables to only include nodes before current node");
+  } else {
+    console.log("No filtering applied - showing all variables");
   }
   
-  // Filter out nodes that come after the current node in the flow
-  // Only keep nodes that are before the current node
-  if (currentNodeIndex >= 0) {
-    nodeVariableEntries = nodeVariableEntries.filter(([nodeId, _]) => {
-      const nodePosition = nodeOrder[nodeId] ?? Number.MAX_SAFE_INTEGER;
-      // Show a node's variables only if it comes before the current node
-      return nodePosition < currentNodeIndex;
-    });
-    console.log(`Filtered variable entries to only show nodes before index ${currentNodeIndex}`);
-  }
+  console.log("Node entries after filtering:", nodeVariableEntries.map(([id]) => id));
 
   // Position the selector to appear beside the settings panel on the left
   return (
