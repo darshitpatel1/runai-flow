@@ -80,85 +80,76 @@ export function FlowBuilder({
   // Grid size for snapping - should match the snapGrid value in ReactFlow component
   const gridSize = 15;
   
-  // Use a directly simplified node change handler with throttling to fix zigzag
+  // Optimized node change handler with more efficient updates and reduced memory usage
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     try {
-      // Check for drag start and drag end to manage state
+      // Check for drag start and drag end to manage state - only process once
       const dragChange = changes.find(change => 
         change.type === 'position' && 'dragging' in change
       ) as NodePositionChange | undefined;
       
       if (dragChange) {
-        // Handle drag start
+        // Handle drag start - only set flags
         if (dragChange.dragging === true) {
           isCurrentlyDragging = true;
           draggedNodeId = dragChange.id;
         } 
-        // Handle drag end with improved stability
+        // Handle drag end with improved efficiency
         else if (dragChange.dragging === false && isCurrentlyDragging) {
           isCurrentlyDragging = false;
           
-          // On drag end, finalize all node positions with stable snapping
-          setTimeout(() => {
-            setNodes(nodes => {
-              try {
-                // Process all nodes to ensure consistent layout
-                const updatedNodes = nodes.map(node => {
-                  if (!node || !node.position) return node;
-                  
-                  // Get the best position source
-                  const position = node.positionAbsolute || node.position;
-                  
-                  // Snap to grid precisely
-                  const x = Math.round(position.x / gridSize) * gridSize;
-                  const y = Math.round(position.y / gridSize) * gridSize;
-                  
-                  // Create a stable node with fixed position
-                  return {
-                    ...node,
-                    position: { x, y },
-                    positionAbsolute: { x, y },
-                    // Clear any dynamic properties that might cause flicker
-                    dragging: false,
-                    selected: !!node.selected
-                  };
-                });
+          // On drag end, use a single stable update
+          setNodes(nodes => {
+            // Only process nodes that need updating to reduce calculation load
+            const updatedNodes = nodes.map(node => {
+              if (!node || !node.position) return node;
+              
+              // Only apply full stabilization to the dragged node for better performance
+              if (node.id === draggedNodeId) {
+                const position = node.positionAbsolute || node.position;
+                const x = Math.round(position.x / gridSize) * gridSize;
+                const y = Math.round(position.y / gridSize) * gridSize;
                 
-                // Report changes to parent
-                if (reportNodesChange && typeof reportNodesChange === 'function') {
-                  // Use a separate timeout to ensure UI is updated first
-                  setTimeout(() => reportNodesChange(updatedNodes), 50);
-                }
-                
-                return updatedNodes;
-              } catch (error) {
-                console.error("Error stabilizing nodes:", error);
-                return nodes;
+                return {
+                  ...node,
+                  position: { x, y },
+                  positionAbsolute: { x, y },
+                  dragging: false,
+                  selected: !!node.selected
+                };
               }
+              
+              // For other nodes, just ensure dragging state is cleared
+              return { ...node, dragging: false };
             });
-          }, 100); // Longer delay for improved position stability
+            
+            // Report changes but avoid nested timeouts that can cause memory issues
+            if (reportNodesChange && typeof reportNodesChange === 'function') {
+              reportNodesChange(updatedNodes);
+            }
+            
+            return updatedNodes;
+          });
+          
+          // Clear any reference to dragged node
+          draggedNodeId = null;
+          
+          // Return early to avoid double processing
+          return;
         }
       }
       
-      // Better throttling for smoother drag experience
+      // Aggressive throttling for smoother performance
       const now = Date.now();
-      if (isCurrentlyDragging && now - lastUpdateTime < 20) {
-        // Skip updates that are too close together
+      if (isCurrentlyDragging && now - lastUpdateTime < 50) {
+        // Skip more updates to reduce CPU/memory load
         return;
       }
       lastUpdateTime = now;
       
-      // Apply changes directly for responsive UI
-      setNodes(nds => {
-        try {
-          // Create a safe copy of nodes with the changes applied
-          const updatedNodes = applyNodeChanges(changes, nds);
-          return updatedNodes;
-        } catch (error) {
-          console.error("Error applying node changes:", error);
-          return nds;
-        }
-      });
+      // Apply changes with minimal spreading/copying
+      setNodes(nds => applyNodeChanges(changes, nds));
+      
     } catch (error) {
       console.error("Error in onNodesChange:", error);
     }
@@ -203,46 +194,50 @@ export function FlowBuilder({
     }
   }, [initialEdges, setEdges]);
   
-  // Snap node positions to grid and stabilize them
+  // Optimized function to stabilize node positions with minimal object creation
   const stabilizeNodePositions = useCallback((nodes: any[]) => {
-    const gridSize = 15; // Should match the snapGrid value in ReactFlow component
+    // Use the same grid size constant to avoid duplication
+    if (!nodes || nodes.length === 0) return nodes;
     
-    return nodes.map((node) => {
+    // Avoid creating new array if nothing changes
+    let hasChanges = false;
+    
+    // Perform in-place updates where possible to reduce memory pressure
+    const result = nodes.map((node) => {
       if (!node) return node;
       
-      // Make sure position exists
+      // Skip nodes that don't need stabilization
       if (!node.position) {
-        node.position = { x: 0, y: 0 };
+        return { ...node, position: { x: 0, y: 0 } };
       }
       
-      // Get current position 
+      // Check if stabilization is needed
       const { x, y } = node.position;
-      
-      // Snap to grid by rounding to nearest grid point
       const snappedX = Math.round(x / gridSize) * gridSize;
       const snappedY = Math.round(y / gridSize) * gridSize;
       
-      // Return a new node with stabilized properties
-      return {
-        ...node,
-        // Set exact coordinates
-        position: { 
-          x: snappedX,
-          y: snappedY
-        },
-        // Always keep positionAbsolute in sync with position (prevents UI jitter)
-        positionAbsolute: { 
-          x: snappedX,
-          y: snappedY
-        },
-        // Ensure these properties are always reset to prevent animation issues
-        selected: node.selected || false,
-        dragging: false,
-        // Add a timestamp to force React to re-render the node
-        __lastUpdate: Date.now()
-      };
+      // Only create new objects if the position actually changed
+      if (x !== snappedX || y !== snappedY || node.dragging || !node.positionAbsolute) {
+        hasChanges = true;
+        
+        // Create position objects only once
+        const stablePosition = { x: snappedX, y: snappedY };
+        
+        return {
+          ...node,
+          position: stablePosition,
+          positionAbsolute: stablePosition, // Use the same object reference for both
+          selected: !!node.selected,
+          dragging: false
+        };
+      }
+      
+      // If node is already stable, don't create new objects
+      return node;
     });
-  }, []);
+    
+    return hasChanges ? result : nodes;
+  }, [gridSize]);
   
   // Update parent component when nodes/edges change - but not during dragging
   useEffect(() => {
@@ -270,34 +265,37 @@ export function FlowBuilder({
     event.dataTransfer.dropEffect = 'move';
   }, []);
   
-  // Handle drag completion to ensure nodes are properly snapped
+  // Optimized drag stop handler with less memory usage
   const onNodeDragStop = useCallback((event: React.MouseEvent, node: any) => {
-    // Snap to grid on drag stop
+    // Skip processing if node is invalid
+    if (!node || !node.position) return;
+    
+    // Calculate snapped position once
+    const x = Math.round(node.position.x / gridSize) * gridSize;
+    const y = Math.round(node.position.y / gridSize) * gridSize;
+    const stablePosition = { x, y };
+    
+    // Update only the dragged node to improve performance
     setNodes(nodes => {
       return nodes.map(n => {
+        // Skip irrelevant nodes to avoid unnecessary renders
         if (n.id !== node.id) return n;
         
-        // Snap to grid
-        const x = Math.round(node.position.x / gridSize) * gridSize;
-        const y = Math.round(node.position.y / gridSize) * gridSize;
-        
+        // Use the pre-calculated stable position
         return {
           ...n,
-          position: { x, y },
-          positionAbsolute: { x, y },
+          position: stablePosition,
+          positionAbsolute: stablePosition, // Use same object reference
           dragging: false,
         };
       });
     });
     
-    // Report the changes to parent
-    setTimeout(() => {
-      if (nodes.length > 0) {
-        const stabilizedNodes = stabilizeNodePositions(nodes);
-        reportNodesChange(stabilizedNodes);
-      }
-    }, 50);
-  }, [nodes, setNodes, gridSize, stabilizeNodePositions, reportNodesChange]);
+    // Report changes without creating another stabilized copy of all nodes
+    if (reportNodesChange) {
+      reportNodesChange(nodes); // Parent component will handle stabilization as needed
+    }
+  }, [setNodes, gridSize, reportNodesChange]);
   
   const onDrop = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
@@ -410,56 +408,55 @@ export function FlowBuilder({
     [reactFlowInstance, setNodes, setEdges]
   );
   
+  // Optimized node click handler that minimizes object creation
   const onNodeClick = useCallback((event: React.MouseEvent, node: any) => {
-    // Don't trigger selection if it's a click on the context menu
+    // Skip if clicking on context menu to avoid double processing
     if ((event.target as HTMLElement).closest('.context-menu-trigger')) {
       return;
     }
     
     try {
-      // Make sure we have a valid ReactFlow instance first
-      if (!reactFlowInstance) {
-        console.error("ReactFlow instance not available");
+      // Quick validation to save processing time
+      if (!reactFlowInstance || !node || !node.data) {
         return;
       }
       
-      // Get all nodes in the flow to make them available for variable selection
+      // Get a reference to all nodes but only extract minimal data
       const allNodes = reactFlowInstance.getNodes();
+      if (!allNodes || !Array.isArray(allNodes)) return;
       
-      if (!allNodes || !Array.isArray(allNodes)) {
-        console.error("Failed to get nodes from ReactFlow instance");
-        return;
-      }
-      
-      // Create a clean, safe version of each node to avoid circular references
-      const safeAllNodes = allNodes.map(n => {
-        if (!n || typeof n !== 'object') return null;
+      // Create a minimal representation of other nodes for variable selection
+      // This greatly reduces memory usage compared to the previous approach
+      const minimalNodes = [];
+      for (let i = 0; i < allNodes.length; i++) {
+        const n = allNodes[i];
+        if (!n || !n.id) continue;
         
-        return {
+        // Only include essential properties to save memory
+        minimalNodes.push({
           id: n.id,
           type: n.type,
-          data: n.data ? {
-            ...n.data,
-            label: n.data.label || n.type || "Node"
-          } : { label: n.type || "Node" }
-        };
-      }).filter(Boolean); // Remove any null entries
+          data: {
+            label: n.data?.label || n.type || "Node"
+          }
+        });
+      }
       
-      // Make sure the node data is a clean object without reactflow-specific properties
-      const safeNode = {
-        ...node,
+      // Create selective copy with minimal property duplication
+      const nodeToSelect = {
+        id: node.id,
+        type: node.type,
+        position: node.position,
         data: { 
           ...node.data,
-          // Add all nodes to the node data so variable selector can use them
-          allNodes: safeAllNodes
+          allNodes: minimalNodes
         }
       };
       
-      // Set the selected node with this safe copy
-      setSelectedNode(safeNode);
+      // Update selection
+      setSelectedNode(nodeToSelect);
     } catch (error) {
-      console.error("Error selecting node:", error);
-      // If there's an error, don't update the selected node
+      console.error("Error in node selection:", error);
     }
   }, [reactFlowInstance]);
   
