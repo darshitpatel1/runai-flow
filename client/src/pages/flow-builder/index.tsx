@@ -197,7 +197,7 @@ export default function FlowBuilderPage() {
     <AppLayout>
       <div className="flex flex-col h-full overflow-hidden">
         {/* Top Header */}
-        <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex-shrink-0">
+        <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-black flex-shrink-0">
           <div>
             <Input
               className="text-xl font-semibold bg-transparent border-0 p-0 h-auto focus-visible:ring-0"
@@ -211,7 +211,7 @@ export default function FlowBuilderPage() {
           <div className="flex items-center space-x-4">
             <Button
               variant="outline"
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 dark:bg-black dark:border-slate-700"
               onClick={handleSaveFlow}
               disabled={saving}
             >
@@ -257,7 +257,7 @@ export default function FlowBuilderPage() {
             
             {/* Execution Progress Panel */}
             {id && (
-              <div className="absolute top-4 right-4 w-72">
+              <div className="absolute top-4 right-16 w-72">
                 <ExecutionProgress 
                   flowId={id} 
                   executionId={flow?.executionId}
