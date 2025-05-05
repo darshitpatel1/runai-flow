@@ -114,7 +114,7 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
         }
       }
       
-      // Check for test results - look in both places
+      // First check for test results - look in both places
       const testResult = node.data?.testResult || node.data?._lastTestResult;
       if (testResult) {
         console.log("Found test result in node:", node.id, node.data?.label || "Unknown");
@@ -147,6 +147,37 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
         } catch (error) {
           console.error("Error processing test result:", error);
         }
+      }
+      
+      // Add expected response variables for HTTP nodes even without test
+      if (node.type === 'httpRequest') {
+        // Add common HTTP response properties
+        const commonPaths = [
+          { name: 'status', path: `${node.id}.result.status` },
+          { name: 'statusText', path: `${node.id}.result.statusText` },
+          { name: 'headers', path: `${node.id}.result.headers` },
+          { name: 'body', path: `${node.id}.result.body` },
+          { name: 'data', path: `${node.id}.result.body.data` },
+          { name: 'items', path: `${node.id}.result.body.items` },
+          { name: 'results', path: `${node.id}.result.body.results` },
+        ];
+        
+        // Add these common response paths as variables
+        commonPaths.forEach(item => {
+          // Check if this path is already in the list
+          const exists = variableList.some(v => v.path === item.path);
+          
+          if (!exists) {
+            variableList.push({
+              nodeId: node.id,
+              nodeName: node.data?.label || "HTTP Request",
+              nodeType: "httpRequest",
+              variableName: item.name,
+              path: item.path,
+              source: "testResult"
+            });
+          }
+        });
       }
     };
     
@@ -287,12 +318,12 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
             {nodeVariableEntries.length > 0 ? (
               <div className="space-y-4">
                 {nodeVariableEntries.map(([nodeId, nodeVariables]) => (
-                  <div key={nodeId} className="border dark:border-slate-700 rounded-lg p-3">
-                    <h3 className="text-sm font-medium mb-2 flex items-center">
-                      <span>{nodeVariables[0].nodeName}</span> 
-                      <Badge variant="outline" className="ml-1">{nodeVariables[0].nodeType}</Badge>
+                  <div key={nodeId} className="border dark:border-slate-700 rounded-lg p-3 overflow-hidden">
+                    <h3 className="text-sm font-medium mb-2 flex items-center flex-wrap">
+                      <span className="mr-1 truncate max-w-[120px]">{nodeVariables[0].nodeName}</span> 
+                      <Badge variant="outline" className="shrink-0">{nodeVariables[0].nodeType}</Badge>
                       {nodeOrder[nodeId] !== undefined && (
-                        <Badge variant="outline" className="ml-auto text-xs">
+                        <Badge variant="outline" className="ml-auto text-xs shrink-0">
                           Step {nodeOrder[nodeId] + 1}
                         </Badge>
                       )}
@@ -301,27 +332,27 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
                       {nodeVariables.map((variable, idx) => (
                         <div
                           key={`${variable.nodeId}-${idx}`}
-                          className="flex items-center p-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 rounded cursor-pointer"
+                          className="flex items-start p-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 rounded cursor-pointer"
                           onClick={() => {
                             onSelectVariable(`{{${variable.path}}}`);
                             onClose();
                           }}
                         >
-                          <div className="flex-1">
-                            <div className="font-medium">
-                              {variable.variableName}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium flex flex-wrap items-center">
+                              <span className="truncate mr-1">{variable.variableName}</span>
                               {variable.source === "testResult" && (
-                                <Badge className="ml-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800">
+                                <Badge className="shrink-0 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800">
                                   Test Result
                                 </Badge>
                               )}
                               {variable.source === "variable" && (
-                                <Badge className="ml-2 bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200 hover:bg-violet-200 dark:hover:bg-violet-800">
+                                <Badge className="shrink-0 bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200 hover:bg-violet-200 dark:hover:bg-violet-800">
                                   Variable
                                 </Badge>
                               )}
                             </div>
-                            <div className="text-xs text-muted-foreground font-mono">
+                            <div className="text-xs text-muted-foreground font-mono truncate break-all">
                               {`{{${variable.path}}}`}
                             </div>
                           </div>
