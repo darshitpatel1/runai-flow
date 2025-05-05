@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { SearchIcon } from "lucide-react";
+import { SearchIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface NodeType {
   type: string;
@@ -14,6 +15,7 @@ interface NodeType {
 
 export function NodePanel() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [collapsed, setCollapsed] = useState(false);
   
   const nodeTypes: NodeType[] = [
     {
@@ -111,40 +113,74 @@ export function NodePanel() {
     event.dataTransfer.effectAllowed = 'move';
   };
   
+  const toggleCollapse = () => {
+    setCollapsed(!collapsed);
+  };
+  
   return (
-    <div className="w-64 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col">
-      <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-        <h2 className="font-medium text-sm">Flow Nodes</h2>
-        <div className="relative mt-1">
-          <SearchIcon className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <Input 
-            type="text" 
-            placeholder="Search nodes..." 
-            className="pl-9 text-sm" 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+    <div className={`border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-black flex flex-col transition-all duration-300 ${collapsed ? 'w-16' : 'w-64'}`}>
+      <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        {!collapsed ? (
+          <>
+            <h2 className="font-medium text-sm">Flow Nodes</h2>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={toggleCollapse}
+              className="w-8 h-8 p-0"
+            >
+              <ChevronLeft size={16} />
+            </Button>
+          </>
+        ) : (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleCollapse}
+            className="w-8 h-8 p-0 mx-auto"
+          >
+            <ChevronRight size={16} />
+          </Button>
+        )}
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      {!collapsed && (
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+          <div className="relative">
+            <SearchIcon className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Input 
+              type="text" 
+              placeholder="Search nodes..." 
+              className="pl-9 text-sm" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
+      
+      <div className={`flex-1 overflow-y-auto ${collapsed ? 'p-2' : 'p-4'} space-y-3`}>
         {filteredNodes.map((node) => (
           <div
             key={node.type}
             draggable
             onDragStart={(event) => onDragStart(event, node.type, { label: node.name })}
-            className="node p-3 bg-gradient-to-r cursor-move rounded-xl text-white shadow-md hover:shadow-lg flex items-center"
+            className={`node cursor-move rounded-xl text-white shadow-md hover:shadow-lg ${
+              collapsed ? 'p-2 flex justify-center' : 'p-3 flex items-center'
+            }`}
             style={{
               background: `linear-gradient(to right, var(--${node.gradientFrom.split('-')[1]}), var(--${node.gradientTo.split('-')[1]}))`
             }}
           >
-            <div className="bg-white bg-opacity-20 p-2 mr-3 rounded-lg">
+            <div className={`bg-white bg-opacity-20 p-2 rounded-lg ${collapsed ? '' : 'mr-3'}`}>
               {node.icon}
             </div>
-            <div>
-              <h3 className="font-medium text-sm">{node.name}</h3>
-              <p className="text-xs opacity-80">{node.description}</p>
-            </div>
+            {!collapsed && (
+              <div>
+                <h3 className="font-medium text-sm">{node.name}</h3>
+                <p className="text-xs opacity-80">{node.description}</p>
+              </div>
+            )}
           </div>
         ))}
       </div>

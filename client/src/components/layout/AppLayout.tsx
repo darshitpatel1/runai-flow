@@ -64,8 +64,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         )}
         <div 
           className={`
-            ${isMobile ? 'fixed left-0 top-0 h-full w-64 z-50' : 'relative h-full w-64'} 
-            bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col
+            ${isMobile ? 'fixed left-0 top-0 h-full z-50' : 'relative h-full'} 
+            bg-white dark:bg-black border-r border-slate-200 dark:border-slate-700 flex flex-col
           `}
         >
           <Sidebar />
@@ -73,7 +73,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
       
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900" style={{ height: '100vh' }}>
+      <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-black" style={{ height: '100vh' }}>
         {children}
       </div>
     </div>
