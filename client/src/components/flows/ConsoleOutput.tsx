@@ -142,15 +142,42 @@ export function ConsoleOutput({ logs, isRunning, onRunTest }: ConsoleOutputProps
                   <div className="pl-2 border-l-2 border-blue-400 mt-1">
                     <div className="text-xs text-blue-500 font-semibold mb-1">Response Data:</div>
                     <pre className="whitespace-pre-wrap break-all bg-slate-100 dark:bg-slate-800 p-2 rounded-md">
-                      {log.message.replace('Response Data: ', '')}
+                      {(() => {
+                        try {
+                          const jsonData = JSON.parse(log.message.replace('Response Data: ', ''));
+                          return JSON.stringify(jsonData, null, 2);
+                        } catch (e) {
+                          return log.message.replace('Response Data: ', '');
+                        }
+                      })()}
                     </pre>
                   </div>
                 ) : log.message.startsWith('Request Body:') ? (
                   <div className="pl-2 border-l-2 border-purple-400 mt-1">
                     <div className="text-xs text-purple-500 font-semibold mb-1">Request Body:</div>
                     <pre className="whitespace-pre-wrap break-all bg-slate-100 dark:bg-slate-800 p-2 rounded-md">
-                      {log.message.replace('Request Body: ', '')}
+                      {(() => {
+                        try {
+                          const jsonData = JSON.parse(log.message.replace('Request Body: ', ''));
+                          return JSON.stringify(jsonData, null, 2);
+                        } catch (e) {
+                          return log.message.replace('Request Body: ', '');
+                        }
+                      })()}
                     </pre>
+                  </div>
+                ) : log.message.startsWith('HTTP Response:') ? (
+                  <div className="pl-2 border-l-2 border-green-400 mt-1">
+                    <div className="text-xs text-green-500 font-semibold mb-1">HTTP Response:</div>
+                    <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded-md">
+                      {log.message.replace('HTTP Response: ', '')}
+                    </div>
+                  </div>
+                ) : log.type === 'error' ? (
+                  <div className="pl-2 border-l-2 border-red-400 mt-1">
+                    <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded-md">
+                      {log.message}
+                    </div>
                   </div>
                 ) : (
                   log.message

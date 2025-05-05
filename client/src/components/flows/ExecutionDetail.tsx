@@ -28,7 +28,7 @@ export function ExecutionDetail({ execution, flowData }: ExecutionDetailProps) {
   const logsByNode: Record<string, any[]> = {};
   const nodeStatuses: Record<string, 'success' | 'error' | 'running' | 'pending'> = {};
   
-  // Initialize with nodes from the flow
+  // Initialize with nodes from the flow if they exist
   if (flowData?.nodes) {
     flowData.nodes.forEach((node: any) => {
       logsByNode[node.id] = [];
@@ -36,7 +36,7 @@ export function ExecutionDetail({ execution, flowData }: ExecutionDetailProps) {
     });
   }
   
-  // Process logs
+  // Process logs to organize by node and determine node statuses
   parsedLogs.forEach((log: any) => {
     if (log.nodeId) {
       if (!logsByNode[log.nodeId]) {
@@ -44,7 +44,7 @@ export function ExecutionDetail({ execution, flowData }: ExecutionDetailProps) {
       }
       logsByNode[log.nodeId].push(log);
       
-      // Update node status based on logs
+      // Update node status based on log types
       if (log.type === 'error') {
         nodeStatuses[log.nodeId] = 'error';
       } else if (log.type === 'success') {
@@ -55,16 +55,17 @@ export function ExecutionDetail({ execution, flowData }: ExecutionDetailProps) {
     }
   });
   
+  // Enhanced status icon rendering with improved colors
   const getNodeStatusIcon = (status: string) => {
     switch (status) {
       case 'success':
-        return <CheckCircleIcon className="h-4 w-4 text-green-500" />;
+        return <CheckCircleIcon className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />;
       case 'error':
-        return <XCircleIcon className="h-4 w-4 text-red-500" />;
+        return <XCircleIcon className="h-4 w-4 text-red-500 dark:text-red-400" />;
       case 'running':
-        return <ClockIcon className="h-4 w-4 text-blue-500" />;
+        return <ClockIcon className="h-4 w-4 text-blue-500 dark:text-blue-400" />;
       default:
-        return <ClockIcon className="h-4 w-4 text-gray-300" />;
+        return <ClockIcon className="h-4 w-4 text-slate-300 dark:text-slate-600" />;
     }
   };
   

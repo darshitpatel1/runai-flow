@@ -511,24 +511,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        // In a real implementation, we would:
-        // 1. Make a token request to the token URL with client credentials
-        // 2. Validate the token response
-        // 3. Store the access token for future requests
-        
-        // For now, simulate a successful token acquisition
-        return res.status(200).json({
-          message: 'Client Credentials authentication successful',
-          authType: 'oauth2',
-          authMethod: 'client_credentials',
-          success: true,
-          // Return some connection details to display to the user
-          connectionDetails: {
-            tokenUrl: connector.auth.tokenUrl,
-            clientId: connector.auth.clientId,
-            expiresIn: '3600 seconds'
+        try {
+          // Actual implementation for client credentials flow:
+          // 1. Make a token request to the token URL with client credentials
+          // 2. Validate the token response
+          // 3. Return connection details with token information
+          
+          const tokenUrl = connector.auth.tokenUrl;
+          const clientId = connector.auth.clientId;
+          const clientSecret = connector.auth.clientSecret;
+          const scopes = connector.auth.scope || '';
+          
+          // Prepare request body
+          const params = new URLSearchParams();
+          params.append('grant_type', 'client_credentials');
+          params.append('client_id', clientId);
+          params.append('client_secret', clientSecret);
+          
+          if (scopes) {
+            params.append('scope', scopes);
           }
-        });
+          
+          // Make request to token endpoint
+          const tokenResponse = await fetch(tokenUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json'
+            },
+            body: params
+          });
+          
+          if (!tokenResponse.ok) {
+            const errorData = await tokenResponse.text();
+            console.error('Token request failed:', tokenResponse.status, errorData);
+            return res.status(400).json({
+              message: `Failed to get access token: ${tokenResponse.status} ${tokenResponse.statusText}`,
+              authType: 'oauth2',
+              success: false
+            });
+          }
+          
+          const tokenData = await tokenResponse.json();
+          
+          if (!tokenData.access_token) {
+            return res.status(400).json({
+              message: 'Invalid token response: missing access_token',
+              authType: 'oauth2',
+              success: false
+            });
+          }
+          
+          // SUCCESS: Return token details (but never the actual token for security)
+          return res.status(200).json({
+            message: 'Client Credentials authentication successful',
+            authType: 'oauth2',
+            authMethod: 'client_credentials',
+            success: true,
+            connectionDetails: {
+              tokenUrl: connector.auth.tokenUrl,
+              clientId: connector.auth.clientId,
+              expiresIn: tokenData.expires_in ? `${tokenData.expires_in} seconds` : 'Unknown',
+              tokenType: tokenData.token_type || 'Bearer',
+              scope: tokenData.scope || scopes || 'Default'
+            }
+          });
+        } catch (error: any) {
+          console.error('Error during client credentials flow:', error);
+          return res.status(500).json({
+            message: `Client credentials flow error: ${error.message}`,
+            authType: 'oauth2',
+            success: false
+          });
+        }
       } else {
         // For no auth, just try a simple connection test
         return res.status(200).json({
