@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +34,10 @@ import {
 } from "@/components/ui/pagination";
 import { DataTable, ColumnDefinition, TableRow as TableRowType } from "@shared/schema";
 import { Input } from "@/components/ui/input";
+import { apiRequest } from "@/lib/queryClient";
+import { Check, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function TableDetailPage() {
   const [, params] = useRoute('/tables/:id');
@@ -48,6 +52,35 @@ export default function TableDetailPage() {
   
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Inline editing state
+  const [editingCell, setEditingCell] = useState<{rowId: number, columnId: string, columnType: string} | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
+  const queryClient = useQueryClient();
+  
+  // Update cell mutation
+  const updateCellMutation = useMutation({
+    mutationFn: async ({ rowId, data }: { rowId: number, data: any }) => {
+      return await apiRequest(`/api/tables/${tableId}/rows/${rowId}`, {
+        method: 'PUT',
+        data,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/tables/${tableId}/rows`] });
+      toast({
+        title: "Cell updated",
+        description: "The cell has been updated successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update cell",
+        variant: "destructive",
+      });
+    }
+  });
   
   // Get all tables (we'll filter to find the specific one)
   const { data: tables, isLoading: isTableLoading, error: tableError } = useQuery({
@@ -161,6 +194,70 @@ export default function TableDetailPage() {
       default:
         return String(value);
     }
+  };
+  
+  // Function to start editing a cell
+  const startEditing = (rowId: number, columnId: string, columnType: string, initialValue: any) => {
+    setEditingCell({ rowId, columnId, columnType });
+    setEditValue(String(initialValue === null || initialValue === undefined ? '' : initialValue));
+  };
+  
+  // Function to cancel editing
+  const cancelEditing = () => {
+    setEditingCell(null);
+    setEditValue('');
+  };
+  
+  // Function to save the edited cell value
+  const saveEditedCell = () => {
+    if (!editingCell) return;
+    
+    const { rowId, columnId, columnType } = editingCell;
+    
+    // Find the row
+    const row = tableRows?.find((r: TableRowType) => r.id === rowId);
+    if (!row) {
+      cancelEditing();
+      return;
+    }
+    
+    // Deep clone the data object to avoid mutating state
+    const rowData = { ...(row.data || {}) };
+    
+    // Prepare the new value according to column type
+    let newValue: any = editValue;
+    switch (columnType) {
+      case 'number':
+        newValue = editValue === '' ? null : Number(editValue);
+        break;
+      case 'boolean':
+        newValue = editValue === 'true';
+        break;
+      case 'date':
+        if (editValue) {
+          try {
+            // Make sure it's a valid date
+            newValue = new Date(editValue).toISOString();
+          } catch (e) {
+            // Invalid date, keep as string
+          }
+        } else {
+          newValue = null;
+        }
+        break;
+    }
+    
+    // Update the row data
+    rowData[columnId] = newValue;
+    
+    // Send update to server
+    updateCellMutation.mutate({ 
+      rowId, 
+      data: rowData
+    });
+    
+    // Reset editing state
+    cancelEditing();
   };
   
   const isLoading = isTableLoading || isRowsLoading;
@@ -304,19 +401,155 @@ export default function TableDetailPage() {
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
-                          {columns.map((column: ColumnDefinition) => (
-                            <TableCell key={column.id} className="truncate max-w-[300px]">
-                              {formatCellValue(
-                                // Handle potential nesting in row.data
-                                row.data && typeof row.data === 'object' 
-                                  ? (row.data.data && typeof row.data.data === 'object'
-                                    ? row.data.data[column.id]  // For nested data.data
-                                    : row.data[column.id])      // For direct data
-                                  : undefined,
-                                column.type
-                              )}
-                            </TableCell>
-                          ))}
+                          {columns.map((column: ColumnDefinition) => {
+                            // Get cell value, handling potential nesting
+                            const cellValue = row.data && typeof row.data === 'object' 
+                              ? (row.data.data && typeof row.data.data === 'object'
+                                ? row.data.data[column.id]  // For nested data.data
+                                : row.data[column.id])      // For direct data
+                              : undefined;
+                            
+                            // Check if this cell is being edited
+                            const isEditing = editingCell?.rowId === row.id && editingCell?.columnId === column.id;
+                            
+                            return (
+                              <TableCell 
+                                key={column.id} 
+                                className="truncate max-w-[300px] relative group p-1"
+                                onClick={() => {
+                                  // Start editing when cell is clicked (except for boolean which toggles directly)
+                                  if (column.type !== 'boolean' && !isEditing) {
+                                    startEditing(row.id, column.id, column.type || 'text', cellValue);
+                                  }
+                                }}
+                              >
+                                {isEditing ? (
+                                  <div className="flex items-center gap-1">
+                                    {column.type === 'text' && (
+                                      <Input
+                                        className="w-full h-8 p-1 text-sm"
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            saveEditedCell();
+                                          } else if (e.key === 'Escape') {
+                                            cancelEditing();
+                                          }
+                                        }}
+                                      />
+                                    )}
+                                    
+                                    {column.type === 'number' && (
+                                      <Input
+                                        type="number"
+                                        className="w-full h-8 p-1 text-sm"
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            saveEditedCell();
+                                          } else if (e.key === 'Escape') {
+                                            cancelEditing();
+                                          }
+                                        }}
+                                      />
+                                    )}
+                                    
+                                    {column.type === 'date' && (
+                                      <Input
+                                        type="date"
+                                        className="w-full h-8 p-1 text-sm"
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            saveEditedCell();
+                                          } else if (e.key === 'Escape') {
+                                            cancelEditing();
+                                          }
+                                        }}
+                                      />
+                                    )}
+                                    
+                                    {column.type === 'select' && (
+                                      <Select
+                                        value={editValue}
+                                        onValueChange={(value) => {
+                                          setEditValue(value);
+                                          // Automatically save after selection
+                                          setTimeout(() => saveEditedCell(), 100);
+                                        }}
+                                      >
+                                        <SelectTrigger className="w-full h-8 p-1 text-sm">
+                                          <SelectValue placeholder="Select..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {(column.options || []).map((option) => (
+                                            <SelectItem key={option} value={option}>
+                                              {option}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    )}
+                                    
+                                    <div className="flex gap-1">
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6"
+                                        onClick={saveEditedCell}
+                                      >
+                                        <Check className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6"
+                                        onClick={cancelEditing}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-between cursor-pointer">
+                                    {column.type === 'boolean' ? (
+                                      <Checkbox
+                                        checked={!!cellValue}
+                                        onCheckedChange={(checked) => {
+                                          // For boolean fields, toggle directly without entering edit mode
+                                          startEditing(row.id, column.id, column.type, checked);
+                                          setEditValue(String(checked));
+                                          setTimeout(() => saveEditedCell(), 0);
+                                        }}
+                                        className="m-2"
+                                      />
+                                    ) : (
+                                      <div className="truncate hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded-md w-full">
+                                        {formatCellValue(cellValue, column.type)}
+                                      </div>
+                                    )}
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="opacity-0 group-hover:opacity-100 h-6 w-6 ml-2 transition-opacity"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        startEditing(row.id, column.id, column.type || 'text', cellValue);
+                                      }}
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </TableCell>
+                            );
+                          })}
                         </TableRow>
                       ))
                     ) : (
