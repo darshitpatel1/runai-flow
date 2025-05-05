@@ -167,38 +167,11 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
         }
       }
       
-      // Only show HTTP response structure suggestions when:
-      // 1. We're in a Set Variable node configuration, OR
-      // 2. The HTTP node itself is being actively tested (handled above)
-      if (isInSetVariableConfig && node.type === 'httpRequest') {
-        // Add common HTTP response properties - these are suggestions, not test results
-        const commonPaths = [
-          { name: 'status', path: `${node.id}.result.status` },
-          { name: 'statusText', path: `${node.id}.result.statusText` },
-          { name: 'headers', path: `${node.id}.result.headers` },
-          { name: 'body', path: `${node.id}.result.body` },
-          { name: 'data', path: `${node.id}.result.body.data` },
-          { name: 'items', path: `${node.id}.result.body.items` },
-          { name: 'results', path: `${node.id}.result.body.results` },
-        ];
-        
-        // Add these common response paths as variables
-        commonPaths.forEach(item => {
-          // Check if this path is already in the list
-          const exists = variableList.some(v => v.path === item.path);
-          
-          if (!exists) {
-            variableList.push({
-              nodeId: node.id,
-              nodeName: node.data?.label || "HTTP Request",
-              nodeType: "httpRequest",
-              variableName: item.name,
-              path: item.path,
-              source: "testResult"
-            });
-          }
-        });
-      }
+      // IMPORTANT CHANGE: We're removing the placeholder HTTP suggestions
+      // HTTP variables should ONLY show up if they've been explicitly tested
+      // Otherwise, they shouldn't appear in the variable selector at all
+      
+      // The actual test results are already handled above in the testResult section
     };
     
     // First process all the direct nodes
