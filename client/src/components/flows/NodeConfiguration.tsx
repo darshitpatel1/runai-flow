@@ -971,7 +971,7 @@ return sourceData * 2;"
                         View Variables
                       </Button>
                     </h3>
-                    <pre className="text-xs bg-slate-50 dark:bg-slate-900 p-2 rounded overflow-x-auto overflow-y-auto max-h-40 whitespace-pre-wrap">
+                    <pre className="text-xs bg-slate-50 dark:bg-slate-900 p-2 rounded overflow-x-auto overflow-y-auto max-h-40 whitespace-pre-wrap break-all">
                       {JSON.stringify(testResult, null, 2)}
                     </pre>
                   </div>
