@@ -53,11 +53,18 @@ export default function TableDetailPage() {
   const { data: table, isLoading: isTableLoading, error: tableError } = useQuery({
     queryKey: ['/api/tables', tableId],
     enabled: !!tableId && !!user,
+    onSuccess: (data) => {
+      console.log("Table data received:", data);
+      console.log("Table columns:", data?.columns);
+    }
   });
   
   // Get table rows
   const { data: tableRows, isLoading: isRowsLoading, error: rowsError } = useQuery({
     queryKey: [`/api/tables/${tableId}/rows`],
+    onSuccess: (data) => {
+      console.log("Table rows received:", data);
+    },
     enabled: !!tableId && !!user,
   });
   
@@ -122,6 +129,15 @@ export default function TableDetailPage() {
         return String(value);
     }
   };
+  
+  // Debug function to show table structure in console
+  useEffect(() => {
+    if (table) {
+      console.log("Table structure:", JSON.stringify(table, null, 2));
+      console.log("Columns array type:", Array.isArray(table.columns));
+      console.log("Columns array length:", table.columns ? table.columns.length : 0);
+    }
+  }, [table]);
   
   const isLoading = isTableLoading || isRowsLoading;
   const filteredRows = filterRows();
