@@ -20,6 +20,28 @@ interface StopJobNodeProps {
 export const StopJobNode = memo(({ id, data, selected }: StopJobNodeProps) => {
   const { setNodes, setEdges } = useReactFlow();
   
+  // Choose color based on stop type
+  const getBorderColor = () => {
+    switch (data.stopType) {
+      case 'error':
+        return 'border-red-500';
+      case 'cancel':
+        return 'border-amber-500';
+      case 'success':
+      default:
+        return 'border-green-500';
+    }
+  };
+  
+  const borderColor = getBorderColor();
+  
+  const nodeClassName = `
+    bg-white dark:bg-black rounded-2xl shadow-lg p-3 
+    border-2 ${selected ? `${borderColor} ring-2 ring-primary/20` : borderColor} 
+    ${data.selected ? 'node-highlight' : ''}
+    min-w-[280px] w-[280px]
+  `;
+  
   const handleNodeDelete = (nodeId: string) => {
     if (data.onNodeDelete) {
       data.onNodeDelete(nodeId);
@@ -39,78 +61,52 @@ export const StopJobNode = memo(({ id, data, selected }: StopJobNodeProps) => {
     }
     
     setNodes((nodes) => 
-      nodes.map((node) => 
-        node.id === nodeId 
-          ? { ...node, data: { ...node.data, skipped: !node.data.skipped } }
-          : node
-      )
+      nodes.map((node) => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              skipped: !node.data.skipped
+            }
+          };
+        }
+        return node;
+      })
     );
   };
   
-  // Choose color based on stop type
-  const getColors = () => {
+  // Show a visual indicator if the node is skipped
+  const isSkipped = data.skipped ?? false;
+  
+  // Determine icon background color
+  const getIconBgClass = () => {
     switch (data.stopType) {
       case 'error':
-        return {
-          bgFrom: 'from-red-500',
-          bgTo: 'to-red-600',
-          textBg: 'bg-red-100',
-          textColor: 'text-red-800',
-          darkTextBg: 'dark:bg-red-900',
-          darkTextColor: 'dark:text-red-100',
-          border: 'border-red-500'
-        };
+        return 'bg-gradient-to-r from-red-500 to-red-600';
       case 'cancel':
-        return {
-          bgFrom: 'from-amber-500',
-          bgTo: 'to-amber-600',
-          textBg: 'bg-amber-100',
-          textColor: 'text-amber-800',
-          darkTextBg: 'dark:bg-amber-900',
-          darkTextColor: 'dark:text-amber-100',
-          border: 'border-amber-500'
-        };
+        return 'bg-gradient-to-r from-amber-500 to-amber-600';
       case 'success':
       default:
-        return {
-          bgFrom: 'from-green-500',
-          bgTo: 'to-green-600',
-          textBg: 'bg-green-100',
-          textColor: 'text-green-800',
-          darkTextBg: 'dark:bg-green-900',
-          darkTextColor: 'dark:text-green-100',
-          border: 'border-green-500'
-        };
+        return 'bg-gradient-to-r from-green-500 to-green-600';
     }
   };
   
-  const colors = getColors();
-  
-  // Handle border color in a more direct way to avoid template string issues
-  let borderClass = colors.border;
-  let ringClass = '';
-  
-  if (selected) {
-    // Apply specific ring class based on stop type
-    if (data.stopType === 'error') {
-      ringClass = 'ring-2 ring-red-500/20';
-    } else if (data.stopType === 'cancel') {
-      ringClass = 'ring-2 ring-amber-500/20';
-    } else {
-      ringClass = 'ring-2 ring-green-500/20';
+  // Determine badge background color
+  const getBadgeClass = () => {
+    switch (data.stopType) {
+      case 'error':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100';
+      case 'cancel':
+        return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100';
+      case 'success':
+      default:
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100';
     }
-  }
+  };
   
-  const nodeClassName = `
-    bg-white dark:bg-black rounded-2xl shadow-lg p-3 
-    border-2 ${borderClass} ${ringClass}
-    ${data.selected ? 'node-highlight' : ''}
-    min-w-[280px] w-[280px]
-    transform-gpu
-  `;
-  
-  // Show a visual indicator if the node is skipped
-  const isSkipped = data.skipped ?? false;
+  const handleColor = data.stopType === 'error' ? '#ef4444' : 
+                      data.stopType === 'cancel' ? '#f59e0b' : '#22c55e';
   
   return (
     <div className="relative">
@@ -124,7 +120,7 @@ export const StopJobNode = memo(({ id, data, selected }: StopJobNodeProps) => {
       
       <div className={`${nodeClassName} ${isSkipped ? 'opacity-50' : ''}`}>
         <div className="flex items-center mb-2">
-          <div className={`w-8 h-8 rounded-lg bg-gradient-to-r ${colors.bgFrom} ${colors.bgTo} flex items-center justify-center text-white mr-2`}>
+          <div className={`w-8 h-8 rounded-lg ${getIconBgClass()} flex items-center justify-center text-white mr-2`}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -139,14 +135,12 @@ export const StopJobNode = memo(({ id, data, selected }: StopJobNodeProps) => {
           </div>
         </div>
         
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <span className={`px-2 py-1 ${colors.textBg} ${colors.textColor} ${colors.darkTextBg} ${colors.darkTextColor} rounded-full text-xs font-semibold flex items-center`}>
-              {data.stopType === 'error' ? 'Stop with Error' : 
-               data.stopType === 'cancel' ? 'Cancel Flow' : 
-               'Complete Successfully'}
-            </span>
-          </div>
+        <div className="flex flex-wrap gap-1 mb-2">
+          <span className={`px-2 py-0.5 rounded-full text-xs ${getBadgeClass()}`}>
+            {data.stopType === 'error' ? 'Stop with Error' : 
+             data.stopType === 'cancel' ? 'Cancel Flow' : 
+             'Complete Successfully'}
+          </span>
         </div>
         
         {data.stopType === 'error' && data.errorMessage && (
@@ -159,13 +153,8 @@ export const StopJobNode = memo(({ id, data, selected }: StopJobNodeProps) => {
         <Handle
           type="target"
           position={Position.Top}
-          style={{
-            width: '12px',
-            height: '12px',
-            top: '-6px',
-            background: data.stopType === 'error' ? '#ef4444' : 
-                        data.stopType === 'cancel' ? '#f59e0b' : '#22c55e'
-          }}
+          className="w-3 h-3 -top-1.5"
+          style={{ background: handleColor }}
         />
       </div>
     </div>
