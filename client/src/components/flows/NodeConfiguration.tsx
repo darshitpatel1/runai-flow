@@ -397,11 +397,22 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
             
             <div>
               <Label className="block text-sm font-medium mb-1">Value</Label>
-              <Input
-                value={nodeData.value || ''}
-                onChange={(e) => handleChange('value', e.target.value)}
-                placeholder="success"
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={nodeData.value || ''}
+                  onChange={(e) => handleChange('value', e.target.value)}
+                  placeholder="success"
+                  className="flex-1"
+                />
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => handleOpenVariableSelector('value')}
+                  className="flex-shrink-0"
+                >
+                  <Variable className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </TabsContent>
           
@@ -828,7 +839,20 @@ return sourceData * 2;"
   
   const handleSelectVariable = (variablePath: string) => {
     if (activeInputField) {
-      handleChange(activeInputField, variablePath);
+      // Check if this is a query param field
+      if (activeInputField.startsWith('queryParams-')) {
+        const index = parseInt(activeInputField.split('-')[1]);
+        const newParams = [...(nodeData.queryParams || [])];
+        
+        // Update the value at the specific index
+        if (newParams[index]) {
+          newParams[index].value = variablePath;
+          handleChange('queryParams', newParams);
+        }
+      } else {
+        // Regular field update
+        handleChange(activeInputField, variablePath);
+      }
     }
     setShowVariableSelector(false);
   };
