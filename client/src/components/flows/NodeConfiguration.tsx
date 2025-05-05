@@ -393,12 +393,22 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           <TabsContent value="code" className="space-y-4 mt-2">
             <div>
               <Label className="block text-sm font-medium mb-1">Condition</Label>
-              <Textarea
-                value={nodeData.condition || ''}
-                onChange={(e) => handleChange('condition', e.target.value)}
-                placeholder="{{step1.status}} === 200"
-                className="font-mono text-sm h-20"
-              />
+              <div className="relative">
+                <Textarea
+                  value={nodeData.condition || ''}
+                  onChange={(e) => handleChange('condition', e.target.value)}
+                  placeholder="{{step1.status}} === 200"
+                  className="font-mono text-sm h-20 pr-10"
+                />
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => handleOpenVariableSelector('condition')}
+                  className="absolute bottom-2 right-2"
+                >
+                  <Variable className="h-4 w-4" />
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Enter a JavaScript condition using variables from previous steps
               </p>
@@ -436,11 +446,22 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
         
         <div>
           <Label className="block text-sm font-medium mb-1">Array Path</Label>
-          <Input
-            value={nodeData.arrayPath || ''}
-            onChange={(e) => handleChange('arrayPath', e.target.value)}
-            placeholder="{{step1.body.items}}"
-          />
+          <div className="flex gap-2">
+            <Input
+              value={nodeData.arrayPath || ''}
+              onChange={(e) => handleChange('arrayPath', e.target.value)}
+              placeholder="{{step1.body.items}}"
+              className="flex-1"
+            />
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={() => handleOpenVariableSelector('arrayPath')}
+              className="flex-shrink-0"
+            >
+              <Variable className="h-4 w-4" />
+            </Button>
+          </div>
           <p className="text-xs text-muted-foreground mt-1">
             Enter the path to the array you want to iterate
           </p>
@@ -501,12 +522,22 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           <TabsContent value="simple" className="space-y-4 mt-2">
             <div>
               <Label className="block text-sm font-medium mb-1">Variable Value</Label>
-              <Textarea
-                value={nodeData.variableValue || ''}
-                onChange={(e) => handleChange('variableValue', e.target.value)}
-                placeholder="{{step1.body.data}} or static value"
-                className="font-mono text-sm h-20"
-              />
+              <div className="relative">
+                <Textarea
+                  value={nodeData.variableValue || ''}
+                  onChange={(e) => handleChange('variableValue', e.target.value)}
+                  placeholder="{{step1.body.data}} or static value"
+                  className="font-mono text-sm h-20 pr-10"
+                />
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => handleOpenVariableSelector('variableValue')}
+                  className="absolute bottom-2 right-2"
+                >
+                  <Variable className="h-4 w-4" />
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 You can use static values or dynamic values from previous steps
               </p>
@@ -516,12 +547,22 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           <TabsContent value="transform" className="space-y-4 mt-2">
             <div>
               <Label className="block text-sm font-medium mb-1">Source Variable Path</Label>
-              <Input
-                value={nodeData.variableValue || ''}
-                onChange={(e) => handleChange('variableValue', e.target.value)}
-                placeholder="step1.body.data"
-                className="font-mono text-sm"
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={nodeData.variableValue || ''}
+                  onChange={(e) => handleChange('variableValue', e.target.value)}
+                  placeholder="step1.body.data"
+                  className="font-mono text-sm flex-1"
+                />
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => handleOpenVariableSelector('variableValue')}
+                  className="flex-shrink-0"
+                >
+                  <Variable className="h-4 w-4" />
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Reference the source data to transform
               </p>
@@ -593,12 +634,22 @@ return sourceData * 2;"
         
         <div>
           <Label className="block text-sm font-medium mb-1">Message</Label>
-          <Textarea
-            value={nodeData.message || ''}
-            onChange={(e) => handleChange('message', e.target.value)}
-            placeholder="Processing order: {order_id}"
-            className="font-mono text-sm h-20"
-          />
+          <div className="relative">
+            <Textarea
+              value={nodeData.message || ''}
+              onChange={(e) => handleChange('message', e.target.value)}
+              placeholder="Processing order: {order_id}"
+              className="font-mono text-sm h-20 pr-10"
+            />
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => handleOpenVariableSelector('message')}
+              className="absolute bottom-2 right-2"
+            >
+              <Variable className="h-4 w-4" />
+            </Button>
+          </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             You can include dynamic values with curly braces, e.g., {'{'}variable{'}'}
           </p>
