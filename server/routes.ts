@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from 'ws';
 import { storage } from "./storage";
 import { 
   insertConnectorSchema, 
@@ -7,6 +8,30 @@ import {
   insertExecutionSchema
 } from "@shared/schema";
 import { z } from "zod";
+
+// Store active WebSocket connections by user ID
+const connections = new Map<string, WebSocket[]>();
+
+// Helper function to send execution updates to connected users
+function sendExecutionUpdate(userId: string, executionData: any) {
+  const userConnections = connections.get(userId.toString());
+  
+  if (userConnections && userConnections.length > 0) {
+    const message = JSON.stringify({
+      type: 'execution_update',
+      data: executionData
+    });
+    
+    // Send to all connections for this user
+    userConnections.forEach(ws => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(message);
+      }
+    });
+    
+    console.log(`Sent execution update to ${userConnections.length} connection(s) for user ${userId}`);
+  }
+}
 
 // Middleware to ensure user is authenticated via Firebase
 const requireAuth = async (req: Request, res: Response, next: Function) => {
@@ -314,37 +339,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // In a real implementation, we would start an async process to execute the flow
-      // For now, we'll simulate success after a short delay
-      setTimeout(async () => {
-        try {
-          // Update execution with success
-          await storage.updateExecution(execution.id, {
-            status: 'success',
-            finishedAt: new Date(),
-            duration: 1500, // 1.5 seconds
-            logs: [
-              { timestamp: new Date(), level: 'info', message: 'Flow execution started' },
-              { timestamp: new Date(), level: 'info', message: 'Flow execution completed' }
-            ],
-            output: { success: true, message: 'Flow executed successfully' }
+      // For now, we'll simulate success with progress updates via WebSocket
+      
+      // Immediately send a "started" notification via WebSocket
+      sendExecutionUpdate(userId.toString(), {
+        executionId: execution.id,
+        flowId,
+        status: 'running',
+        timestamp: new Date(),
+        message: 'Flow execution started',
+        progress: 0
+      });
+      
+      // Simulate node-by-node execution with progress updates
+      const nodeCount = flow.nodes.length || 5; // Fallback to 5 if no nodes defined
+      let currentNode = 0;
+      
+      const processNodes = () => {
+        setTimeout(async () => {
+          currentNode++;
+          const progress = Math.floor((currentNode / nodeCount) * 100);
+          
+          // Send progress update via WebSocket
+          sendExecutionUpdate(userId.toString(), {
+            executionId: execution.id,
+            flowId,
+            status: 'running',
+            timestamp: new Date(),
+            message: `Executing node ${currentNode} of ${nodeCount}`,
+            progress: progress,
+            currentNode
           });
           
-          // Add some logs
+          // Add log entry
           await storage.addExecutionLog({
             executionId: execution.id,
             level: 'info',
-            message: 'Flow execution started'
+            message: `Executing node ${currentNode} of ${nodeCount}`
           });
           
-          await storage.addExecutionLog({
-            executionId: execution.id,
-            level: 'info',
-            message: 'Flow execution completed'
-          });
-        } catch (error) {
-          console.error('Error updating execution:', error);
-        }
-      }, 1500);
+          // Continue processing nodes or complete
+          if (currentNode < nodeCount) {
+            processNodes();
+          } else {
+            // Final completion update
+            setTimeout(async () => {
+              try {
+                // Update execution with success
+                await storage.updateExecution(execution.id, {
+                  status: 'success',
+                  finishedAt: new Date(),
+                  duration: (nodeCount + 1) * 300, // Simulate duration based on node count
+                  output: { success: true, message: 'Flow executed successfully' }
+                });
+                
+                // Add completion log
+                await storage.addExecutionLog({
+                  executionId: execution.id,
+                  level: 'info',
+                  message: 'Flow execution completed successfully'
+                });
+                
+                // Send completion notification via WebSocket
+                sendExecutionUpdate(userId.toString(), {
+                  executionId: execution.id,
+                  flowId,
+                  status: 'completed',
+                  timestamp: new Date(),
+                  message: 'Flow execution completed successfully',
+                  progress: 100
+                });
+              } catch (error) {
+                console.error('Error updating execution:', error);
+              }
+            }, 300);
+          }
+        }, 300); // 300ms delay between nodes
+      };
+      
+      // Start processing after a small delay
+      setTimeout(processNodes, 200);
       
       res.status(202).json(execution);
     } catch (error: any) {
@@ -688,6 +762,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
         </html>
       `);
     }
+  });
+  
+  // Set up WebSocket server
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  wss.on('connection', (ws) => {
+    console.log('WebSocket client connected');
+    
+    // Set up a ping interval to keep the connection alive
+    const pingInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.ping();
+      }
+    }, 30000);
+    
+    // Handle incoming messages
+    ws.on('message', (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        
+        // Handle authentication
+        if (data.type === 'auth') {
+          const { token, userId } = data;
+          if (token && userId) {
+            // Store connection by user ID
+            if (!connections.has(userId)) {
+              connections.set(userId, []);
+            }
+            // Add this connection to the user's connections
+            const userConnections = connections.get(userId);
+            if (userConnections) {
+              userConnections.push(ws);
+              console.log(`User ${userId} authenticated on WebSocket`);
+              
+              // Send confirmation
+              ws.send(JSON.stringify({
+                type: 'auth_success',
+                message: 'Authentication successful'
+              }));
+            }
+          } else {
+            ws.send(JSON.stringify({
+              type: 'auth_error',
+              message: 'Authentication failed: missing token or userId'
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Failed to process message'
+        }));
+      }
+    });
+    
+    // Handle connection close
+    ws.on('close', () => {
+      console.log('WebSocket client disconnected');
+      clearInterval(pingInterval);
+      
+      // Remove connection from all user connections
+      for (const [userId, userConnections] of connections.entries()) {
+        const index = userConnections.indexOf(ws);
+        if (index !== -1) {
+          userConnections.splice(index, 1);
+          console.log(`Removed connection for user ${userId}`);
+          
+          // Clean up empty user connections
+          if (userConnections.length === 0) {
+            connections.delete(userId);
+          }
+        }
+      }
+    });
   });
   
   return httpServer;
