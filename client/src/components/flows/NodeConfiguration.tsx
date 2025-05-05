@@ -190,6 +190,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
         return renderLogConfig();
       case 'delay':
         return renderDelayConfig();
+      case 'stopJob':
+        return renderStopJobConfig();
       default:
         return <p>No configuration available for this node type.</p>;
     }
