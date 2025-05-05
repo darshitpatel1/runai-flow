@@ -36,12 +36,13 @@ import { NodePanel } from "./NodePanel";
 import { NodeConfiguration } from "./NodeConfiguration";
 import { NodeContextMenu } from "./NodeContextMenu";
 import { ConsoleOutput } from "./ConsoleOutput";
-import { HttpRequestNode } from "./nodes/HttpRequestNode";
-import { IfElseNode } from "./nodes/IfElseNode";
-import { LoopNode } from "./nodes/LoopNode";
-import { SetVariableNode } from "./nodes/SetVariableNode";
-import { LogNode } from "./nodes/LogNode";
-import { DelayNode } from "./nodes/DelayNode";
+import HttpRequestNode from "./nodes/HttpRequestNode";
+import IfElseNode from "./nodes/IfElseNode";
+import LoopNode from "./nodes/LoopNode";
+import SetVariableNode from "./nodes/SetVariableNode";
+// These will be implemented later
+const LogNode = () => null;
+const DelayNode = () => null;
 import { useToast } from "@/hooks/use-toast";
 
 // Define custom node types

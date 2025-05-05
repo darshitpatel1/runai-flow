@@ -1,180 +1,422 @@
-import { memo } from "react";
-import { Handle, Position, useReactFlow } from "reactflow";
-import { NodeContextMenu } from "../NodeContextMenu";
+import React, { useState, useEffect } from "react";
+import { Handle, Position, NodeProps } from "reactflow";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  MoreVertical,
+  GitBranchIcon,
+  CheckCircle,
+  XCircle,
+  Variable,
+} from "lucide-react";
+import { VariableSelectDialog } from "../VariableSelectDialog";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-interface IfElseNodeProps {
-  data: {
-    label: string;
-    condition?: string;
-    selected?: boolean;
-    variable?: string;
-    operator?: string;
-    value?: string;
-    skipped?: boolean;
-    skipEnabled?: boolean;
-    onNodeDelete?: (nodeId: string) => void;
-    onNodeSkip?: (nodeId: string) => void;
+const NODE_WIDTH = 320;
+
+interface IfElseNodeData {
+  label: string;
+  condition: string;
+  type: "comparison" | "expression" | "exists";
+  comparison?: {
+    left: string;
+    operator: "==" | "!=" | ">" | ">=" | "<" | "<=" | "contains" | "startsWith" | "endsWith";
+    right: string;
   };
-  id: string;
-  selected: boolean;
+  expression?: string;
+  exists?: string;
+  description?: string;
+  nodes?: any[]; // Used for variable selection
+  onChange?: (id: string, data: any) => void; // Handler for data changes
 }
 
-export const IfElseNode = memo(({ data, id, selected }: IfElseNodeProps) => {
-  const { setNodes, setEdges } = useReactFlow();
-  
-  const handleNodeDelete = (nodeId: string) => {
-    if (data.onNodeDelete) {
-      data.onNodeDelete(nodeId);
-      return;
-    }
-    
-    setNodes((nodes) => nodes.filter((node) => node.id !== nodeId));
-    setEdges((edges) => edges.filter(
-      (edge) => edge.source !== nodeId && edge.target !== nodeId
-    ));
+export default function IfElseNode({ id, data, isConnectable, selected }: NodeProps) {
+  // Initialize with defaults to avoid type issues
+  const defaultData: IfElseNodeData = {
+    ...data,
+    label: data.label || "If-Else",
+    condition: data.condition || "",
+    type: data.type || "comparison"
   };
   
-  const handleNodeSkip = (nodeId: string) => {
-    if (data.onNodeSkip) {
-      data.onNodeSkip(nodeId);
-      return;
-    }
-    
-    setNodes((nodes) => 
-      nodes.map((node) => 
-        node.id === nodeId 
-          ? { ...node, data: { ...node.data, skipped: !node.data.skipped } }
-          : node
-      )
-    );
-  };
+  const [nodeData, setNodeData] = useState<IfElseNodeData>(defaultData);
+  const [variableDialogOpen, setVariableDialogOpen] = useState(false);
+  const [currentEditField, setCurrentEditField] = useState<{
+    field: string;
+    subField?: string;
+  } | null>(null);
 
-  const nodeClassName = `
-    bg-white dark:bg-black rounded-2xl shadow-lg p-3 
-    border-2 ${selected ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-amber-500'} 
-    ${data.selected ? 'node-highlight' : ''}
-    min-w-[320px] w-[320px]
-  `;
-  
-  // Show a visual indicator if the node is skipped
-  const isSkipped = data.skipped ?? false;
-
-  const getConditionDisplay = () => {
-    if (data.condition) {
-      return data.condition;
+  // Update parent data when nodeData changes
+  useEffect(() => {
+    if (data.onChange) {
+      data.onChange(id, nodeData);
     }
+  }, [id, nodeData, data]);
+
+  // Update condition string based on comparison values
+  useEffect(() => {
+    // Clone nodeData to modify without type issues
+    const updatedData = { ...nodeData };
+    let conditionChanged = false;
     
-    if (data.variable && data.operator && data.value !== undefined) {
-      // Format the condition based on operator
-      let operatorDisplay = '';
-      switch(data.operator) {
-        case 'equals':
-          operatorDisplay = '==';
-          break;
-        case 'notEquals':
-          operatorDisplay = '!=';
-          break;
-        case 'contains':
-          operatorDisplay = 'contains';
-          break;
-        case 'notContains':
-          operatorDisplay = 'not contains';
-          break;
-        case 'greaterThan':
-          operatorDisplay = '>';
-          break;
-        case 'lessThan':
-          operatorDisplay = '<';
-          break;
-        default:
-          operatorDisplay = data.operator;
+    if (nodeData.type === "comparison" && nodeData.comparison) {
+      const { left, operator, right } = nodeData.comparison;
+      
+      // Only update if we have all parts of the comparison
+      if (left && operator && right) {
+        let conditionStr = "";
+        
+        if (operator === "contains") {
+          conditionStr = `${left}.includes(${right})`;
+        } else if (operator === "startsWith") {
+          conditionStr = `${left}.startsWith(${right})`;
+        } else if (operator === "endsWith") {
+          conditionStr = `${left}.endsWith(${right})`;
+        } else {
+          conditionStr = `${left} ${operator} ${right}`;
+        }
+        
+        if (conditionStr !== nodeData.condition) {
+          updatedData.condition = conditionStr;
+          conditionChanged = true;
+        }
       }
-      
-      return `${data.variable} ${operatorDisplay} ${data.value}`;
+    } else if (nodeData.type === "expression" && nodeData.expression) {
+      if (nodeData.expression !== nodeData.condition) {
+        updatedData.condition = nodeData.expression;
+        conditionChanged = true;
+      }
+    } else if (nodeData.type === "exists" && nodeData.exists) {
+      const conditionStr = `!!${nodeData.exists}`;
+      if (conditionStr !== nodeData.condition) {
+        updatedData.condition = conditionStr;
+        conditionChanged = true;
+      }
     }
     
-    return '';
+    // Only update state if the condition actually changed
+    if (conditionChanged) {
+      setNodeData(updatedData);
+    }
+  }, [nodeData.type, nodeData.comparison, nodeData.expression, nodeData.exists]);
+
+  const handleConditionTypeChange = (type: IfElseNodeData["type"]) => {
+    setNodeData((prev) => ({ 
+      ...prev, 
+      type,
+      comparison: type === "comparison" ? prev.comparison || { left: "", operator: "==", right: "" } : undefined,
+      expression: type === "expression" ? prev.expression || "" : undefined,
+      exists: type === "exists" ? prev.exists || "" : undefined,
+    }));
   };
-  
-  const conditionDisplay = getConditionDisplay();
-  
-  return (
-    <div className="relative">
-      {isSkipped && (
-        <div className="absolute inset-0 bg-amber-100 dark:bg-amber-950 bg-opacity-40 dark:bg-opacity-40 rounded-2xl flex items-center justify-center z-10">
-          <div className="bg-amber-500 dark:bg-amber-600 text-white px-2 py-1 rounded text-xs font-medium">
-            Skipped
+
+  const handleComparisonChange = (field: keyof IfElseNodeData["comparison"], value: string) => {
+    setNodeData((prev) => ({
+      ...prev,
+      comparison: {
+        ...(prev.comparison || { left: "", operator: "==", right: "" }),
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleExpressionChange = (expression: string) => {
+    setNodeData((prev) => ({
+      ...prev,
+      expression,
+    }));
+  };
+
+  const handleExistsChange = (exists: string) => {
+    setNodeData((prev) => ({
+      ...prev,
+      exists,
+    }));
+  };
+
+  const openVariableDialog = (field: string, subField?: string) => {
+    setCurrentEditField({ field, subField });
+    setVariableDialogOpen(true);
+  };
+
+  const handleVariableSelect = (variablePath: string) => {
+    if (!currentEditField) return;
+    
+    const { field, subField } = currentEditField;
+    
+    if (field === "comparison" && subField) {
+      if (subField === "left" || subField === "right") {
+        handleComparisonChange(subField, variablePath);
+      }
+    } else if (field === "expression") {
+      handleExpressionChange(variablePath);
+    } else if (field === "exists") {
+      handleExistsChange(variablePath);
+    }
+  };
+
+  const renderConditionEditor = () => {
+    if (nodeData.type === "comparison") {
+      return (
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <div className="flex justify-between items-center">
+              <Label className="text-xs">Left Side</Label>
+              <Button
+                variant="ghost"
+                size="icon"
+                type="button"
+                className="h-6 w-6"
+                onClick={() => openVariableDialog("comparison", "left")}
+              >
+                <Variable className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <Input
+              placeholder="e.g., {{nodes.http.output.data.count}}"
+              value={nodeData.comparison?.left || ""}
+              onChange={(e) => handleComparisonChange("left", e.target.value)}
+              className="h-8 text-xs"
+            />
           </div>
-        </div>
-      )}
-      
-      <div className={`${nodeClassName} ${isSkipped ? 'opacity-50' : ''}`}>
-        <div className="flex items-center mb-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-center text-white mr-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+          
+          <div className="space-y-1">
+            <Label className="text-xs">Operator</Label>
+            <Select
+              value={nodeData.comparison?.operator || "=="}
+              onValueChange={(value) => 
+                handleComparisonChange("operator", value as any)
+              }
+            >
+              <SelectTrigger className="h-8">
+                <SelectValue placeholder="Select operator" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="==">Equals (==)</SelectItem>
+                <SelectItem value="!=">Not Equals (!=)</SelectItem>
+                <SelectItem value=">">Greater Than (&gt;)</SelectItem>
+                <SelectItem value=">=">Greater Than or Equal (&gt;=)</SelectItem>
+                <SelectItem value="<">Less Than (&lt;)</SelectItem>
+                <SelectItem value="<=">Less Than or Equal (&lt;=)</SelectItem>
+                <SelectItem value="contains">Contains</SelectItem>
+                <SelectItem value="startsWith">Starts With</SelectItem>
+                <SelectItem value="endsWith">Ends With</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <h3 className="font-medium">{data.label}</h3>
-          <div className="ml-auto">
-            <NodeContextMenu
-              nodeId={id}
-              onDelete={handleNodeDelete}
-              onSkip={handleNodeSkip}
+          
+          <div className="space-y-1">
+            <div className="flex justify-between items-center">
+              <Label className="text-xs">Right Side</Label>
+              <Button
+                variant="ghost"
+                size="icon"
+                type="button"
+                className="h-6 w-6"
+                onClick={() => openVariableDialog("comparison", "right")}
+              >
+                <Variable className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <Input
+              placeholder="e.g., 10 or {{nodes.variables.output.threshold}}"
+              value={nodeData.comparison?.right || ""}
+              onChange={(e) => handleComparisonChange("right", e.target.value)}
+              className="h-8 text-xs"
             />
           </div>
         </div>
-        
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-2">
-            <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 rounded-full text-xs font-semibold flex items-center">
-              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-              </svg>
-              True
-            </span>
+      );
+    } else if (nodeData.type === "expression") {
+      return (
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <Label className="text-xs">Expression</Label>
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              className="h-6 w-6"
+              onClick={() => openVariableDialog("expression")}
+            >
+              <Variable className="h-3.5 w-3.5" />
+            </Button>
           </div>
-          <div className="flex items-center space-x-2">
-            <span className="px-2 py-1 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 rounded-full text-xs font-semibold flex items-center">
-              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              False
-            </span>
-          </div>
+          <Textarea
+            placeholder="e.g., {{nodes.http.output.data.success && nodes.http.output.data.count > 10}}"
+            value={nodeData.expression || ""}
+            onChange={(e) => handleExpressionChange(e.target.value)}
+            className="min-h-[80px] text-xs font-mono"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Write a JavaScript expression that evaluates to true or false
+          </p>
         </div>
-        
-        {conditionDisplay && (
-          <div className="text-xs px-2 py-1 bg-slate-100 dark:bg-black dark:border dark:border-slate-700 rounded-lg mb-2 font-semibold">
-            If: {conditionDisplay}
+      );
+    } else if (nodeData.type === "exists") {
+      return (
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <Label className="text-xs">Check if exists</Label>
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              className="h-6 w-6"
+              onClick={() => openVariableDialog("exists")}
+            >
+              <Variable className="h-3.5 w-3.5" />
+            </Button>
           </div>
-        )}
-        
-        {/* Input Handle */}
-        <Handle
-          type="target"
-          position={Position.Top}
-          className="w-3 h-3 -top-1.5 !bg-amber-500"
-        />
-        
-        {/* Output Handle - True */}
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="true"
-          className="w-3 h-3 -bottom-1.5 left-1/3 !bg-green-500"
-        />
-        
-        {/* Output Handle - False */}
-        <Handle
-          type="source"
-          position={Position.Bottom}
-          id="false"
-          className="w-3 h-3 -bottom-1.5 left-2/3 !bg-red-500"
-        />
-      </div>
-    </div>
-  );
-});
+          <Input
+            placeholder="e.g., {{nodes.http.output.data.items}}"
+            value={nodeData.exists || ""}
+            onChange={(e) => handleExistsChange(e.target.value)}
+            className="h-8 text-xs"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Branch based on whether this value exists (is not null or undefined)
+          </p>
+        </div>
+      );
+    }
+    
+    return null;
+  };
 
-IfElseNode.displayName = "IfElseNode";
+  return (
+    <>
+      <Card
+        className={`border-2 ${
+          selected ? "border-blue-500" : "border-border"
+        } shadow-md bg-background`}
+        style={{ width: NODE_WIDTH }}
+      >
+        <CardHeader className="p-3 flex flex-row items-center justify-between space-y-0">
+          <div className="flex items-center">
+            <GitBranchIcon className="w-4 h-4 mr-2 text-primary" />
+            <CardTitle className="text-sm font-medium">{data.label || "If-Else"}</CardTitle>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>Edit</DropdownMenuItem>
+              <DropdownMenuItem>Skip</DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </CardHeader>
+
+        <CardContent className="px-3 py-2 space-y-4">
+          <div className="space-y-2">
+            <Label className="text-xs">Condition Type</Label>
+            <Select
+              value={nodeData.type}
+              onValueChange={(value) => handleConditionTypeChange(value as any)}
+            >
+              <SelectTrigger className="h-8">
+                <SelectValue placeholder="Select condition type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="comparison">Simple Comparison</SelectItem>
+                <SelectItem value="expression">Custom Expression</SelectItem>
+                <SelectItem value="exists">Check if Exists</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {renderConditionEditor()}
+        </CardContent>
+
+        <CardFooter className="px-3 py-2 border-t flex justify-between items-center text-xs text-muted-foreground">
+          <div>If-Else</div>
+          <div className="max-w-[200px] truncate">
+            {nodeData.condition ? nodeData.condition : "Configure condition..."}
+          </div>
+        </CardFooter>
+      </Card>
+
+      {/* Input handle */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="in"
+        isConnectable={isConnectable}
+        className="w-2 h-2 rounded-full border-2 bg-background border-primary"
+      />
+
+      {/* True output handle */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="true"
+        isConnectable={isConnectable}
+        className="top-1/3 w-2 h-2 rounded-full border-2 bg-background border-green-500"
+        style={{ top: '40%' }}
+      />
+
+      {/* False output handle */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="false"
+        isConnectable={isConnectable}
+        className="top-2/3 w-2 h-2 rounded-full border-2 bg-background border-red-500"
+        style={{ top: '60%' }}
+      />
+
+      {/* True label */}
+      <div 
+        className="absolute -right-8 text-xs flex items-center text-green-600 font-medium"
+        style={{ top: '38%' }}
+      >
+        <CheckCircle className="h-3 w-3 mr-1" />
+        True
+      </div>
+
+      {/* False label */}
+      <div 
+        className="absolute -right-8 text-xs flex items-center text-red-600 font-medium"
+        style={{ top: '58%' }}
+      >
+        <XCircle className="h-3 w-3 mr-1" />
+        False
+      </div>
+
+      {/* Variable selection dialog */}
+      <VariableSelectDialog
+        open={variableDialogOpen}
+        onOpenChange={setVariableDialogOpen}
+        onSelect={handleVariableSelect}
+        nodes={data.nodes || []}
+        currentNodeId={id}
+      />
+    </>
+  );
+}
