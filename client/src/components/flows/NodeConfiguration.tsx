@@ -194,6 +194,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
         return renderLogConfig();
       case 'delay':
         return renderDelayConfig();
+      case 'stopJob':
+        return renderStopJobConfig();
       default:
         return <p>No configuration available for this node type.</p>;
     }
@@ -985,6 +987,91 @@ return sourceData * 2;"
               </Card>
             </TabsContent>
           </Tabs>
+        </div>
+      </div>
+    );
+  }
+  
+  const renderStopJobConfig = () => {
+    return (
+      <div className="space-y-4">
+        <div>
+          <Label className="block text-sm font-medium mb-1">Node Name</Label>
+          <Input
+            value={nodeData.label || ''}
+            onChange={(e) => handleChange('label', e.target.value)}
+            placeholder="Stop Job"
+          />
+        </div>
+        
+        <div>
+          <Label className="block text-sm font-medium mb-1">Stop Type</Label>
+          <RadioGroup 
+            value={nodeData.stopType || 'success'} 
+            onValueChange={(value) => handleChange('stopType', value)}
+            className="flex flex-col space-y-1"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="success" id="stop-success" />
+              <Label htmlFor="stop-success" className="cursor-pointer flex items-center">
+                <span className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs px-2 py-0.5 rounded ml-1">
+                  Success
+                </span>
+                <span className="ml-2 text-sm">Stop with successful completion</span>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="error" id="stop-error" />
+              <Label htmlFor="stop-error" className="cursor-pointer flex items-center">
+                <span className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 text-xs px-2 py-0.5 rounded ml-1">
+                  Error
+                </span>
+                <span className="ml-2 text-sm">Stop with error</span>
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
+        
+        {nodeData.stopType === 'error' && (
+          <div>
+            <Label className="block text-sm font-medium mb-1">Error Message</Label>
+            <div className="flex gap-2">
+              <Textarea
+                value={nodeData.errorMessage || ''}
+                onChange={(e) => handleChange('errorMessage', e.target.value)}
+                placeholder="Process stopped due to invalid data"
+                className="flex-1 min-h-[100px]"
+              />
+            </div>
+            <div className="flex gap-2 mt-2">
+              <Input
+                value={nodeData.errorVariable || ''}
+                onChange={(e) => handleChange('errorVariable', e.target.value)}
+                placeholder="{{vars.errorReason}}"
+              />
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => handleOpenVariableSelector('errorVariable')}
+                className="flex-shrink-0"
+              >
+                <Variable className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Optional: Use a variable for the error message
+            </p>
+          </div>
+        )}
+        
+        <div className="border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 rounded-md p-3 mt-4">
+          <h3 className="text-sm font-medium mb-1 text-amber-800 dark:text-amber-300">Important</h3>
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            When this node is reached, job execution will stop immediately. No downstream nodes will be executed.
+            {nodeData.stopType === 'error' 
+              ? ' The job will be marked as failed with the specified error message.' 
+              : ' The job will be marked as completed successfully.'}
+          </p>
         </div>
       </div>
     );
