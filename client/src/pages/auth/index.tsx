@@ -34,7 +34,9 @@ export default function Auth() {
     setLoading(true);
     
     try {
-      await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+      const result = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+      // We don't need to register the user here as they should already be registered
+      // when they first created the account
       toast({
         title: "Login successful",
         description: "Welcome back to FlowForge!",
@@ -66,7 +68,13 @@ export default function Auth() {
     setLoading(true);
     
     try {
-      await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
+      // Create Firebase user
+      const result = await createUserWithEmailAndPassword(auth, registerEmail, registerPassword);
+      const user = result.user;
+      
+      // Register with our backend
+      await registerUserWithBackend(user);
+      
       toast({
         title: "Account created",
         description: "Welcome to FlowForge!",
@@ -83,12 +91,56 @@ export default function Auth() {
     }
   };
   
+  // Helper function to register user with our backend
+  const registerUserWithBackend = async (user: any) => {
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firebaseUid: user.uid,
+          email: user.email,
+          displayName: user.displayName || '',
+          photoUrl: user.photoURL || '',
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        // If user already exists, that's fine - just don't report it as an error
+        if (response.status === 409) {
+          console.log('User already exists in the database');
+          return true;
+        }
+        throw new Error(errorData.error || 'Failed to register with backend');
+      }
+      
+      return true;
+    } catch (error: any) {
+      console.error('Error registering with backend:', error);
+      toast({
+        title: "Backend registration failed",
+        description: "Your account was created, but there was an issue with the backend. Some features may not work properly.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     setLoading(true);
     const provider = new GoogleAuthProvider();
     
     try {
-      await signInWithPopup(auth, provider);
+      // Sign in with Firebase
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      // Register with our backend
+      await registerUserWithBackend(user);
+      
       toast({
         title: "Login successful",
         description: "Welcome to FlowForge!",
