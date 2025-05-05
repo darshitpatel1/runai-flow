@@ -22,6 +22,11 @@ interface NodePositionChange {
   position: { x: number; y: number };
   dragging?: boolean;
 }
+
+// Tracking time between updates to prevent node jitter
+let lastUpdateTime = Date.now();
+let isCurrentlyDragging = false;
+let draggedNodeId: string | null = null;
 import 'reactflow/dist/style.css';
 import { collection, addDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
@@ -71,34 +76,58 @@ export function FlowBuilder({
   // Grid size for snapping - should match the snapGrid value in ReactFlow component
   const gridSize = 15;
   
-  // Use a much simpler node change handler that directly fixes zigzag issues
+  // Use a directly simplified node change handler with throttling to fix zigzag
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      // Direct approach - apply changes then fix positions in one go
-      setNodes((nds) => {
-        // First pass - just apply the changes directly
-        const updatedNodes = applyNodeChanges(changes, nds);
-        
-        // Second pass - fix ALL nodes to ensure grid alignment
-        return updatedNodes.map((node) => {
-          // Skip null/undefined nodes
-          if (!node || !node.position) return node;
+      // Check for drag start and drag end to manage state
+      const dragChange = changes.find(change => 
+        change.type === 'position' && 'dragging' in change
+      ) as NodePositionChange | undefined;
+      
+      if (dragChange) {
+        // Handle drag start
+        if (dragChange.dragging === true) {
+          isCurrentlyDragging = true;
+          draggedNodeId = dragChange.id;
+          console.log('Drag started:', draggedNodeId);
+        } 
+        // Handle drag end
+        else if (dragChange.dragging === false && isCurrentlyDragging) {
+          isCurrentlyDragging = false;
+          console.log('Drag ended:', draggedNodeId);
           
-          // Force grid alignment for ALL nodes
-          const x = Math.round(node.position.x / gridSize) * gridSize;
-          const y = Math.round(node.position.y / gridSize) * gridSize;
-          
-          // Return a stabilized node
-          return {
-            ...node,
-            position: { x, y },
-            positionAbsolute: { x, y },
-            dragging: false,
-            // Ensure the node is fully re-rendered
-            __lastUpdate: Date.now()
-          };
-        });
-      });
+          // On drag end, we finalize all node positions
+          setTimeout(() => {
+            setNodes(nodes => {
+              return nodes.map(node => {
+                if (!node || !node.position) return node;
+                
+                // Snap to grid for final position
+                const x = Math.round(node.position.x / gridSize) * gridSize;
+                const y = Math.round(node.position.y / gridSize) * gridSize;
+                
+                return {
+                  ...node,
+                  position: { x, y },
+                  positionAbsolute: { x, y },
+                  dragging: false,
+                };
+              });
+            });
+          }, 50); // slight delay to ensure final position is captured
+        }
+      }
+      
+      // Simple throttling for position updates during drag
+      const now = Date.now();
+      if (isCurrentlyDragging && now - lastUpdateTime < 25) {
+        // Skip this update if we're dragging and it's too soon
+        return;
+      }
+      lastUpdateTime = now;
+      
+      // Always apply the changes directly without manipulation during drag
+      setNodes(nds => applyNodeChanges(changes, nds));
     },
     [setNodes, gridSize]
   );
@@ -181,8 +210,13 @@ export function FlowBuilder({
     });
   }, []);
   
-  // Update parent component when nodes/edges change
+  // Update parent component when nodes/edges change - but not during dragging
   useEffect(() => {
+    // Don't report changes during drag operations to prevent zigzag
+    if (isCurrentlyDragging) {
+      return;
+    }
+    
     // Apply stabilization before reporting changes
     const stabilizedNodes = stabilizeNodePositions(nodes);
     reportNodesChange(stabilizedNodes);
@@ -201,6 +235,35 @@ export function FlowBuilder({
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   }, []);
+  
+  // Handle drag completion to ensure nodes are properly snapped
+  const onNodeDragStop = useCallback((event: React.MouseEvent, node: any) => {
+    // Snap to grid on drag stop
+    setNodes(nodes => {
+      return nodes.map(n => {
+        if (n.id !== node.id) return n;
+        
+        // Snap to grid
+        const x = Math.round(node.position.x / gridSize) * gridSize;
+        const y = Math.round(node.position.y / gridSize) * gridSize;
+        
+        return {
+          ...n,
+          position: { x, y },
+          positionAbsolute: { x, y },
+          dragging: false,
+        };
+      });
+    });
+    
+    // Report the changes to parent
+    setTimeout(() => {
+      if (nodes.length > 0) {
+        const stabilizedNodes = stabilizeNodePositions(nodes);
+        reportNodesChange(stabilizedNodes);
+      }
+    }, 50);
+  }, [nodes, setNodes, gridSize, stabilizeNodePositions, reportNodesChange]);
   
   const onDrop = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
@@ -580,6 +643,7 @@ export function FlowBuilder({
                 onDragOver={onDragOver}
                 onNodeClick={onNodeClick}
                 onEdgeClick={onEdgeClick}
+                onNodeDragStop={onNodeDragStop}
                 nodeTypes={nodeTypes}
                 fitView
                 fitViewOptions={{ 

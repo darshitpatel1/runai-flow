@@ -24,10 +24,19 @@
             if (url.includes('localhost:undefined') || url.includes('undefined')) {
               console.log('Fixing invalid WebSocket URL:', url);
               
-              // Extract the path and query params from the original URL
-              const originalUrl = new URL(url);
-              const path = originalUrl.pathname;
-              const search = originalUrl.search;
+              // Parse URL parts manually without using the URL constructor
+              let path = '/';
+              let search = '';
+              
+              try {
+                // Try to extract path and search parameters
+                const urlParts = url.split('?');
+                const baseUrl = urlParts[0];
+                path = baseUrl.substring(baseUrl.indexOf('/', 8)) || '/';
+                search = urlParts.length > 1 ? '?' + urlParts[1] : '';
+              } catch (err) {
+                console.error('Error parsing URL parts:', err);
+              }
               
               // Construct a new URL with the current domain
               let fixedUrl;
