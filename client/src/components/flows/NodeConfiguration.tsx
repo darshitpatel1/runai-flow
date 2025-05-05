@@ -512,6 +512,9 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
   };
   
   const renderLoopConfig = () => {
+    const isWhileLoop = nodeData.loopType === 'while';
+    const isForEachLoop = !nodeData.loopType || nodeData.loopType === 'forEach';
+    
     return (
       <div className="space-y-4">
         <div>
@@ -523,38 +526,159 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           />
         </div>
         
-        <div>
-          <Label className="block text-sm font-medium mb-1">Array Path</Label>
-          <div className="flex gap-2">
-            <Input
-              value={nodeData.arrayPath || ''}
-              onChange={(e) => handleChange('arrayPath', e.target.value)}
-              placeholder="{{step1.body.items}}"
-              className="flex-1"
-            />
-            <Button 
-              variant="outline" 
-              size="icon"
-              onClick={() => handleOpenVariableSelector('arrayPath')}
-              className="flex-shrink-0"
+        <div className="space-y-2">
+          <Label className="block text-sm font-medium">Loop Type</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant={isForEachLoop ? "default" : "outline"}
+              className={`justify-start ${isForEachLoop ? 'bg-green-500 hover:bg-green-600' : ''}`}
+              onClick={() => handleChange('loopType', 'forEach')}
             >
-              <Variable className="h-4 w-4" />
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              For Each Item
+            </Button>
+            <Button
+              type="button"
+              variant={isWhileLoop ? "default" : "outline"}
+              className={`justify-start ${isWhileLoop ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
+              onClick={() => handleChange('loopType', 'while')}
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+              While Condition
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Enter the path to the array you want to iterate
-          </p>
         </div>
+        
+        {isForEachLoop && (
+          <div>
+            <Label className="block text-sm font-medium mb-1">Array Path</Label>
+            <div className="flex gap-2">
+              <Input
+                value={nodeData.arrayPath || ''}
+                onChange={(e) => handleChange('arrayPath', e.target.value)}
+                placeholder="{{step1.body.items}}"
+                className="flex-1"
+              />
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => handleOpenVariableSelector('arrayPath')}
+                className="flex-shrink-0"
+              >
+                <Variable className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Enter the path to the array you want to iterate
+            </p>
+            
+            <div className="mt-3 p-3 bg-green-50 dark:bg-green-950 dark:border dark:border-green-800 rounded-md">
+              <h4 className="text-xs font-medium mb-1">Common Array Paths from HTTP Responses:</h4>
+              <ul className="text-xs space-y-1 pl-4 list-disc">
+                <li><code>{"{{step1.body.data}}"}</code> - For APIs that return <code>{"{data: [...]}"}</code></li>
+                <li><code>{"{{step1.body.results}}"}</code> - For APIs that return <code>{"{results: [...]}"}</code></li>
+                <li><code>{"{{step1.body.items}}"}</code> - For APIs that return <code>{"{items: [...]}"}</code></li>
+                <li><code>{"{{step1.body}}"}</code> - For APIs that return arrays directly</li>
+              </ul>
+              <div className="mt-2 text-xs">
+                <span className="font-medium">Tip:</span> Test your HTTP requests first to see the response structure
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {isForEachLoop && (
+          <div>
+            <Label className="block text-sm font-medium mb-1">Batch Size</Label>
+            <Input
+              type="number"
+              min="0"
+              value={nodeData.batchSize || ''}
+              onChange={(e) => handleChange('batchSize', parseInt(e.target.value) || 0)}
+              placeholder="Process items in batches (0 for all at once)"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Process multiple items at once (0 = all items, 1 = one by one)
+            </p>
+            
+            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950 dark:border dark:border-blue-800 rounded-md">
+              <h4 className="text-xs font-medium mb-1">Batch Processing Guide:</h4>
+              <ul className="text-xs space-y-1 pl-4 list-disc">
+                <li><strong>0</strong>: Process all items at once in a single iteration</li>
+                <li><strong>1</strong>: Process one item at a time (traditional loop)</li>
+                <li><strong>N</strong>: Process N items in each iteration, useful for rate limiting</li>
+              </ul>
+              <div className="mt-2 text-xs">
+                <span className="font-medium">Example:</span> With batch size 10 and 100 items, 
+                the loop will run 10 times with 10 items per batch
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {isWhileLoop && (
+          <div>
+            <Label className="block text-sm font-medium mb-1">While Condition</Label>
+            <div className="flex gap-2">
+              <Input
+                value={nodeData.conditionExpression || ''}
+                onChange={(e) => handleChange('conditionExpression', e.target.value)}
+                placeholder="{{counter}} < 10"
+                className="flex-1"
+              />
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => handleOpenVariableSelector('conditionExpression')}
+                className="flex-shrink-0"
+              >
+                <Variable className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Enter the condition that must be true for the loop to continue
+            </p>
+            
+            <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950 dark:border dark:border-amber-800 rounded-md">
+              <h4 className="text-xs font-medium mb-1">Condition Examples:</h4>
+              <ul className="text-xs space-y-1 pl-4 list-disc">
+                <li><code>{"{{vars.counter}} < 10"}</code> - Repeat until counter reaches 10</li>
+                <li><code>{"{{vars.hasMorePages}} === true"}</code> - Continue while a flag is true</li>
+                <li><code>{"{{vars.items.length}} > 0"}</code> - Process while items remain</li>
+                <li><code>{"{{loop.iteration}} < 5"}</code> - Maximum 5 iterations</li>
+              </ul>
+              <div className="mt-2 text-xs">
+                <span className="font-medium">Tip:</span> Set up a counter variable before the loop,
+                and increment it inside the loop to control iterations
+              </div>
+            </div>
+          </div>
+        )}
         
         <div className="bg-muted/50 rounded-lg p-3">
           <h3 className="text-sm font-medium mb-2">Loop Variable Access</h3>
           <div className="text-xs text-muted-foreground space-y-1">
             <p>Inside the loop, you can access:</p>
-            <ul className="list-disc pl-4 space-y-1">
-              <li><code>{"{{loop.item}}"}</code> - Current item in the array</li>
-              <li><code>{"{{loop.index}}"}</code> - Current index (0-based)</li>
-              <li><code>{"{{loop.number}}"}</code> - Current iteration (1-based)</li>
-            </ul>
+            {isForEachLoop ? (
+              <ul className="list-disc pl-4 space-y-1">
+                <li><code>{"{{loop.item}}"}</code> - Current item in the array</li>
+                <li><code>{"{{loop.index}}"}</code> - Current index (0-based)</li>
+                <li><code>{"{{loop.number}}"}</code> - Current iteration (1-based)</li>
+                {nodeData.batchSize && nodeData.batchSize > 0 && (
+                  <li><code>{"{{loop.batch}}"}</code> - Current batch of items</li>
+                )}
+              </ul>
+            ) : (
+              <ul className="list-disc pl-4 space-y-1">
+                <li><code>{"{{loop.iteration}}"}</code> - Current iteration count</li>
+                <li><code>{"{{loop.startTime}}"}</code> - When the loop started</li>
+              </ul>
+            )}
           </div>
         </div>
       </div>

@@ -8,6 +8,9 @@ interface LoopNodeProps {
     label: string;
     arrayPath?: string;
     itemCount?: number;
+    loopType?: 'forEach' | 'while';
+    conditionExpression?: string;
+    batchSize?: number;
     selected?: boolean;
     skipped?: boolean;
     skipEnabled?: boolean;
@@ -90,17 +93,30 @@ export const LoopNode = memo(({ id, data, selected }: LoopNodeProps) => {
               <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              For Each Item
+              {data.loopType === 'while' ? 'While Condition' : 'For Each Item'}
             </span>
           </div>
           <div className="flex items-center space-x-2">
-            <span className="px-2 py-1 bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200 rounded-full text-xs">
-              {data.itemCount || 0} items
-            </span>
+            {data.loopType !== 'while' && (
+              <span className="px-2 py-1 bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200 rounded-full text-xs">
+                {data.itemCount || 0} items
+              </span>
+            )}
+            {data.batchSize && data.batchSize > 0 && (
+              <span className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 rounded-full text-xs">
+                Batch: {data.batchSize}
+              </span>
+            )}
           </div>
         </div>
         
-        {data.arrayPath && (
+        {data.loopType === 'while' && data.conditionExpression && (
+          <div className="text-xs px-2 py-1 bg-amber-50 dark:bg-amber-950 dark:border dark:border-amber-800 rounded-lg mb-2 font-mono overflow-hidden text-ellipsis">
+            Condition: {data.conditionExpression}
+          </div>
+        )}
+        
+        {data.loopType !== 'while' && data.arrayPath && (
           <div className="text-xs px-2 py-1 bg-slate-100 dark:bg-black dark:border dark:border-slate-700 rounded-lg mb-2 font-semibold">
             Array: {data.arrayPath}
           </div>
