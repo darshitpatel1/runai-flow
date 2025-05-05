@@ -83,6 +83,21 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
     const nodes = getNodes();
     console.log("Variable Selector - Nodes:", nodes);
     
+    // Check if we're inside a SetVariable node configuration
+    // by looking for a node with data.allNodes (indicating we're in config panel)
+    let isInSetVariableConfig = false;
+    let currentConfigNodeId = null;
+    
+    // Find the node that's currently being configured
+    for (const node of nodes) {
+      if (node?.data?.allNodes && Array.isArray(node.data.allNodes) && node.data.allNodes.length > 0) {
+        currentConfigNodeId = node.id;
+        isInSetVariableConfig = node.type === 'setVariable';
+        console.log(`Currently configuring node ${node.id} of type ${node.type}`);
+        break;
+      }
+    }
+    
     const variableList: Array<{
       nodeId: string;
       nodeName: string;
@@ -114,7 +129,8 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
         }
       }
       
-      // First check for test results - look in both places
+      // Check for test results - only include actual test results
+      // that were explicitly generated (not placeholder suggestions)
       const testResult = node.data?.testResult || node.data?._lastTestResult;
       if (testResult) {
         console.log("Found test result in node:", node.id, node.data?.label || "Unknown");
@@ -149,9 +165,11 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
         }
       }
       
-      // Add expected response variables for HTTP nodes even without test
-      if (node.type === 'httpRequest') {
-        // Add common HTTP response properties
+      // Only show HTTP response structure suggestions when:
+      // 1. We're in a Set Variable node configuration, OR
+      // 2. The HTTP node itself is being actively tested (handled above)
+      if (isInSetVariableConfig && node.type === 'httpRequest') {
+        // Add common HTTP response properties - these are suggestions, not test results
         const commonPaths = [
           { name: 'status', path: `${node.id}.result.status` },
           { name: 'statusText', path: `${node.id}.result.statusText` },

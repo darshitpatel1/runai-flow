@@ -35,7 +35,11 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
   
   useEffect(() => {
     setNodeData(node.data);
-  }, [node]);
+    // Clear test result when switching to a different node
+    setTestResult(null);
+    setShowTestResult(false);
+    setAvailableVariables([]);
+  }, [node.id]);
   
   const handleChange = (field: string, value: any) => {
     setNodeData({ ...nodeData, [field]: value });
