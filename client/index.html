@@ -4,6 +4,59 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <script type="text/javascript">
+      // Silence WebSocket connection errors in console
+      (function() {
+        // Store original console methods
+        const originalConsoleError = console.error;
+        const originalConsoleLog = console.log;
+        
+        // Override console.error to filter WebSocket errors
+        console.error = function(...args) {
+          // Check if this is a WebSocket error we want to silence
+          if (args.length > 0) {
+            const firstArg = args[0];
+            
+            // Skip WebSocket error messages that clutter the console
+            if (typeof firstArg === 'string' && 
+                (firstArg.includes('WebSocket') || 
+                 firstArg.includes('failed to connect to websocket'))) {
+              // Don't log the error to console, just return
+              return;
+            }
+            
+            // If it's an object with event.type and it's a WebSocket error
+            if (args.length > 1 && 
+                args[0] === 'WebSocket error:' && 
+                args[1] && 
+                args[1].isTrusted) {
+              return;
+            }
+          }
+          
+          // For all other errors, use the original console.error
+          return originalConsoleError.apply(console, args);
+        };
+        
+        // Override console.log to filter WebSocket connection messages
+        console.log = function(...args) {
+          // Check if this is a WebSocket connection closed message
+          if (args.length > 0) {
+            const firstArg = args[0];
+            
+            // Skip WebSocket connection messages
+            if (typeof firstArg === 'string' && 
+                (firstArg.includes('WebSocket connection closed') || 
+                 firstArg.includes('Connecting to WebSocket'))) {
+              // Don't log the message to console, just return
+              return;
+            }
+          }
+          
+          // For all other logs, use the original console.log
+          return originalConsoleLog.apply(console, args);
+        };
+      })();
+      
       // Fix for Vite WebSocket connection issues in replit environment
       window.__fixViteWebSocketURL = function() {
         // Only run this once
