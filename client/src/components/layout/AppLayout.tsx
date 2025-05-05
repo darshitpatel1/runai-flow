@@ -73,8 +73,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
       
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-black" style={{ height: '100vh' }}>
-        {children}
+      <div className="flex-1 flex flex-col bg-slate-50 dark:bg-black" style={{ height: '100vh' }}>
+        <div className="flex-1 overflow-auto">
+          {children}
+        </div>
       </div>
     </div>
   );
