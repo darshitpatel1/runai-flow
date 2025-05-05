@@ -77,10 +77,18 @@ export default function TableEditPage() {
   const [optionInputs, setOptionInputs] = useState<Record<number, string>>({});
   
   // Get table data
-  const { data: table, isLoading } = useQuery({
-    queryKey: ['/api/tables', tableId],
+  const { data: tables, isLoading: isTablesLoading } = useQuery({
+    queryKey: ['/api/tables'],
     enabled: !!tableId && !!user,
   });
+  
+  // Get the specific table from the tables data
+  const table = useMemo(() => {
+    if (!tables || !Array.isArray(tables)) return undefined;
+    return tables.find(t => t.id === tableId);
+  }, [tables, tableId]);
+  
+  const isLoading = isTablesLoading || !table;
   
   // Setup form
   const form = useForm<TableFormValues>({
@@ -92,25 +100,73 @@ export default function TableEditPage() {
     },
   });
   
-  // Update form values when table data is loaded
+  // Debug function to inspect table structure
   useEffect(() => {
     if (table) {
-      form.reset({
-        name: table.name,
-        description: table.description || "",
-        columns: Array.isArray(table.columns) 
-          ? table.columns.map((col: ColumnDefinition) => ({
-              id: col.id,
-              name: col.name,
-              type: col.type,
-              required: !!col.required,
-              options: col.options || [],
-              default: col.default,
-            }))
-          : [{ ...defaultColumnValues }],
-      });
+      console.log("Table data in edit form:", table);
+      console.log("Table columns type:", typeof table.columns);
+      console.log("Is columns array?", Array.isArray(table.columns));
+      
+      if (typeof table.columns === 'string') {
+        try {
+          const parsed = JSON.parse(table.columns);
+          console.log("Parsed columns from string:", parsed);
+        } catch (e) {
+          console.error("Failed to parse columns string:", e);
+        }
+      }
     }
-  }, [table, form]);
+  }, [table]);
+  
+  // Update form values when table data is loaded
+  useEffect(() => {
+    if (table) {      
+      // Parse columns data which could be in different formats
+      let parsedColumns;
+      
+      try {
+        if (Array.isArray(table.columns)) {
+          parsedColumns = table.columns;
+        } else if (typeof table.columns === 'string') {
+          parsedColumns = JSON.parse(table.columns);
+        } else if (typeof table.columns === 'object' && table.columns !== null) {
+          parsedColumns = [table.columns];
+        } else {
+          parsedColumns = [{ ...defaultColumnValues }];
+        }
+        
+        console.log("Parsed columns:", parsedColumns);
+        
+        form.reset({
+          name: table.name,
+          description: table.description || "",
+          columns: Array.isArray(parsedColumns) 
+            ? parsedColumns.map((col: ColumnDefinition) => ({
+                id: col.id || generateColumnId(col.name || "column"),
+                name: col.name || "",
+                type: col.type || "text",
+                required: !!col.required,
+                options: Array.isArray(col.options) ? col.options : [],
+                default: col.default || null,
+              }))
+            : [{ ...defaultColumnValues }],
+        });
+      } catch (error) {
+        console.error("Error parsing table columns:", error);
+        form.reset({
+          name: table.name,
+          description: table.description || "",
+          columns: [{ ...defaultColumnValues }],
+        });
+        
+        toast({
+          title: "Warning",
+          description: "There was an issue loading the table columns. Starting with a default column.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [table, form, toast]);
   
   // Update table mutation
   const updateTableMutation = useMutation({
@@ -407,7 +463,7 @@ export default function TableEditPage() {
                 <CardDescription>Define your table's columns and data types</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {form.getValues("columns").map((_, index) => (
+                {form.watch("columns").map((column, index) => (
                   <div key={index} className="border rounded-lg p-4 space-y-4 relative">
                     <Button
                       type="button"
@@ -535,7 +591,7 @@ export default function TableEditPage() {
                     </div>
                     
                     {/* Select Options (Only for select type columns) */}
-                    {form.getValues(`columns.${index}.type`) === 'select' && (
+                    {form.watch(`columns.${index}.type`) === 'select' && (
                       <div className="space-y-2">
                         <FormLabel>Options</FormLabel>
                         <div className="flex space-x-2">
@@ -559,7 +615,7 @@ export default function TableEditPage() {
                         </div>
                         
                         <div className="flex flex-wrap gap-2 mt-2">
-                          {(form.getValues(`columns.${index}.options`) || []).map((option, optionIndex) => (
+                          {(form.watch(`columns.${index}.options`) || []).map((option, optionIndex) => (
                             <div 
                               key={optionIndex}
                               className="bg-secondary text-secondary-foreground px-3 py-1 rounded-full flex items-center text-sm"
@@ -577,7 +633,7 @@ export default function TableEditPage() {
                             </div>
                           ))}
                           
-                          {!form.getValues(`columns.${index}.options`)?.length && (
+                          {!form.watch(`columns.${index}.options`)?.length && (
                             <div className="text-sm text-muted-foreground">
                               No options added yet
                             </div>
