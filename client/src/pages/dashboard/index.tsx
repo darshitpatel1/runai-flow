@@ -91,7 +91,7 @@ export default function Dashboard() {
                 <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : flows.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {flows.map(flow => (
                   <Card key={flow.id} className="overflow-hidden">
                     <CardHeader className="pb-2">
@@ -150,7 +150,7 @@ export default function Dashboard() {
                 <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : connectors.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {connectors.map(connector => (
                   <Card key={connector.id}>
                     <CardHeader>
