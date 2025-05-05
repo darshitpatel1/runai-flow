@@ -1,0 +1,207 @@
+User already exists in the database
+VM3994 tables:51 Table structure: [
+  {
+    "id": 4,
+    "userId": 1,
+    "name": "scsc",
+    "description": "csc",
+    "columns": [
+      {
+        "id": "sdssw",
+        "name": "wdw",
+        "type": "text",
+        "default": null,
+        "options": [],
+        "required": false
+      }
+    ],
+    "createdAt": "2025-05-05T22:29:30.530Z",
+    "updatedAt": "2025-05-05T22:36:44.365Z"
+  },
+  {
+    "id": 5,
+    "userId": 1,
+    "name": "sfcsacs",
+    "description": "scscsc",
+    "columns": [
+      {
+        "id": "column_mabnp0zu",
+        "name": "dscvsdvsd",
+        "type": "text",
+        "default": "",
+        "options": [],
+        "required": false
+      }
+    ],
+    "createdAt": "2025-05-05T22:32:54.545Z",
+    "updatedAt": "2025-05-05T22:32:54.545Z"
+  },
+  {
+    "id": 3,
+    "userId": 1,
+    "name": "daca",
+    "description": "scscc",
+    "columns": [
+      {
+        "id": "s",
+        "name": "scscscs",
+        "type": "text",
+        "default": "",
+        "options": [],
+        "required": false
+      }
+    ],
+    "createdAt": "2025-05-05T22:28:35.431Z",
+    "updatedAt": "2025-05-05T22:28:35.431Z"
+  },
+  {
+    "id": 2,
+    "userId": 1,
+    "name": "axa",
+    "description": "acxacaca",
+    "columns": [
+      {
+        "id": "24324",
+        "name": "zxzxzxz",
+        "type": "text",
+        "default": null,
+        "options": [],
+        "required": true
+      }
+    ],
+    "createdAt": "2025-05-05T22:22:29.017Z",
+    "updatedAt": "2025-05-05T22:23:25.034Z"
+  },
+  {
+    "id": 1,
+    "userId": 1,
+    "name": "axa",
+    "description": "axax",
+    "columns": [
+      {
+        "id": "a",
+        "name": "axaxaax",
+        "type": "text",
+        "default": null,
+        "options": [],
+        "required": false
+      }
+    ],
+    "createdAt": "2025-05-05T22:13:49.444Z",
+    "updatedAt": "2025-05-05T22:14:27.488Z"
+  }
+]
+VM3994 tables:51 Columns array type: false
+VM3994 tables:51 Columns array length: 0
+VM3994 tables:51 Table structure: [
+  {
+    "id": 6,
+    "userId": 1,
+    "name": "scsc",
+    "description": "svcsvsc",
+    "columns": [
+      {
+        "id": "column_mabnud5j",
+        "name": "scscvv",
+        "type": "text",
+        "default": "",
+        "options": [],
+        "required": false
+      }
+    ],
+    "createdAt": "2025-05-05T22:37:04.071Z",
+    "updatedAt": "2025-05-05T22:37:04.071Z"
+  },
+  {
+    "id": 4,
+    "userId": 1,
+    "name": "scsc",
+    "description": "csc",
+    "columns": [
+      {
+        "id": "sdssw",
+        "name": "wdw",
+        "type": "text",
+        "default": null,
+        "options": [],
+        "required": false
+      }
+    ],
+    "createdAt": "2025-05-05T22:29:30.530Z",
+    "updatedAt": "2025-05-05T22:36:44.365Z"
+  },
+  {
+    "id": 5,
+    "userId": 1,
+    "name": "sfcsacs",
+    "description": "scscsc",
+    "columns": [
+      {
+        "id": "column_mabnp0zu",
+        "name": "dscvsdvsd",
+        "type": "text",
+        "default": "",
+        "options": [],
+        "required": false
+      }
+    ],
+    "createdAt": "2025-05-05T22:32:54.545Z",
+    "updatedAt": "2025-05-05T22:32:54.545Z"
+  },
+  {
+    "id": 3,
+    "userId": 1,
+    "name": "daca",
+    "description": "scscc",
+    "columns": [
+      {
+        "id": "s",
+        "name": "scscscs",
+        "type": "text",
+        "default": "",
+        "options": [],
+        "required": false
+      }
+    ],
+    "createdAt": "2025-05-05T22:28:35.431Z",
+    "updatedAt": "2025-05-05T22:28:35.431Z"
+  },
+  {
+    "id": 2,
+    "userId": 1,
+    "name": "axa",
+    "description": "acxacaca",
+    "columns": [
+      {
+        "id": "24324",
+        "name": "zxzxzxz",
+        "type": "text",
+        "default": null,
+        "options": [],
+        "required": true
+      }
+    ],
+    "createdAt": "2025-05-05T22:22:29.017Z",
+    "updatedAt": "2025-05-05T22:23:25.034Z"
+  },
+  {
+    "id": 1,
+    "userId": 1,
+    "name": "axa",
+    "description": "axax",
+    "columns": [
+      {
+        "id": "a",
+        "name": "axaxaax",
+        "type": "text",
+        "default": null,
+        "options": [],
+        "required": false
+      }
+    ],
+    "createdAt": "2025-05-05T22:13:49.444Z",
+    "updatedAt": "2025-05-05T22:14:27.488Z"
+  }
+]
+VM3994 tables:51 Columns array type: false
+VM3994 tables:51 Columns array length: 0

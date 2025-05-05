@@ -130,19 +130,7 @@ export default function TableDetailPage() {
     }
   };
   
-  // Debug function to show table structure in console
-  useEffect(() => {
-    if (table) {
-      console.log("Table structure:", JSON.stringify(table, null, 2));
-      console.log("Columns array type:", Array.isArray(table.columns));
-      console.log("Columns array length:", table.columns ? table.columns.length : 0);
-    }
-  }, [table]);
-  
   const isLoading = isTableLoading || isRowsLoading;
-  const filteredRows = filterRows();
-  const paginatedRows = getPaginatedRows();
-  const totalPages = Math.ceil(filteredRows.length / pageSize);
   
   if (isLoading) {
     return (
@@ -185,7 +173,35 @@ export default function TableDetailPage() {
     );
   }
   
-  const columns = (table.columns || []) as ColumnDefinition[];
+  // Make sure columns is properly parsed as an array
+  const columns = Array.isArray(table.columns) 
+    ? table.columns 
+    : (typeof table.columns === 'string' 
+        ? JSON.parse(table.columns) 
+        : (table.columns ? [table.columns] : [])) as ColumnDefinition[];
+  
+  // Debug function to show table structure in console
+  useEffect(() => {
+    if (table) {
+      console.log("Table structure:", table);
+      console.log("Table ID:", table.id);
+      console.log("Columns data:", table.columns);
+      console.log("Columns array type:", Array.isArray(table.columns));
+      console.log("Columns after parsing:", columns);
+      
+      if (tableRows && tableRows.length > 0) {
+        console.log("First row data:", tableRows[0]);
+        console.log("Row data structure:", tableRows[0].data);
+        if (tableRows[0].data?.data) {
+          console.log("Nested data structure detected", tableRows[0].data.data);
+        }
+      }
+    }
+  }, [table, tableRows, columns]);
+  
+  const filteredRows = filterRows();
+  const paginatedRows = getPaginatedRows();
+  const totalPages = Math.ceil(filteredRows.length / pageSize);
   
   return (
     <AppLayout>
@@ -284,7 +300,15 @@ export default function TableDetailPage() {
                           </TableCell>
                           {columns.map((column: ColumnDefinition) => (
                             <TableCell key={column.id} className="truncate max-w-[300px]">
-                              {formatCellValue(row.data[column.id], column.type)}
+                              {formatCellValue(
+                                // Handle potential nesting in row.data
+                                row.data && typeof row.data === 'object' 
+                                  ? (row.data.data && typeof row.data.data === 'object'
+                                    ? row.data.data[column.id]  // For nested data.data
+                                    : row.data[column.id])      // For direct data
+                                  : undefined,
+                                column.type
+                              )}
                             </TableCell>
                           ))}
                         </TableRow>
