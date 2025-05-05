@@ -17,8 +17,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
-const SIDEBAR_COOKIE_NAME = "sidebar:state"
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
+const SIDEBAR_STORAGE_KEY = "runai_sidebar_state"
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
@@ -70,20 +69,26 @@ const SidebarProvider = React.forwardRef<
 
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.
-    const [_open, _setOpen] = React.useState(defaultOpen)
+    const [_open, _setOpen] = React.useState(() => {
+      // Load from localStorage if available
+      const savedState = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+      return savedState ? JSON.parse(savedState) === true : defaultOpen;
+    });
+    
     const open = openProp ?? _open
+    
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
+        const newValue = typeof value === "function" ? value(open) : value;
+        
         if (setOpenProp) {
-          return setOpenProp?.(
-            typeof value === "function" ? value(open) : value
-          )
+          return setOpenProp?.(newValue);
         }
 
-        _setOpen(value)
+        _setOpen(newValue);
 
-        // This sets the cookie to keep the sidebar state.
-        document.cookie = `${SIDEBAR_COOKIE_NAME}=${open}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+        // Save to localStorage
+        localStorage.setItem(SIDEBAR_STORAGE_KEY, JSON.stringify(newValue));
       },
       [setOpenProp, open]
     )
