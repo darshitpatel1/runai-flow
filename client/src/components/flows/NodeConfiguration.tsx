@@ -570,12 +570,20 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Create new variable</SelectItem>
-                {/* Show existing variables from other SetVariable nodes */}
-                {getExistingVariables().map((variable) => (
-                  <SelectItem key={variable} value={variable}>
-                    {variable}
-                  </SelectItem>
-                ))}
+                {/* Show existing variables from other SetVariable nodes with error handling */}
+                {(() => {
+                  try {
+                    const vars = getExistingVariables();
+                    return Array.isArray(vars) ? vars.map((variable) => (
+                      <SelectItem key={variable} value={variable}>
+                        {variable}
+                      </SelectItem>
+                    )) : null;
+                  } catch (error) {
+                    console.error("Error rendering variable options:", error);
+                    return null;
+                  }
+                })()}
               </SelectContent>
             </Select>
             
