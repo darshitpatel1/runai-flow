@@ -1,26 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Handle, Position, NodeProps } from "reactflow";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
-  CardFooter,
 } from "@/components/ui/card";
-import {
-  MoreVertical,
-  RepeatIcon,
-} from "lucide-react";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { VariableSelectDialog } from "../VariableSelectDialog";
-
-const NODE_WIDTH = 320;
+import { RepeatIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface LoopNodeData {
   label: string;
@@ -45,98 +32,79 @@ interface LoopNodeData {
 }
 
 export default function LoopNode({ id, data, isConnectable, selected }: NodeProps) {
-  const [nodeData, setNodeData] = useState<LoopNodeData>({
-    ...data,
-    label: data.label || "Loop",
-    type: data.type || "foreach",
+  // Define a minimal default data structure to handle missing properties
+  const safeData = {
+    label: data?.label || 'Loop',
+    type: data?.type || 'foreach',
     data: {
-      collection: data.data?.collection || "",
-      varName: data.data?.varName || "item",
-      condition: data.data?.condition || "",
-      times: data.data?.times || "10",
-      limitOffset: data.data?.limitOffset || {
+      collection: data?.data?.collection || '',
+      varName: data?.data?.varName || 'item',
+      condition: data?.data?.condition || '',
+      times: data?.data?.times || '10',
+      limitOffset: data?.data?.limitOffset || {
         enabled: false,
-        limit: "10",
-        offset: "0",
-        offsetVar: "offset"
-      },
-    }
-  });
+        limit: '10',
+        offset: '0',
+        offsetVar: 'offset'
+      }
+    },
+    maxIterations: data?.maxIterations || '100'
+  };
   
-  const [variableDialogOpen, setVariableDialogOpen] = useState(false);
-  const [currentEditField, setCurrentEditField] = useState<{
-    field: string;
-    subField?: string;
-  } | null>(null);
-
-  // Update parent data when nodeData changes
-  useEffect(() => {
-    if (data.onChange) {
-      data.onChange(id, nodeData);
+  // Format the loop description for display
+  const getLoopDescription = () => {
+    if (safeData.type === 'foreach') {
+      return `For each ${safeData.data.varName} in ${safeData.data.collection || '?'}`;
+    } else if (safeData.type === 'while') {
+      return `While ${safeData.data.condition || '?'}`;
+    } else if (safeData.type === 'times') {
+      return `${safeData.data.times || '?'} times`;
     }
-  }, [id, nodeData, data]);
-
-  // Get the loop summary for the footer
-  const getLoopSummary = () => {
-    if (nodeData.type === "foreach") {
-      return `ForEach ${nodeData.data.varName || "item"} in ${nodeData.data.collection || "..."}`;
-    } else if (nodeData.type === "while") {
-      return `While ${nodeData.data.condition || "..."}`;
-    } else if (nodeData.type === "times") {
-      return `Repeat ${nodeData.data.times || "X"} times`;
-    }
-    return "Loop";
+    return 'Loop';
   };
 
-  const handleVariableSelect = (variablePath: string) => {
-    if (!currentEditField) return;
-    
-    const { field, subField } = currentEditField;
-    
-    // Handle variable selection based on field
-    // This implementation is simplified as we've moved config to the sidebar
+  // Show limit/offset info if enabled
+  const getLimitOffsetText = () => {
+    if (safeData.type === 'foreach' && safeData.data.limitOffset?.enabled) {
+      return `Limit: ${safeData.data.limitOffset.limit} / Offset: ${safeData.data.limitOffset.offset}`;
+    }
+    return null;
   };
 
+  // Simple node version for the flow visual without all settings controls
   return (
     <>
       <Card
-        className={`border-2 ${
-          selected ? "border-blue-500" : "border-border"
-        } shadow-md bg-background`}
-        style={{ width: NODE_WIDTH }}
+        className={`border-2 ${selected ? "border-blue-500" : "border-border"} shadow-md bg-background`}
+        style={{ width: 220 }}
       >
         <CardHeader className="p-3 flex flex-row items-center justify-between space-y-0">
           <div className="flex items-center">
-            <RepeatIcon className="w-4 h-4 mr-2 text-primary" />
-            <CardTitle className="text-sm font-medium">{data.label || "Loop"}</CardTitle>
+            <RepeatIcon className="w-4 h-4 mr-2 text-purple-500" />
+            <CardTitle className="text-sm font-medium">
+              {safeData.label}
+            </CardTitle>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>Edit</DropdownMenuItem>
-              <DropdownMenuItem>Skip</DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </CardHeader>
-
-        <CardContent className="px-3 py-2">
-          <p className="text-sm text-center mb-2">Configure this node in the settings panel</p>
-          <p className="text-xs text-muted-foreground text-center mb-2">
-            Click the node and use the right sidebar to set up the loop
-          </p>
-        </CardContent>
-
-        <CardFooter className="px-3 py-2 border-t flex justify-between items-center text-xs text-muted-foreground">
-          <div>Loop</div>
-          <div className="max-w-[200px] truncate">
-            {getLoopSummary()}
+        
+        <CardContent className="p-3 text-xs">
+          <div className="text-muted-foreground mb-1">
+            <Badge variant="outline" className="bg-purple-500/10 text-purple-500">
+              {safeData.type}
+            </Badge>
           </div>
-        </CardFooter>
+          <div className="font-mono text-xs">
+            {getLoopDescription()}
+          </div>
+          {getLimitOffsetText() && (
+            <div className="mt-1 text-xs text-muted-foreground">
+              {getLimitOffsetText()}
+            </div>
+          )}
+          <div className="mt-1 text-xs text-muted-foreground">
+            Max iterations: {safeData.maxIterations}
+          </div>
+        </CardContent>
       </Card>
 
       {/* Input handle */}
@@ -148,33 +116,24 @@ export default function LoopNode({ id, data, isConnectable, selected }: NodeProp
         className="w-2 h-2 rounded-full border-2 bg-background border-primary"
       />
 
-      {/* Loop output handle - elements go through this in each iteration */}
+      {/* Loop body output handle */}
       <Handle
         type="source"
         position={Position.Right}
-        id="loop"
+        id="body"
         isConnectable={isConnectable}
-        className="top-1/3 w-2 h-2 rounded-full border-2 bg-background border-primary"
+        className="w-2 h-2 rounded-full border-2 bg-background border-purple-500"
         style={{ top: '40%' }}
       />
 
-      {/* Exit output handle - flow continues from here after loop completes */}
+      {/* Loop complete output handle */}
       <Handle
         type="source"
         position={Position.Right}
-        id="exit"
+        id="complete"
         isConnectable={isConnectable}
-        className="top-2/3 w-2 h-2 rounded-full border-2 bg-background border-primary"
+        className="w-2 h-2 rounded-full border-2 bg-background border-primary"
         style={{ top: '60%' }}
-      />
-
-      {/* Variable selection dialog */}
-      <VariableSelectDialog
-        open={variableDialogOpen}
-        onOpenChange={setVariableDialogOpen}
-        onSelect={handleVariableSelect}
-        nodes={data.nodes || []}
-        currentNodeId={id}
       />
     </>
   );
