@@ -216,8 +216,10 @@ export default function Connectors() {
         throw new Error(data.message || "Failed to connect");
       }
       
-      // Check if OAuth2 authorization is required
-      if (data.authRequired && data.authType === 'oauth2') {
+      // Check if OAuth2 authorization is required - specifically for auth code flow
+      if (data.authRequired && data.authType === 'oauth2' && 
+          connector.auth && connector.auth.oauth2Type === 'authorization_code') {
+        
         // Store the state parameter and associate it with this connector ID
         if (data.state) {
           setAuthStates(prev => ({ ...prev, [data.state]: connectorId }));
@@ -353,8 +355,9 @@ export default function Connectors() {
         return;
       }
       
-      // For non-OAuth2 or client credentials flow, we can directly check the result
-      if (data.success || data.message) {
+      // For Basic Auth, OAuth2 Client Credentials, or other non-window flows
+      // We can directly check the result
+      if (data.success) {
         // If we get here, the connection was successful
         setConnectionResults(prev => ({ ...prev, [connectorId]: true }));
         
@@ -377,7 +380,7 @@ export default function Connectors() {
           try {
             const connectorRef = doc(db, "users", user.uid, "connectors", connectorId);
             updateDoc(connectorRef, {
-              connectionStatus: 'connected',
+              connectionStatus: 'connected', 
               updatedAt: new Date()
             }).catch(err => console.error('Failed to update connector status:', err));
           } catch (err) {
@@ -385,12 +388,20 @@ export default function Connectors() {
           }
         }
         
+        // Determine auth type for message
+        let authTypeMsg = "";
+        if (connector.authType === "basic") {
+          authTypeMsg = " using Basic Auth";
+        } else if (connector.authType === "oauth2" && connector.auth?.oauth2Type === "client_credentials") {
+          authTypeMsg = " using OAuth Client Credentials";
+        }
+        
         toast({
           title: "Connection successful",
-          description: data.message || `Successfully connected to ${connector.name}`,
+          description: `Successfully connected to ${connector.name}${authTypeMsg}`,
         });
       } else {
-        throw new Error("Unknown response from server");
+        throw new Error(data.message || "Unknown response from server");
       }
     } catch (error: any) {
       // If there was an error, the connection failed
