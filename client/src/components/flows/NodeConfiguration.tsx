@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { VariableSelector } from "./VariableSelector";
+import { StopJobConfig } from "./nodes/StopJobConfig";
 
 interface NodeConfigurationProps {
   node: any;
@@ -191,7 +192,11 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
       case 'delay':
         return renderDelayConfig();
       case 'stopJob':
-        return renderStopJobConfig();
+        return <StopJobConfig 
+          nodeData={nodeData} 
+          handleChange={handleChange} 
+          handleOpenVariableSelector={handleOpenVariableSelector} 
+        />;
       default:
         return <p>No configuration available for this node type.</p>;
     }
