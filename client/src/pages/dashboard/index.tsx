@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { doc, collection, getDocs, query, where, updateDoc, deleteDoc } from "firebase/firestore";
+import { doc, collection, getDocs, query, where, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -263,6 +263,15 @@ export default function Dashboard() {
           ...doc.data()
         }));
         setConnectors(connectorsData);
+        
+        // Fetch folders
+        const foldersQuery = query(collection(db, "users", user.uid, "folders"));
+        const foldersSnapshot = await getDocs(foldersQuery);
+        const foldersData = foldersSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setFolders(foldersData);
       } catch (error: any) {
         toast({
           title: "Error loading data",
@@ -309,66 +318,144 @@ export default function Dashboard() {
           </TabsList>
           
           <TabsContent value="flows">
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-medium">Flows</h2>
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1"
+                  onClick={() => openFolderDialog()}
+                >
+                  <FolderIcon className="h-4 w-4" />
+                  New Folder
+                </Button>
               </div>
-            ) : flows.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {flows.map(flow => (
-                  <Card key={flow.id} className="overflow-hidden">
-                    <CardHeader className="pb-2">
-                      <CardTitle>{flow.name}</CardTitle>
-                      <CardDescription className="flex items-center">
-                        Last modified: {new Date(flow.updatedAt?.toDate()).toLocaleDateString()}
-                        {flow.active && (
-                          <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-100">
-                            Active
-                          </Badge>
-                        )}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {flow.description || "No description provided"}
-                      </p>
-                    </CardContent>
-                    <CardFooter className="flex justify-between">
-                      <Link href={`/flow-builder/${flow.id}`}>
-                        <Button variant="ghost" size="sm" className="gap-1">
-                          Edit <ArrowRightIcon className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="icon">
-                          <PlayIcon className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => openFlowSettings(flow)}
-                        >
-                          <SettingsIcon className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card className="text-center p-6">
-                <div className="mb-4">
-                  <svg className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
+            </div>
+            
+            {/* Folders section */}
+            {folders.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Folders</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {folders.map(folder => (
+                    <Card key={folder.id} className="overflow-hidden">
+                      <CardHeader className="py-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <FolderIcon className="h-5 w-5 text-primary" />
+                            <CardTitle className="text-base">{folder.name}</CardTitle>
+                          </div>
+                          <div className="flex space-x-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => openFolderDialog(folder)}
+                            >
+                              <PencilIcon className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <TrashIcon className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Folder</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will delete the folder. Items in the folder will not be deleted.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDeleteFolder(folder.id)}
+                                    className="bg-destructive text-destructive-foreground"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="py-2">
+                        <p className="text-sm text-muted-foreground">
+                          {(folder.items?.length || 0)} items
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-                <h3 className="text-lg font-medium mb-2">No flows yet</h3>
-                <p className="text-muted-foreground mb-4">Create your first automation flow to get started</p>
-                <Link href="/flow-builder">
-                  <Button>Create Flow</Button>
-                </Link>
-              </Card>
+              </div>
             )}
+            
+            {/* Flows section */}
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-2">All Flows</h3>
+              {loading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : flows.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {flows.map(flow => (
+                    <Card key={flow.id} className="overflow-hidden">
+                      <CardHeader className="pb-2">
+                        <CardTitle>{flow.name}</CardTitle>
+                        <CardDescription className="flex items-center">
+                          Last modified: {new Date(flow.updatedAt?.toDate()).toLocaleDateString()}
+                          {flow.active && (
+                            <Badge variant="outline" className="ml-2 bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-100">
+                              Active
+                            </Badge>
+                          )}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {flow.description || "No description provided"}
+                        </p>
+                      </CardContent>
+                      <CardFooter className="flex justify-between">
+                        <Link href={`/flow-builder/${flow.id}`}>
+                          <Button variant="ghost" size="sm" className="gap-1">
+                            Edit <ArrowRightIcon className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="icon">
+                            <PlayIcon className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => openFlowSettings(flow)}
+                          >
+                            <SettingsIcon className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card className="text-center p-6">
+                  <div className="mb-4">
+                    <svg className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium mb-2">No flows yet</h3>
+                  <p className="text-muted-foreground mb-4">Create your first automation flow to get started</p>
+                  <Link href="/flow-builder">
+                    <Button>Create Flow</Button>
+                  </Link>
+                </Card>
+              )}
+            </div>
           </TabsContent>
           
           <TabsContent value="connectors">
@@ -419,6 +506,51 @@ export default function Dashboard() {
           </TabsContent>
         </Tabs>
       </div>
+      
+      {/* Folder Dialog */}
+      <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingFolder ? "Edit Folder" : "Create Folder"}</DialogTitle>
+            <DialogDescription>
+              {editingFolder 
+                ? "Update folder details" 
+                : "Create a new folder to organize your flows"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleCreateFolder}>
+            <div className="space-y-4 my-4">
+              <div className="space-y-2">
+                <Label htmlFor="folder-name">Folder Name</Label>
+                <Input 
+                  id="folder-name" 
+                  value={folderName} 
+                  onChange={(e) => setFolderName(e.target.value)}
+                  placeholder="Enter folder name"
+                  required
+                />
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button 
+                type="submit" 
+                disabled={isCreatingFolder}
+              >
+                {isCreatingFolder ? (
+                  <>
+                    <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                    {editingFolder ? "Updating..." : "Creating..."}
+                  </>
+                ) : (
+                  editingFolder ? "Update Folder" : "Create Folder"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
       
       {/* Flow Settings Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
