@@ -207,9 +207,9 @@ export default function EditRowPage() {
   
   // Handle form submission
   const onSubmit = (values: any) => {
-    // Wrap the form values in a data object to match the expected server structure
-    updateRowMutation.mutate({ data: values });
+    // Form values ARE the data object - don't nest it further
     console.log("Submitting updated row data:", values);
+    updateRowMutation.mutate({ data: values });
   };
   
   // Handle row deletion
