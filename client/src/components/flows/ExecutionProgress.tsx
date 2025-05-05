@@ -14,6 +14,9 @@ interface ExecutionProgressProps {
 
 type ExecutionStatus = 'idle' | 'running' | 'completed' | 'failed';
 
+// Local storage key for execution progress state
+const EXECUTION_PROGRESS_MINIMIZED_KEY = 'runai_execution_progress_minimized';
+
 export function ExecutionProgress({ 
   flowId, 
   executionId,
@@ -23,7 +26,10 @@ export function ExecutionProgress({
   const [progress, setProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState('Ready to execute');
   const [logs, setLogs] = useState<LogMessage[]>([]);
-  const [minimized, setMinimized] = useState(false);
+  const [minimized, setMinimized] = useState(() => {
+    const savedState = localStorage.getItem(EXECUTION_PROGRESS_MINIMIZED_KEY);
+    return savedState ? JSON.parse(savedState) : false;
+  });
 
   // Connect to WebSocket for real-time updates
   const { lastMessage, isConnected } = useWebSocket({
@@ -31,6 +37,11 @@ export function ExecutionProgress({
       console.log('WebSocket message received:', data);
     }
   });
+
+  // Save minimized state to localStorage
+  useEffect(() => {
+    localStorage.setItem(EXECUTION_PROGRESS_MINIMIZED_KEY, JSON.stringify(minimized));
+  }, [minimized]);
 
   const toggleMinimize = () => {
     setMinimized(!minimized);
@@ -128,7 +139,7 @@ export function ExecutionProgress({
   };
 
   return (
-    <div className={`rounded-md border transition-all duration-200 ${minimized ? 'p-2' : 'p-4 space-y-3'} bg-white dark:bg-black`}>
+    <div className={`rounded-md border transition-all duration-200 ${minimized ? 'p-2' : 'p-4 space-y-3'} bg-white dark:bg-black max-w-[calc(100%-60px)]`}>
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium">Execution Progress</h3>

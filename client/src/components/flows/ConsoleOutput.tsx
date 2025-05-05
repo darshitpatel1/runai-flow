@@ -19,10 +19,16 @@ interface ConsoleOutputProps {
   onRunTest: () => void;
 }
 
+// Local storage key for console state
+const CONSOLE_COLLAPSED_KEY = 'runai_console_collapsed';
+
 export function ConsoleOutput({ logs, isRunning, onRunTest }: ConsoleOutputProps) {
   const [autoScroll, setAutoScroll] = useState(true);
   const [logFilter, setLogFilter] = useState("all");
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    const savedState = localStorage.getItem(CONSOLE_COLLAPSED_KEY);
+    return savedState ? JSON.parse(savedState) : false;
+  });
   const consoleRef = useRef<HTMLDivElement>(null);
   
   // Auto-scroll logic
@@ -31,6 +37,11 @@ export function ConsoleOutput({ logs, isRunning, onRunTest }: ConsoleOutputProps
       consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
     }
   }, [logs, autoScroll]);
+  
+  // Save collapsed state to localStorage
+  useEffect(() => {
+    localStorage.setItem(CONSOLE_COLLAPSED_KEY, JSON.stringify(collapsed));
+  }, [collapsed]);
   
   // Filter logs based on selected filter
   const filteredLogs = logs.filter(log => {
