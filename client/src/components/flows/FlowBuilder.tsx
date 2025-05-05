@@ -13,7 +13,8 @@ import ReactFlow, {
   NodeChange,
   useReactFlow,
   getConnectedEdges,
-  Node
+  Node,
+  ConnectionLineType
 } from 'reactflow';
 
 // Define a custom type for position changes since not all NodeChange types have an ID
@@ -284,7 +285,12 @@ export function FlowBuilder({
   }, [edges, reportEdgesChange]);
   
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: '#4f46e5', strokeWidth: 2 } }, eds)),
+    (params: Connection) => setEdges((eds) => addEdge({ 
+      ...params, 
+      type: 'smoothstep',
+      animated: true, 
+      style: { stroke: '#4f46e5', strokeWidth: 2 } 
+    }, eds)),
     [setEdges]
   );
   
@@ -433,6 +439,7 @@ export function FlowBuilder({
                         sourceHandle: sourceHandle,
                         target: newNodeId,
                         targetHandle: null, // Auto-select the default target handle
+                        type: 'smoothstep', // Match the type used in defaultEdgeOptions
                         animated: true,
                         style: { stroke: '#4f46e5', strokeWidth: 2 }
                       };
@@ -1163,7 +1170,9 @@ export function FlowBuilder({
                 nodesDraggable={true}
                 elementsSelectable={true}
                 preventScrolling={false}
+                connectionLineType={ConnectionLineType.SmoothStep}
                 defaultEdgeOptions={{ 
+                  type: 'smoothstep',
                   animated: true,
                   style: { stroke: '#4f46e5', strokeWidth: 2 }
                 }}
