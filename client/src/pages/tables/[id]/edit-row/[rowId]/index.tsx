@@ -119,7 +119,7 @@ export default function EditRowPage() {
         title: "Row updated",
         description: "The row has been updated successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/tables', tableId, 'rows'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/tables/${tableId}/rows`] });
       navigate(`/tables/${tableId}`);
     },
     onError: () => {
@@ -143,7 +143,7 @@ export default function EditRowPage() {
         title: "Row deleted",
         description: "The row has been deleted successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/tables', tableId, 'rows'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/tables/${tableId}/rows`] });
       navigate(`/tables/${tableId}`);
     },
     onError: () => {
@@ -207,7 +207,9 @@ export default function EditRowPage() {
   
   // Handle form submission
   const onSubmit = (values: any) => {
-    updateRowMutation.mutate(values);
+    // Wrap the form values in a data object to match the expected server structure
+    updateRowMutation.mutate({ data: values });
+    console.log("Submitting updated row data:", values);
   };
   
   // Handle row deletion
