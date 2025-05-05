@@ -45,6 +45,11 @@ const LogNode = () => null;
 const DelayNode = () => null;
 import { useToast } from "@/hooks/use-toast";
 
+// Helper function to generate unique IDs
+function generateId() {
+  return Math.random().toString(36).substring(2, 10);
+}
+
 // Define custom node types
 const nodeTypes = {
   httpRequest: HttpRequestNode,
@@ -358,9 +363,12 @@ export function FlowBuilder({
         };
       } else if (nodeType === 'setVariable') {
         nodeSpecificData = {
-          variableName: '',
-          variableValue: '',
-          variableType: 'string',
+          variables: [{
+            id: generateId(),
+            name: '',
+            value: '',
+            type: 'string'
+          }]
         };
       }
       

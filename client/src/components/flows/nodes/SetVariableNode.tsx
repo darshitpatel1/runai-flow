@@ -52,7 +52,14 @@ function generateId() {
 }
 
 export default function SetVariableNode({ id, data, isConnectable, selected }: NodeProps) {
-  const [nodeData, setNodeData] = useState<SetVariableNodeData>(data);
+  // Initialize with safe defaults to prevent undefined errors
+  const defaultData: SetVariableNodeData = {
+    label: data?.label || 'Set Variables',
+    variables: Array.isArray(data?.variables) ? data.variables : [],
+    description: data?.description
+  };
+  
+  const [nodeData, setNodeData] = useState<SetVariableNodeData>(defaultData);
   const [variableDialogOpen, setVariableDialogOpen] = useState(false);
   const [currentEditField, setCurrentEditField] = useState<{
     variableId: string;
@@ -60,7 +67,7 @@ export default function SetVariableNode({ id, data, isConnectable, selected }: N
 
   // Update parent data when nodeData changes
   useEffect(() => {
-    if (data.onChange) {
+    if (data?.onChange && typeof data.onChange === 'function') {
       data.onChange(id, nodeData);
     }
   }, [id, nodeData, data]);
@@ -140,7 +147,7 @@ export default function SetVariableNode({ id, data, isConnectable, selected }: N
               V
             </div>
             <CardTitle className="text-sm font-medium">
-              {data.label || "Set Variables"}
+              {nodeData.label || "Set Variables"}
             </CardTitle>
           </div>
           <DropdownMenu>
