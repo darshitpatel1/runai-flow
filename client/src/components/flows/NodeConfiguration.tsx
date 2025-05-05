@@ -532,24 +532,24 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
             <Button
               type="button"
               variant={isForEachLoop ? "default" : "outline"}
-              className={`justify-start ${isForEachLoop ? 'bg-green-500 hover:bg-green-600' : ''}`}
+              className={`justify-start text-xs whitespace-normal h-auto py-2 ${isForEachLoop ? 'bg-green-500 hover:bg-green-600' : ''}`}
               onClick={() => handleChange('loopType', 'forEach')}
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              For Each Item
+              <span>For Each Item</span>
             </Button>
             <Button
               type="button"
               variant={isWhileLoop ? "default" : "outline"}
-              className={`justify-start ${isWhileLoop ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
+              className={`justify-start text-xs whitespace-normal h-auto py-2 ${isWhileLoop ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
               onClick={() => handleChange('loopType', 'while')}
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
               </svg>
-              While Condition
+              <span>While Condition</span>
             </Button>
           </div>
         </div>
@@ -577,13 +577,21 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
               Enter the path to the array you want to iterate
             </p>
             
-            <div className="mt-3 p-3 bg-green-50 dark:bg-green-950 dark:border dark:border-green-800 rounded-md">
+            <div className="mt-3 p-3 bg-green-50 dark:bg-green-950 dark:border dark:border-green-800 rounded-md overflow-hidden">
               <h4 className="text-xs font-medium mb-1">Common Array Paths from HTTP Responses:</h4>
               <ul className="text-xs space-y-1 pl-4 list-disc">
-                <li><code>{"{{step1.body.data}}"}</code> - For APIs that return <code>{"{data: [...]}"}</code></li>
-                <li><code>{"{{step1.body.results}}"}</code> - For APIs that return <code>{"{results: [...]}"}</code></li>
-                <li><code>{"{{step1.body.items}}"}</code> - For APIs that return <code>{"{items: [...]}"}</code></li>
-                <li><code>{"{{step1.body}}"}</code> - For APIs that return arrays directly</li>
+                <li className="break-words">
+                  <code className="break-all">{"{{step1.body.data}}"}</code> - For APIs that return <code>{"{data: [...]}"}</code>
+                </li>
+                <li className="break-words">
+                  <code className="break-all">{"{{step1.body.results}}"}</code> - For APIs that return <code>{"{results: [...]}"}</code>
+                </li>
+                <li className="break-words">
+                  <code className="break-all">{"{{step1.body.items}}"}</code> - For APIs that return <code>{"{items: [...]}"}</code>
+                </li>
+                <li className="break-words">
+                  <code className="break-all">{"{{step1.body}}"}</code> - For APIs that return arrays directly
+                </li>
               </ul>
               <div className="mt-2 text-xs">
                 <span className="font-medium">Tip:</span> Test your HTTP requests first to see the response structure
@@ -606,14 +614,14 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
               Process multiple items at once (0 = all items, 1 = one by one)
             </p>
             
-            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950 dark:border dark:border-blue-800 rounded-md">
+            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950 dark:border dark:border-blue-800 rounded-md overflow-hidden">
               <h4 className="text-xs font-medium mb-1">Batch Processing Guide:</h4>
               <ul className="text-xs space-y-1 pl-4 list-disc">
-                <li><strong>0</strong>: Process all items at once in a single iteration</li>
-                <li><strong>1</strong>: Process one item at a time (traditional loop)</li>
-                <li><strong>N</strong>: Process N items in each iteration, useful for rate limiting</li>
+                <li className="break-words"><strong>0</strong>: Process all items at once in a single iteration</li>
+                <li className="break-words"><strong>1</strong>: Process one item at a time (traditional loop)</li>
+                <li className="break-words"><strong>N</strong>: Process N items in each iteration, useful for rate limiting</li>
               </ul>
-              <div className="mt-2 text-xs">
+              <div className="mt-2 text-xs break-words">
                 <span className="font-medium">Example:</span> With batch size 10 and 100 items, 
                 the loop will run 10 times with 10 items per batch
               </div>
@@ -644,15 +652,23 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
               Enter the condition that must be true for the loop to continue
             </p>
             
-            <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950 dark:border dark:border-amber-800 rounded-md">
+            <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950 dark:border dark:border-amber-800 rounded-md overflow-hidden">
               <h4 className="text-xs font-medium mb-1">Condition Examples:</h4>
               <ul className="text-xs space-y-1 pl-4 list-disc">
-                <li><code>{"{{vars.counter}} < 10"}</code> - Repeat until counter reaches 10</li>
-                <li><code>{"{{vars.hasMorePages}} === true"}</code> - Continue while a flag is true</li>
-                <li><code>{"{{vars.items.length}} > 0"}</code> - Process while items remain</li>
-                <li><code>{"{{loop.iteration}} < 5"}</code> - Maximum 5 iterations</li>
+                <li className="break-words">
+                  <code className="break-all">{"{{vars.counter}} < 10"}</code> - Repeat until counter reaches 10
+                </li>
+                <li className="break-words">
+                  <code className="break-all">{"{{vars.hasMorePages}} === true"}</code> - Continue while a flag is true
+                </li>
+                <li className="break-words">
+                  <code className="break-all">{"{{vars.items.length}} > 0"}</code> - Process while items remain
+                </li>
+                <li className="break-words">
+                  <code className="break-all">{"{{loop.iteration}} < 5"}</code> - Maximum 5 iterations
+                </li>
               </ul>
-              <div className="mt-2 text-xs">
+              <div className="mt-2 text-xs break-words">
                 <span className="font-medium">Tip:</span> Set up a counter variable before the loop,
                 and increment it inside the loop to control iterations
               </div>
@@ -660,23 +676,23 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           </div>
         )}
         
-        <div className="bg-muted/50 rounded-lg p-3">
+        <div className="bg-muted/50 rounded-lg p-3 overflow-hidden">
           <h3 className="text-sm font-medium mb-2">Loop Variable Access</h3>
           <div className="text-xs text-muted-foreground space-y-1">
             <p>Inside the loop, you can access:</p>
             {isForEachLoop ? (
               <ul className="list-disc pl-4 space-y-1">
-                <li><code>{"{{loop.item}}"}</code> - Current item in the array</li>
-                <li><code>{"{{loop.index}}"}</code> - Current index (0-based)</li>
-                <li><code>{"{{loop.number}}"}</code> - Current iteration (1-based)</li>
+                <li className="break-words"><code className="break-all">{"{{loop.item}}"}</code> - Current item in the array</li>
+                <li className="break-words"><code className="break-all">{"{{loop.index}}"}</code> - Current index (0-based)</li>
+                <li className="break-words"><code className="break-all">{"{{loop.number}}"}</code> - Current iteration (1-based)</li>
                 {nodeData.batchSize && nodeData.batchSize > 0 && (
-                  <li><code>{"{{loop.batch}}"}</code> - Current batch of items</li>
+                  <li className="break-words"><code className="break-all">{"{{loop.batch}}"}</code> - Current batch of items</li>
                 )}
               </ul>
             ) : (
               <ul className="list-disc pl-4 space-y-1">
-                <li><code>{"{{loop.iteration}}"}</code> - Current iteration count</li>
-                <li><code>{"{{loop.startTime}}"}</code> - When the loop started</li>
+                <li className="break-words"><code className="break-all">{"{{loop.iteration}}"}</code> - Current iteration count</li>
+                <li className="break-words"><code className="break-all">{"{{loop.startTime}}"}</code> - When the loop started</li>
               </ul>
             )}
           </div>
