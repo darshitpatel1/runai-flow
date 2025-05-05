@@ -49,11 +49,20 @@ export default function TableDetailPage() {
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Get table data
-  const { data: table, isLoading: isTableLoading, error: tableError } = useQuery({
-    queryKey: ['/api/tables', tableId],
-    enabled: !!tableId && !!user,
+  // Get all tables (we'll filter to find the specific one)
+  const { data: tables, isLoading: isTableLoading, error: tableError } = useQuery({
+    queryKey: ['/api/tables'],
+    enabled: !!user,
   });
+  
+  // Find the specific table by ID
+  const table = useMemo(() => {
+    if (!tables || !Array.isArray(tables) || !tableId) return null;
+    console.log("Finding table with ID:", tableId, "from tables:", tables);
+    const foundTable = tables.find(t => t.id === tableId) || null;
+    console.log("Found table:", foundTable);
+    return foundTable;
+  }, [tables, tableId]);
   
   // Get table rows
   const { data: tableRows, isLoading: isRowsLoading, error: rowsError } = useQuery({
