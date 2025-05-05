@@ -303,17 +303,21 @@ export function FlowBuilder({
         return;
       }
       
-      // Get the raw position from mouse coordinates
+      // Get drop position, adjusted for scroll position and zoom level
       const position = reactFlowInstance.screenToFlowPosition({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       });
+      
+      console.log('Drop position before snapping:', position);
       
       // Snap the position to our grid
       const snappedPosition = {
         x: Math.round(position.x / gridSize) * gridSize,
         y: Math.round(position.y / gridSize) * gridSize
       };
+      
+      console.log('Snapped position:', snappedPosition);
       
       // Create a unique ID for the node
       const newNodeId = `${nodeType}_${Date.now()}`;
@@ -379,11 +383,16 @@ export function FlowBuilder({
         position: snappedPosition,
         // Use positionAbsolute to prevent the node from moving after being placed
         positionAbsolute: snappedPosition,
+        // Ensure node is not in dragging state
+        dragging: false,
+        selected: false, // Start unselected
         data: { 
           ...defaultData,
           ...nodeSpecificData,
           // Add all existing nodes reference for variable access
           nodes: nodes,
+          // Add onChange handler
+          onChange: (id: string, newData: any) => updateNodeData(id, newData)
         },
       };
       

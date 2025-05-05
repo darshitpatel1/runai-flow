@@ -116,21 +116,26 @@ export function NodePanel() {
     event.dataTransfer.setData('application/reactflow-data', JSON.stringify(nodeData));
     event.dataTransfer.effectAllowed = 'move';
     
-    // Add an invisible drag image to improve dragging UX
-    const dragImage = document.createElement('div');
-    dragImage.style.width = '1px';
-    dragImage.style.height = '1px';
-    dragImage.style.position = 'absolute';
-    dragImage.style.top = '-1px';
-    dragImage.style.left = '-1px';
-    document.body.appendChild(dragImage);
+    // Use the dragging element itself as the drag image
+    // This gives better visual feedback to the user
+    const nodeElement = event.currentTarget;
     
-    event.dataTransfer.setDragImage(dragImage, 0, 0);
+    // Clone the node element for the drag image
+    const clone = nodeElement.cloneNode(true) as HTMLElement;
+    clone.style.width = '220px'; // Match width of nodes in flow
+    clone.style.position = 'absolute';
+    clone.style.top = '-1000px';
+    clone.style.left = '-1000px';
+    clone.style.opacity = '0.7';
+    document.body.appendChild(clone);
     
-    // Clean up the drag image element after dragging
+    // Set the drag image to the clone
+    event.dataTransfer.setDragImage(clone, 110, 40); // Center the drag image
+    
+    // Remove the clone after dragging starts
     setTimeout(() => {
-      document.body.removeChild(dragImage);
-    }, 0);
+      document.body.removeChild(clone);
+    }, 100);
   };
   
   const toggleCollapse = () => {
