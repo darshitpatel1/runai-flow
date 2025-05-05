@@ -18,6 +18,7 @@ import TableEditPage from "@/pages/tables/[id]/edit";
 import AddRowPage from "@/pages/tables/[id]/add-row";
 import EditRowPage from "@/pages/tables/[id]/edit-row/[rowId]";
 import SettingsPage from "@/pages/settings";
+import DocsPage from "@/pages/docs";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -35,6 +36,7 @@ function Router() {
       <Route path="/tables/:id/edit-row/:rowId" component={EditRowPage} />
       <Route path="/tables/:id/edit" component={TableEditPage} />
       <Route path="/tables/:id" component={TableDetailPage} />
+      <Route path="/docs" component={DocsPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
