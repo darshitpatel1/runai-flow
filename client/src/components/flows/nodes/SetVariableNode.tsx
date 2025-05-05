@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Handle, Position, useReactFlow } from "reactflow";
 import { NodeContextMenu } from "../NodeContextMenu";
+import { Code2Icon } from "lucide-react";
 
 interface SetVariableNodeProps {
   id: string;
@@ -8,6 +9,8 @@ interface SetVariableNodeProps {
     label: string;
     variableKey?: string;
     variableValue?: string;
+    useTransform?: boolean;
+    transformScript?: string;
     selected?: boolean;
     skipped?: boolean;
     skipEnabled?: boolean;
@@ -93,6 +96,12 @@ export const SetVariableNode = memo(({ id, data, selected }: SetVariableNodeProp
           <span className="px-2 py-0.5 bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-100 rounded-full">
             Variable
           </span>
+          {data.useTransform && (
+            <span className="px-2 py-0.5 flex items-center gap-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100 rounded-full">
+              <Code2Icon className="h-3 w-3" />
+              Transform
+            </span>
+          )}
         </div>
         
         {/* Input Handle */}

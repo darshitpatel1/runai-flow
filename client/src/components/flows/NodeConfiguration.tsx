@@ -447,23 +447,79 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           />
         </div>
         
-        <div>
-          <Label className="block text-sm font-medium mb-1">Variable Value</Label>
-          <Textarea
-            value={nodeData.variableValue || ''}
-            onChange={(e) => handleChange('variableValue', e.target.value)}
-            placeholder="{{step1.body.data}} or static value"
-            className="font-mono text-sm h-20"
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            You can use static values or dynamic values from previous steps
-          </p>
-        </div>
+        <Tabs defaultValue={nodeData.useTransform ? "transform" : "simple"} className="w-full mt-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger 
+              value="simple"
+              onClick={() => handleChange('useTransform', false)}
+            >
+              Simple Value
+            </TabsTrigger>
+            <TabsTrigger 
+              value="transform"
+              onClick={() => handleChange('useTransform', true)}
+            >
+              Transform
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="simple" className="space-y-4 mt-2">
+            <div>
+              <Label className="block text-sm font-medium mb-1">Variable Value</Label>
+              <Textarea
+                value={nodeData.variableValue || ''}
+                onChange={(e) => handleChange('variableValue', e.target.value)}
+                placeholder="{{step1.body.data}} or static value"
+                className="font-mono text-sm h-20"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                You can use static values or dynamic values from previous steps
+              </p>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="transform" className="space-y-4 mt-2">
+            <div>
+              <Label className="block text-sm font-medium mb-1">Source Variable Path</Label>
+              <Input
+                value={nodeData.variableValue || ''}
+                onChange={(e) => handleChange('variableValue', e.target.value)}
+                placeholder="step1.body.data"
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Reference the source data to transform
+              </p>
+            </div>
+            
+            <div>
+              <Label className="block text-sm font-medium mb-1">Transform Script</Label>
+              <Textarea
+                value={nodeData.transformScript || ''}
+                onChange={(e) => handleChange('transformScript', e.target.value)}
+                placeholder="// Transform the source data with JavaScript
+// Example: Filter an array
+const sourceData = source;
+if (Array.isArray(sourceData)) {
+  return sourceData.filter(item => item.active === true);
+}
+// Or calculate a value
+return sourceData * 2;"
+                className="font-mono text-sm h-40"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Write JavaScript code to transform the source data. 
+                The source data is available as <code>source</code>.
+                Return the transformed value.
+              </p>
+            </div>
+          </TabsContent>
+        </Tabs>
         
         <div className="bg-muted/50 rounded-lg p-3">
           <h3 className="text-sm font-medium mb-2">Access this variable</h3>
           <p className="text-xs text-muted-foreground">
-            In later steps, use: <code>{"{{vars.VARIABLE_NAME}}"}</code>
+            In later steps, use: <code>{"{{vars." + (nodeData.variableKey || "VARIABLE_NAME") + "}}"}</code>
           </p>
         </div>
       </div>

@@ -538,20 +538,103 @@ export function FlowBuilder({
         };
       }
     } else if (node.type === 'setVariable') {
-      // Simply display the variable information
-      const variableLog = {
-        timestamp: new Date(),
-        type: "info",
-        nodeId: node.id,
-        message: `Variable ${nodeData.variableKey} would be set to: ${nodeData.variableValue}`
-      };
-      setLogs((logs) => [...logs, variableLog]);
-      
-      responseData = {
-        variableKey: nodeData.variableKey,
-        variableValue: nodeData.variableValue,
-        type: "variable"
-      };
+      // Handle different variable setting methods
+      if (nodeData.useTransform && nodeData.transformScript) {
+        // Apply transformation with user-provided script
+        const sourceVarPath = nodeData.variableValue || '';
+        
+        const transformationLog = {
+          timestamp: new Date(),
+          type: "info",
+          nodeId: node.id,
+          message: `Applying transformation to source: ${sourceVarPath}`
+        };
+        setLogs((logs) => [...logs, transformationLog]);
+        
+        // Mock source value - in real execution this would be fetched from previous steps
+        const mockSourceValue = {
+          items: [
+            { id: 1, name: "Item 1", active: true, price: 49.99 },
+            { id: 2, name: "Item 2", active: false, price: 29.99 },
+            { id: 3, name: "Item 3", active: true, price: 39.99 }
+          ],
+          meta: {
+            total: 3,
+            page: 1,
+            timestamp: new Date().toISOString()
+          }
+        };
+        
+        try {
+          // Create a function from the transform script
+          const transformFn = new Function('source', `
+            try {
+              ${nodeData.transformScript}
+            } catch (error) {
+              console.error("Transform error:", error);
+              return null;
+            }
+          `);
+          
+          // Execute transformation
+          const transformedValue = transformFn(mockSourceValue);
+          
+          const successLog = {
+            timestamp: new Date(),
+            type: "success",
+            nodeId: node.id,
+            message: `Transformation completed successfully`
+          };
+          setLogs((logs) => [...logs, successLog]);
+          
+          const resultLog = {
+            timestamp: new Date(),
+            type: "info",
+            nodeId: node.id,
+            message: `Variable ${nodeData.variableKey} set to transformed value: ${JSON.stringify(transformedValue).substring(0, 100)}${JSON.stringify(transformedValue).length > 100 ? '...' : ''}`
+          };
+          setLogs((logs) => [...logs, resultLog]);
+          
+          responseData = {
+            variableKey: nodeData.variableKey,
+            variableValue: transformedValue,
+            originalValue: mockSourceValue,
+            transformScript: nodeData.transformScript,
+            useTransform: true,
+            type: "variable"
+          };
+        } catch (error: any) {
+          const errorLog = {
+            timestamp: new Date(),
+            type: "error",
+            nodeId: node.id,
+            message: `Transformation error: ${error.message}`
+          };
+          setLogs((logs) => [...logs, errorLog]);
+          
+          responseData = {
+            variableKey: nodeData.variableKey,
+            error: error.message,
+            type: "variable",
+            status: "error"
+          };
+        }
+      } else {
+        // Standard variable setting - just displaying the info
+        const variableLog = {
+          timestamp: new Date(),
+          type: "info",
+          nodeId: node.id,
+          message: `Variable ${nodeData.variableKey} would be set to: ${nodeData.variableValue}`
+        };
+        setLogs((logs) => [...logs, variableLog]);
+        
+        responseData = {
+          variableKey: nodeData.variableKey,
+          variableValue: nodeData.variableValue,
+          type: "variable"
+        };
+      }
     } else {
       // Generic test response for other node types
       responseData = {
