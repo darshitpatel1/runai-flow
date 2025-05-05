@@ -303,8 +303,8 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
     variablesByNode[variable.nodeId].push(variable);
   });
   
-  // Convert to array for sorting
-  const nodeVariableEntries = Object.entries(variablesByNode);
+  // Convert to array for sorting - use let so we can filter it later
+  let nodeVariableEntries = Object.entries(variablesByNode);
   
   // Sort nodes by their vertical position in the flow
   nodeVariableEntries.sort((a, b) => {
@@ -312,6 +312,31 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
     const orderB = nodeOrder[b[0]] ?? Number.MAX_SAFE_INTEGER;
     return orderA - orderB;
   });
+  
+  // Find the current node that's being configured
+  let currentNodeIndex = -1;
+  let currentNodeId = null;
+  
+  // Find the node that's currently being configured
+  for (const node of nodes) {
+    if (node?.data?.allNodes && Array.isArray(node.data.allNodes) && node.data.allNodes.length > 0) {
+      currentNodeId = node.id;
+      currentNodeIndex = nodeOrder[node.id] ?? -1;
+      console.log(`Current node being configured: ${node.id} at index ${currentNodeIndex}`);
+      break;
+    }
+  }
+  
+  // Filter out nodes that come after the current node in the flow
+  // Only keep nodes that are before the current node
+  if (currentNodeIndex >= 0) {
+    nodeVariableEntries = nodeVariableEntries.filter(([nodeId, _]) => {
+      const nodePosition = nodeOrder[nodeId] ?? Number.MAX_SAFE_INTEGER;
+      // Show a node's variables only if it comes before the current node
+      return nodePosition < currentNodeIndex;
+    });
+    console.log(`Filtered variable entries to only show nodes before index ${currentNodeIndex}`);
+  }
 
   // Position the selector to appear beside the settings panel on the left
   return (
