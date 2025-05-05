@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Edit, MoreHorizontal, PlusIcon, Settings, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit, MoreHorizontal, PlusIcon, Settings, Trash2, Download, Filter, Check, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -35,7 +35,7 @@ import {
 import { DataTable, ColumnDefinition, TableRow as TableRowType } from "@shared/schema";
 import { Input } from "@/components/ui/input";
 import { apiRequest } from "@/lib/queryClient";
-import { Check, X } from "lucide-react";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -61,6 +61,10 @@ export default function TableDetailPage() {
   // New row state
   const [isAddingRow, setIsAddingRow] = useState(false);
   const [newRowData, setNewRowData] = useState<Record<string, any>>({});
+  
+  // Column filtering state
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const [isFilteringOpen, setIsFilteringOpen] = useState(false);
   
   // Update cell mutation
   const updateCellMutation = useMutation({
@@ -206,21 +210,54 @@ export default function TableDetailPage() {
     }
   }, [tableError, rowsError, toast]);
   
-  // Filter rows based on search query
+  // Filter rows based on search query and column filters
   const filterRows = () => {
     if (!tableRows || !Array.isArray(tableRows)) return [];
     
-    if (!searchQuery.trim()) return tableRows;
+    // Start with all rows
+    let result = [...tableRows];
     
-    return tableRows.filter((row: TableRowType) => {
-      const rowData = row.data;
-      // Search in all column values
-      return Object.values(rowData).some(value => 
-        value !== null && 
-        value !== undefined && 
-        String(value).toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    });
+    // Apply search query if exists
+    if (searchQuery.trim()) {
+      result = result.filter((row: TableRowType) => {
+        const rowData = row.data;
+        // Search in all column values
+        return Object.values(rowData).some(value => 
+          value !== null && 
+          value !== undefined && 
+          String(value).toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      });
+    }
+    
+    // Apply column filters if any
+    if (Object.keys(columnFilters).length > 0) {
+      result = result.filter((row: TableRowType) => {
+        return Object.entries(columnFilters).every(([columnId, filterValue]) => {
+          if (!filterValue) return true; // Skip empty filters
+          
+          // Find the column to get its type
+          const column = columns.find(col => col.id === columnId);
+          if (!column) return true;
+          
+          // Get the cell value, handle nested data
+          let cellValue = row.data && typeof row.data === 'object' 
+            ? (row.data.data && typeof row.data.data === 'object'
+              ? row.data.data[columnId]  // For nested data.data
+              : row.data[columnId])      // For direct data
+            : undefined;
+          
+          // Convert to string for comparison
+          const cellValueStr = cellValue !== null && cellValue !== undefined 
+            ? String(cellValue).toLowerCase() 
+            : '';
+          
+          return cellValueStr.includes(filterValue.toLowerCase());
+        });
+      });
+    }
+    
+    return result;
   };
   
   // Get paginated rows
@@ -314,7 +351,7 @@ export default function TableDetailPage() {
   };
   
   const isLoading = isTableLoading || isRowsLoading;
-  const filteredRows = useMemo(() => filterRows(), [tableRows, searchQuery]);
+  const filteredRows = useMemo(() => filterRows(), [tableRows, searchQuery, columnFilters, columns]);
   const paginatedRows = useMemo(() => getPaginatedRows(), [filteredRows, page, pageSize]);
   const totalPages = useMemo(() => Math.ceil(filteredRows.length / pageSize), [filteredRows, pageSize]);
   
@@ -397,13 +434,72 @@ export default function TableDetailPage() {
               <PlusIcon className="mr-2 h-4 w-4" />
               {isAddingRow ? "Adding Row..." : "Add Row"}
             </Button>
+            
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!tableRows || !columns) return;
+                
+                // Generate CSV content
+                const header = columns.map(col => col.name).join(',');
+                
+                const rows = tableRows.map((row: TableRowType) => {
+                  return columns.map(col => {
+                    const value = row.data?.[col.id] ?? '';
+                    // Quote values that contain commas
+                    return typeof value === 'string' && value.includes(',') 
+                      ? `"${value}"` 
+                      : value;
+                  }).join(',');
+                }).join('\n');
+                
+                const csvContent = `${header}\n${rows}`;
+                
+                // Create a Blob with the CSV content
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                
+                // Create a URL for the Blob
+                const url = URL.createObjectURL(blob);
+                
+                // Create a link element to trigger the download
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `${table.name.replace(/\s+/g, '_')}_export.csv`);
+                document.body.appendChild(link);
+                
+                // Trigger the download
+                link.click();
+                
+                // Clean up
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                toast({
+                  title: "CSV Export",
+                  description: "Your data has been exported to CSV successfully",
+                });
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
           </div>
         </div>
         
         <Card>
           <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4">
-            <CardTitle>Table Data</CardTitle>
-            
+            <div className="flex items-center gap-3">
+              <CardTitle>Table Data</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsFilteringOpen(!isFilteringOpen)}
+                className="flex items-center gap-1"
+              >
+                <Filter className="h-4 w-4" />
+                {Object.keys(columnFilters).length > 0 ? `Filters (${Object.keys(columnFilters).length})` : "Filter"}
+              </Button>
+            </div>
             <div className="w-full md:w-1/3">
               <Input
                 placeholder="Search data..."
@@ -413,6 +509,47 @@ export default function TableDetailPage() {
               />
             </div>
           </CardHeader>
+          
+          {isFilteringOpen && (
+            <div className="px-6 pb-4 border-b">
+              <div className="text-sm font-medium mb-2">Filter by column</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {columns.map((column) => (
+                  <div key={column.id} className="space-y-1">
+                    <label htmlFor={`filter-${column.id}`} className="text-sm font-medium">
+                      {column.name}
+                    </label>
+                    <Input
+                      id={`filter-${column.id}`}
+                      placeholder={`Filter ${column.name}...`}
+                      value={columnFilters[column.id] || ''}
+                      onChange={(e) => {
+                        const newFilters = { ...columnFilters };
+                        if (e.target.value) {
+                          newFilters[column.id] = e.target.value;
+                        } else {
+                          delete newFilters[column.id];
+                        }
+                        setColumnFilters(newFilters);
+                      }}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+              {Object.keys(columnFilters).length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setColumnFilters({})}
+                  className="mt-3"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear all filters
+                </Button>
+              )}
+            </div>
+          )}
           <CardContent>
             <div className="border rounded-md overflow-hidden">
               <div className="overflow-x-auto">
