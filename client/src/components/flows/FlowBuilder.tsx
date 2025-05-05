@@ -10,8 +10,16 @@ import ReactFlow, {
   Edge,
   EdgeTypes,
   applyNodeChanges,
-  NodeChange
+  NodeChange,
 } from 'reactflow';
+
+// Define a custom type for position changes since not all NodeChange types have an ID
+interface NodePositionChange {
+  type: 'position';
+  id: string;
+  position: { x: number; y: number };
+  dragging?: boolean;
+}
 import 'reactflow/dist/style.css';
 import { collection, addDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
@@ -602,8 +610,11 @@ export function FlowBuilder({
                   minZoom: 0.5, 
                   maxZoom: 1.5
                 }}
-                snapToGrid
-                snapGrid={[15, 15]}
+                snapToGrid={true}
+                snapGrid={[gridSize, gridSize]}
+                nodesDraggable={true}
+                elementsSelectable={true}
+                preventScrolling={true}
                 defaultEdgeOptions={{ animated: true }}
                 style={{ width: '100%', height: '100%' }}
                 defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
