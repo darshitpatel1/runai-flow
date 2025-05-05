@@ -11,6 +11,7 @@ import Dashboard from "@/pages/dashboard";
 import Connectors from "@/pages/connectors";
 import FlowBuilder from "@/pages/flow-builder";
 import History from "@/pages/history";
+import SettingsPage from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/connectors" component={Connectors} />
       <Route path="/flow-builder/:id?" component={FlowBuilder} />
       <Route path="/history" component={History} />
+      <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
   );
