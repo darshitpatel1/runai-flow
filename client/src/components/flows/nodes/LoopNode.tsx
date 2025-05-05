@@ -1,140 +1,127 @@
-import React from "react";
-import { Handle, Position, NodeProps } from "reactflow";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
-import { RepeatIcon } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { memo } from "react";
+import { Handle, Position, useReactFlow } from "reactflow";
+import { NodeContextMenu } from "../NodeContextMenu";
 
-interface LoopNodeData {
-  label: string;
-  type: "foreach" | "while" | "times";
+interface LoopNodeProps {
+  id: string;
   data: {
-    collection?: string;
-    varName?: string;
-    condition?: string;
-    times?: string;
-    limitOffset?: {
-      enabled: boolean;
-      limit: string;
-      offset: string;
-      offsetVar: string;
-    };
+    label: string;
+    arrayPath?: string;
+    itemCount?: number;
+    selected?: boolean;
+    skipped?: boolean;
+    skipEnabled?: boolean;
+    onNodeDelete?: (nodeId: string) => void;
+    onNodeSkip?: (nodeId: string) => void;
   };
-  batchSize?: string;
-  maxIterations?: string;
-  description?: string;
-  onChange?: (id: string, data: any) => void;
-  nodes?: any[];
+  selected: boolean;
 }
 
-export default function LoopNode({ id, data, isConnectable, selected }: NodeProps) {
-  // Define a minimal default data structure to handle missing properties
-  const safeData = {
-    label: data?.label || 'Loop',
-    type: data?.type || 'foreach',
-    data: {
-      collection: data?.data?.collection || '',
-      varName: data?.data?.varName || 'item',
-      condition: data?.data?.condition || '',
-      times: data?.data?.times || '10',
-      limitOffset: data?.data?.limitOffset || {
-        enabled: false,
-        limit: '10',
-        offset: '0',
-        offsetVar: 'offset'
-      }
-    },
-    maxIterations: data?.maxIterations || '100'
+export const LoopNode = memo(({ id, data, selected }: LoopNodeProps) => {
+  const { setNodes, setEdges } = useReactFlow();
+  
+  const handleNodeDelete = (nodeId: string) => {
+    if (data.onNodeDelete) {
+      data.onNodeDelete(nodeId);
+      return;
+    }
+    
+    setNodes((nodes) => nodes.filter((node) => node.id !== nodeId));
+    setEdges((edges) => edges.filter(
+      (edge) => edge.source !== nodeId && edge.target !== nodeId
+    ));
   };
   
-  // Format the loop description for display
-  const getLoopDescription = () => {
-    if (safeData.type === 'foreach') {
-      return `For each ${safeData.data.varName} in ${safeData.data.collection || '?'}`;
-    } else if (safeData.type === 'while') {
-      return `While ${safeData.data.condition || '?'}`;
-    } else if (safeData.type === 'times') {
-      return `${safeData.data.times || '?'} times`;
+  const handleNodeSkip = (nodeId: string) => {
+    if (data.onNodeSkip) {
+      data.onNodeSkip(nodeId);
+      return;
     }
-    return 'Loop';
+    
+    setNodes((nodes) => 
+      nodes.map((node) => 
+        node.id === nodeId 
+          ? { ...node, data: { ...node.data, skipped: !node.data.skipped } }
+          : node
+      )
+    );
   };
-
-  // Show limit/offset info if enabled
-  const getLimitOffsetText = () => {
-    if (safeData.type === 'foreach' && safeData.data.limitOffset?.enabled) {
-      return `Limit: ${safeData.data.limitOffset.limit} / Offset: ${safeData.data.limitOffset.offset}`;
-    }
-    return null;
-  };
-
-  // Simple node version for the flow visual without all settings controls
+  
+  const nodeClassName = `
+    bg-white dark:bg-black rounded-2xl shadow-lg p-3 
+    border-2 ${selected ? 'border-green-500 ring-2 ring-green-500/20' : 'border-green-500'} 
+    ${data.selected ? 'node-highlight' : ''}
+    min-w-[320px] w-[320px]
+  `;
+  
+  // Show a visual indicator if the node is skipped
+  const isSkipped = data.skipped ?? false;
+  
   return (
-    <>
-      <Card
-        className={`border-2 ${selected ? "border-blue-500" : "border-border"} shadow-md bg-background`}
-        style={{ width: 220 }}
-      >
-        <CardHeader className="p-3 flex flex-row items-center justify-between space-y-0">
-          <div className="flex items-center">
-            <RepeatIcon className="w-4 h-4 mr-2 text-purple-500" />
-            <CardTitle className="text-sm font-medium">
-              {safeData.label}
-            </CardTitle>
+    <div className="relative">
+      {isSkipped && (
+        <div className="absolute inset-0 bg-amber-100 dark:bg-amber-950 bg-opacity-40 dark:bg-opacity-40 rounded-2xl flex items-center justify-center z-10">
+          <div className="bg-amber-500 dark:bg-amber-600 text-white px-2 py-1 rounded text-xs font-medium">
+            Skipped
           </div>
-        </CardHeader>
+        </div>
+      )}
+      
+      <div className={`${nodeClassName} ${isSkipped ? 'opacity-50' : ''}`}>
+        <div className="flex items-center mb-2">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-emerald-500 to-green-500 flex items-center justify-center text-white mr-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </div>
+          <h3 className="font-medium">{data.label}</h3>
+          <div className="ml-auto">
+            <NodeContextMenu
+              nodeId={id}
+              onDelete={handleNodeDelete}
+              onSkip={handleNodeSkip}
+            />
+          </div>
+        </div>
         
-        <CardContent className="p-3 text-xs">
-          <div className="text-muted-foreground mb-1">
-            <Badge variant="outline" className="bg-purple-500/10 text-purple-500">
-              {safeData.type}
-            </Badge>
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 rounded-full text-xs font-semibold flex items-center">
+              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              For Each Item
+            </span>
           </div>
-          <div className="font-mono text-xs">
-            {getLoopDescription()}
+          <div className="flex items-center space-x-2">
+            <span className="px-2 py-1 bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200 rounded-full text-xs">
+              {data.itemCount || 0} items
+            </span>
           </div>
-          {getLimitOffsetText() && (
-            <div className="mt-1 text-xs text-muted-foreground">
-              {getLimitOffsetText()}
-            </div>
-          )}
-          <div className="mt-1 text-xs text-muted-foreground">
-            Max iterations: {safeData.maxIterations}
+        </div>
+        
+        {data.arrayPath && (
+          <div className="text-xs px-2 py-1 bg-slate-100 dark:bg-black dark:border dark:border-slate-700 rounded-lg mb-2 font-semibold">
+            Array: {data.arrayPath}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Input handle */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="in"
-        isConnectable={isConnectable}
-        className="w-2 h-2 rounded-full border-2 bg-background border-primary"
-      />
-
-      {/* Loop body output handle */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="body"
-        isConnectable={isConnectable}
-        className="w-2 h-2 rounded-full border-2 bg-background border-purple-500"
-        style={{ top: '40%' }}
-      />
-
-      {/* Loop complete output handle */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="complete"
-        isConnectable={isConnectable}
-        className="w-2 h-2 rounded-full border-2 bg-background border-primary"
-        style={{ top: '60%' }}
-      />
-    </>
+        )}
+        
+        {/* Input Handle */}
+        <Handle
+          type="target"
+          position={Position.Top}
+          className="w-3 h-3 -top-1.5 !bg-green-500"
+        />
+        
+        {/* Output Handle */}
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          className="w-3 h-3 -bottom-1.5 !bg-green-500"
+        />
+      </div>
+    </div>
   );
-}
+});
+
+LoopNode.displayName = "LoopNode";

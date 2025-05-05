@@ -36,19 +36,13 @@ import { NodePanel } from "./NodePanel";
 import { NodeConfiguration } from "./NodeConfiguration";
 import { NodeContextMenu } from "./NodeContextMenu";
 import { ConsoleOutput } from "./ConsoleOutput";
-import HttpRequestNode from "./nodes/HttpRequestNode";
-import IfElseNode from "./nodes/IfElseNode";
-import LoopNode from "./nodes/LoopNode";
-import SetVariableNode from "./nodes/SetVariableNode";
-// These will be implemented later
-const LogNode = () => null;
-const DelayNode = () => null;
+import { HttpRequestNode } from "./nodes/HttpRequestNode";
+import { IfElseNode } from "./nodes/IfElseNode";
+import { LoopNode } from "./nodes/LoopNode";
+import { SetVariableNode } from "./nodes/SetVariableNode";
+import { LogNode } from "./nodes/LogNode";
+import { DelayNode } from "./nodes/DelayNode";
 import { useToast } from "@/hooks/use-toast";
-
-// Helper function to generate unique IDs
-function generateId() {
-  return Math.random().toString(36).substring(2, 10);
-}
 
 // Define custom node types
 const nodeTypes = {
@@ -79,7 +73,7 @@ export function FlowBuilder({
 }: FlowBuilderProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   // Use regular state for more control over node position handling
-  const [nodes, setNodes] = useState<any[]>(initialNodes || []);
+  const [nodes, setNodes] = useState<any[]>([]);
   
   // Grid size for snapping - should match the snapGrid value in ReactFlow component
   const gridSize = 15;
@@ -244,12 +238,6 @@ export function FlowBuilder({
   const onDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
-    
-    // Ensure the drop is allowed and visible to the user
-    const types = event.dataTransfer.types;
-    if (types.includes('application/reactflow-type')) {
-      event.dataTransfer.dropEffect = 'copy';
-    }
   }, []);
   
   // Handle drag completion to ensure nodes are properly snapped
@@ -287,126 +275,92 @@ export function FlowBuilder({
       
       const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect();
       const nodeType = event.dataTransfer.getData('application/reactflow-type');
-      
-      // Safely parse the node data, providing a default if parsing fails
-      let nodeData;
-      try {
-        const dataStr = event.dataTransfer.getData('application/reactflow-data');
-        nodeData = dataStr ? JSON.parse(dataStr) : {};
-      } catch (err) {
-        console.error('Error parsing node data:', err);
-        nodeData = {};
-      }
+      const nodeData = JSON.parse(event.dataTransfer.getData('application/reactflow-data'));
       
       if (!nodeType || !reactFlowBounds || !reactFlowInstance) {
-        console.log('Missing required elements for node creation');
         return;
       }
       
-      // Get drop position, adjusted for scroll position and zoom level
-      const position = reactFlowInstance.screenToFlowPosition({
+      // Get the raw position from mouse coordinates
+      const rawPosition = reactFlowInstance.project({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       });
       
-      console.log('Drop position before snapping:', position);
-      
       // Snap the position to our grid
-      const snappedPosition = {
-        x: Math.round(position.x / gridSize) * gridSize,
-        y: Math.round(position.y / gridSize) * gridSize
+      const position = {
+        x: Math.round(rawPosition.x / gridSize) * gridSize,
+        y: Math.round(rawPosition.y / gridSize) * gridSize
       };
-      
-      console.log('Snapped position:', snappedPosition);
       
       // Create a unique ID for the node
       const newNodeId = `${nodeType}_${Date.now()}`;
       
-      // Create node data based on node type
-      const defaultData = {
-        label: nodeData.label ? `New ${nodeData.label}` : 'New Node',
-      };
-      
-      // Special data initialization for different node types
-      let nodeSpecificData = {};
-      
-      if (nodeType === 'httpRequest') {
-        nodeSpecificData = {
-          method: 'GET',
-          url: '',
-          headers: [],
-          queryParams: [],
-          body: '',
-          authType: 'none',
-          authConfig: {},
-          responseType: 'json'
-        };
-      } else if (nodeType === 'ifElse') {
-        nodeSpecificData = {
-          type: 'comparison',
-          comparison: {
-            left: '',
-            operator: '==',
-            right: '',
-          },
-        };
-      } else if (nodeType === 'loop') {
-        nodeSpecificData = {
-          type: 'foreach',
-          data: {
-            collection: '',
-            varName: 'item',
-            limitOffset: {
-              enabled: false,
-              limit: '10',
-              offset: '0',
-              offsetVar: 'offset'
-            }
-          },
-          maxIterations: '100'
-        };
-      } else if (nodeType === 'setVariable') {
-        nodeSpecificData = {
-          variables: [{
-            id: generateId(),
-            name: '',
-            value: '',
-            type: 'string'
-          }]
-        };
-      }
-      
-      // Create the new node with proper data
+      // Create the new node
       const newNode = {
         id: newNodeId,
         type: nodeType,
-        position: snappedPosition,
-        // Use positionAbsolute to prevent the node from moving after being placed
-        positionAbsolute: snappedPosition,
-        // Ensure node is not in dragging state
-        dragging: false,
-        selected: false, // Start unselected
+        position,
         data: { 
-          ...defaultData,
-          ...nodeSpecificData,
-          // Add all existing nodes reference for variable access
-          nodes: nodes,
-          // Add onChange handler
-          onChange: (id: string, newData: any) => updateNodeData(id, newData)
+          ...nodeData, 
+          label: `New ${nodeData.label}`,
         },
       };
       
-      console.log('Creating new node:', newNode);
-      
-      // Add node to the flow and report change
+      // Add node first, then create connection
       setNodes((nds) => {
         const updatedNodes = nds.concat(newNode);
-        // Report the change to parent component immediately
-        reportNodesChange(updatedNodes);
+        
+        // Find the nearest node above this node to auto-connect
+        // This prevents the blinking effect by executing all node operations in one go
+        setTimeout(() => {
+          // Find potential source nodes (any node above the new node)
+          if (nds.length > 0) {
+            const sourceNodes = nds.filter(node => {
+              // Node is above the new node (y position is smaller)
+              return node.position.y < position.y;
+            });
+            
+            if (sourceNodes.length > 0) {
+              // Find the closest node above the new node
+              const closestNode = sourceNodes.reduce((closest, current) => {
+                const closestDist = Math.hypot(
+                  closest.position.x - position.x,
+                  closest.position.y - position.y
+                );
+                const currentDist = Math.hypot(
+                  current.position.x - position.x,
+                  current.position.y - position.y
+                );
+                return currentDist < closestDist ? current : closest;
+              }, sourceNodes[0]);
+              
+              // Create connection from closest node to new node
+              // For if/else nodes, connect to appropriate handle
+              let sourceHandle = null;
+              if (closestNode.type === 'ifElse') {
+                // For simple auto-connection, use 'true' path from if/else
+                sourceHandle = 'true';
+              }
+              
+              const params = {
+                id: `e-${Date.now()}`,
+                source: closestNode.id,
+                sourceHandle: sourceHandle,
+                target: newNodeId,
+                animated: true,
+                style: { stroke: '#4f46e5', strokeWidth: 2 }
+              };
+              
+              setEdges((eds) => addEdge(params, eds));
+            }
+          }
+        }, 50);
+        
         return updatedNodes;
       });
     },
-    [reactFlowInstance, setNodes, nodes, reportNodesChange, gridSize]
+    [reactFlowInstance, setNodes, setEdges]
   );
   
   const onNodeClick = useCallback((event: React.MouseEvent, node: any) => {
@@ -585,7 +539,7 @@ export function FlowBuilder({
         // Simulate API call if it's an HTTP node
         if (node.type === 'httpRequest') {
           const method = node.data.method || 'GET';
-          const endpoint = node.data.url || '/api';
+          const endpoint = node.data.endpoint || '/api';
           const connector = node.data.connector || 'No connector';
           
           // Log the request details

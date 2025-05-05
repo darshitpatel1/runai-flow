@@ -108,34 +108,9 @@ export function NodePanel() {
     : nodeTypes;
     
   const onDragStart = (event: React.DragEvent<HTMLDivElement>, nodeType: string, nodeData: any) => {
-    // Clear any existing data
-    event.dataTransfer.clearData();
-    
-    // Set the node type and data
     event.dataTransfer.setData('application/reactflow-type', nodeType);
     event.dataTransfer.setData('application/reactflow-data', JSON.stringify(nodeData));
     event.dataTransfer.effectAllowed = 'move';
-    
-    // Use the dragging element itself as the drag image
-    // This gives better visual feedback to the user
-    const nodeElement = event.currentTarget;
-    
-    // Clone the node element for the drag image
-    const clone = nodeElement.cloneNode(true) as HTMLElement;
-    clone.style.width = '220px'; // Match width of nodes in flow
-    clone.style.position = 'absolute';
-    clone.style.top = '-1000px';
-    clone.style.left = '-1000px';
-    clone.style.opacity = '0.7';
-    document.body.appendChild(clone);
-    
-    // Set the drag image to the clone
-    event.dataTransfer.setDragImage(clone, 110, 40); // Center the drag image
-    
-    // Remove the clone after dragging starts
-    setTimeout(() => {
-      document.body.removeChild(clone);
-    }, 100);
   };
   
   const toggleCollapse = () => {
