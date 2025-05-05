@@ -339,8 +339,18 @@ export function FlowBuilder({
         };
       } else if (nodeType === 'loop') {
         nodeSpecificData = {
-          dataPath: '',
-          outputPath: '',
+          type: 'foreach',
+          data: {
+            collection: '',
+            varName: 'item',
+            limitOffset: {
+              enabled: false,
+              limit: '10',
+              offset: '0',
+              offsetVar: 'offset'
+            }
+          },
+          maxIterations: '100'
         };
       } else if (nodeType === 'setVariable') {
         nodeSpecificData = {
@@ -367,14 +377,13 @@ export function FlowBuilder({
       
       console.log('Creating new node:', newNode);
       
-      // Add node to the flow
-      setNodes((nds) => nds.concat(newNode));
-      
-      // Report the change to parent component
-      setTimeout(() => {
-        const updatedNodes = [...nodes, newNode];
+      // Add node to the flow and report change
+      setNodes((nds) => {
+        const updatedNodes = nds.concat(newNode);
+        // Report the change to parent component immediately
         reportNodesChange(updatedNodes);
-      }, 50);
+        return updatedNodes;
+      });
     },
     [reactFlowInstance, setNodes, nodes, reportNodesChange, gridSize]
   );

@@ -108,9 +108,29 @@ export function NodePanel() {
     : nodeTypes;
     
   const onDragStart = (event: React.DragEvent<HTMLDivElement>, nodeType: string, nodeData: any) => {
+    // Clear any existing data
+    event.dataTransfer.clearData();
+    
+    // Set the node type and data
     event.dataTransfer.setData('application/reactflow-type', nodeType);
     event.dataTransfer.setData('application/reactflow-data', JSON.stringify(nodeData));
     event.dataTransfer.effectAllowed = 'move';
+    
+    // Add an invisible drag image to improve dragging UX
+    const dragImage = document.createElement('div');
+    dragImage.style.width = '1px';
+    dragImage.style.height = '1px';
+    dragImage.style.position = 'absolute';
+    dragImage.style.top = '-1px';
+    dragImage.style.left = '-1px';
+    document.body.appendChild(dragImage);
+    
+    event.dataTransfer.setDragImage(dragImage, 0, 0);
+    
+    // Clean up the drag image element after dragging
+    setTimeout(() => {
+      document.body.removeChild(dragImage);
+    }, 0);
   };
   
   const toggleCollapse = () => {
