@@ -167,9 +167,9 @@ export default function AddRowPage() {
   
   // Handle form submission
   const onSubmit = (values: any) => {
-    // Form values ARE the data object - don't nest it further
+    // Send values directly without nesting
     console.log("Submitting row data:", values);
-    addRowMutation.mutate({ data: values });
+    addRowMutation.mutate(values);
   };
   
   // Format date for date fields

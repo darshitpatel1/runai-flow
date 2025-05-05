@@ -207,9 +207,9 @@ export default function EditRowPage() {
   
   // Handle form submission
   const onSubmit = (values: any) => {
-    // Form values ARE the data object - don't nest it further
+    // Send values directly without nesting
     console.log("Submitting updated row data:", values);
-    updateRowMutation.mutate({ data: values });
+    updateRowMutation.mutate(values);
   };
   
   // Handle row deletion
