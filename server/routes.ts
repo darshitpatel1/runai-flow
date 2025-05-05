@@ -76,19 +76,59 @@ const requireAuth = async (req: Request, res: Response, next: Function) => {
   }
 
   try {
-    // For Firebase auth, we'd normally verify the token
-    // But for this implementation, we'll assume the token is the Firebase UID
-    const firebaseUid = token;
-    const user = await storage.getUserByFirebaseUid(firebaseUid);
+    // For a real Firebase implementation, we'd use admin.auth().verifyIdToken(token)
+    // But for simplicity, we'll extract the Firebase UID from the token payload
     
-    if (!user) {
-      return res.status(401).json({ error: 'User not found' });
+    // Firebase tokens are JWTs, so we can decode them
+    // without verification for this development implementation
+    // The format is: header.payload.signature
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return res.status(401).json({ error: 'Invalid token format' });
     }
     
-    // Attach user to request object for later use
-    (req as any).user = user;
-    next();
+    try {
+      // Decode the payload (the middle part)
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+      
+      // Extract the Firebase UID from the payload
+      const firebaseUid = payload.user_id || payload.sub || payload.uid;
+      
+      if (!firebaseUid) {
+        return res.status(401).json({ error: 'Could not extract user ID from token' });
+      }
+      
+      // Look up the user by Firebase UID
+      const user = await storage.getUserByFirebaseUid(firebaseUid);
+      
+      if (!user) {
+        // For development purposes, if the user doesn't exist, we'll create them
+        // This helps with testing and development when the frontend and backend states get out of sync
+        console.log(`User with Firebase UID ${firebaseUid} not found in database, creating...`);
+        if (payload.email) {
+          const newUser = await storage.createUser({
+            firebaseUid,
+            email: payload.email,
+            displayName: payload.name || '',
+            photoUrl: payload.picture || ''
+          });
+          (req as any).user = newUser;
+          next();
+          return;
+        } else {
+          return res.status(401).json({ error: 'User not found and could not auto-create user' });
+        }
+      }
+      
+      // Attach user to request object for later use
+      (req as any).user = user;
+      next();
+    } catch (error) {
+      console.error('Error decoding JWT token:', error);
+      return res.status(401).json({ error: 'Invalid token' });
+    }
   } catch (error: any) {
+    console.error('Authentication error:', error);
     return res.status(401).json({ error: error.message });
   }
 };
