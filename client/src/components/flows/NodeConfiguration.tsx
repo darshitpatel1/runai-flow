@@ -531,8 +531,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
-              variant={isForEachLoop ? "default" : "outline"}
-              className={`justify-start ${isForEachLoop ? 'bg-green-500 hover:bg-green-600' : ''}`}
+              variant="outline"
+              className={`justify-start ${isForEachLoop ? 'bg-green-500 hover:bg-green-600 text-white border-green-600' : ''}`}
               onClick={() => handleChange('loopType', 'forEach')}
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -542,8 +542,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
             </Button>
             <Button
               type="button"
-              variant={isWhileLoop ? "default" : "outline"}
-              className={`justify-start ${isWhileLoop ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
+              variant="outline"
+              className={`justify-start ${isWhileLoop ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600' : ''}`}
               onClick={() => handleChange('loopType', 'while')}
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

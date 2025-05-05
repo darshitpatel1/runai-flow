@@ -42,6 +42,7 @@ import { LoopNode } from "./nodes/LoopNode";
 import { SetVariableNode } from "./nodes/SetVariableNode";
 import { LogNode } from "./nodes/LogNode";
 import { DelayNode } from "./nodes/DelayNode";
+import { StopJobNode } from "./nodes/StopJobNode";
 import { useToast } from "@/hooks/use-toast";
 
 // Define custom node types
@@ -51,7 +52,8 @@ const nodeTypes = {
   loop: LoopNode,
   setVariable: SetVariableNode,
   log: LogNode,
-  delay: DelayNode
+  delay: DelayNode,
+  stopJob: StopJobNode
 };
 
 interface FlowBuilderProps {
@@ -78,54 +80,63 @@ export function FlowBuilder({
   // Grid size for snapping - should match the snapGrid value in ReactFlow component
   const gridSize = 15;
   
-  // Use a directly simplified node change handler with throttling to fix zigzag
+  // Advanced node change handler with GPU acceleration and precise positioning
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     try {
-      // Check for drag start and drag end to manage state
-      const dragChange = changes.find(change => 
-        change.type === 'position' && 'dragging' in change
-      ) as NodePositionChange | undefined;
+      // Check for position changes that indicate dragging
+      const positionChanges = changes.filter(
+        change => change.type === 'position'
+      ) as NodePositionChange[];
       
+      // Find explicit drag start/end markers
+      const dragChange = positionChanges.find(change => 'dragging' in change);
+            
+      // Handle drag states for stability
       if (dragChange) {
-        // Handle drag start
         if (dragChange.dragging === true) {
+          // Start of dragging - set flags for optimization
           isCurrentlyDragging = true;
           draggedNodeId = dragChange.id;
         } 
-        // Handle drag end with improved stability
         else if (dragChange.dragging === false && isCurrentlyDragging) {
+          // End of dragging - stabilize positions
           isCurrentlyDragging = false;
           
-          // On drag end, finalize all node positions with stable snapping
-          setTimeout(() => {
+          // Apply immediate stabilization with minimal delay
+          requestAnimationFrame(() => {
             setNodes(nodes => {
               try {
-                // Process all nodes to ensure consistent layout
+                // Process all nodes with precise positioning
                 const updatedNodes = nodes.map(node => {
                   if (!node || !node.position) return node;
                   
-                  // Get the best position source
+                  // Get the most accurate position
                   const position = node.positionAbsolute || node.position;
                   
-                  // Snap to grid precisely
+                  // Apply grid snapping with precise math
                   const x = Math.round(position.x / gridSize) * gridSize;
                   const y = Math.round(position.y / gridSize) * gridSize;
                   
-                  // Create a stable node with fixed position
+                  // Apply GPU acceleration and ensure position stability
                   return {
                     ...node,
                     position: { x, y },
                     positionAbsolute: { x, y },
-                    // Clear any dynamic properties that might cause flicker
+                    // Add GPU acceleration styles
+                    style: {
+                      ...node.style,
+                      transform: 'translate3d(0,0,0)',
+                      willChange: 'transform',
+                    },
+                    // Reset dynamic states
                     dragging: false,
                     selected: !!node.selected
                   };
                 });
                 
-                // Report changes to parent
+                // Report changes to parent with minimal delay
                 if (reportNodesChange && typeof reportNodesChange === 'function') {
-                  // Use a separate timeout to ensure UI is updated first
-                  setTimeout(() => reportNodesChange(updatedNodes), 50);
+                  requestAnimationFrame(() => reportNodesChange(updatedNodes));
                 }
                 
                 return updatedNodes;
@@ -134,24 +145,44 @@ export function FlowBuilder({
                 return nodes;
               }
             });
-          }, 100); // Longer delay for improved position stability
+          });
         }
       }
       
-      // Better throttling for smoother drag experience
+      // Smart throttling for performance
       const now = Date.now();
-      if (isCurrentlyDragging && now - lastUpdateTime < 20) {
-        // Skip updates that are too close together
+      if (isCurrentlyDragging && now - lastUpdateTime < 16) { // ~60fps timing
+        // Skip rapid updates during dragging
         return;
       }
       lastUpdateTime = now;
       
-      // Apply changes directly for responsive UI
+      // Apply changes with optimization
       setNodes(nds => {
         try {
-          // Create a safe copy of nodes with the changes applied
-          const updatedNodes = applyNodeChanges(changes, nds);
-          return updatedNodes;
+          // If actively dragging, optimize for performance
+          if (isCurrentlyDragging && draggedNodeId) {
+            const updatedNodes = applyNodeChanges(changes, nds);
+            
+            // For dragged node specifically, ensure smooth movement with GPU acceleration
+            return updatedNodes.map(node => {
+              if (node.id === draggedNodeId) {
+                return {
+                  ...node,
+                  // Add GPU acceleration
+                  style: {
+                    ...node.style,
+                    transform: 'translate3d(0,0,0)',
+                    willChange: 'transform',
+                  }
+                };
+              }
+              return node;
+            });
+          }
+          
+          // For non-dragging operations, just apply the changes normally
+          return applyNodeChanges(changes, nds);
         } catch (error) {
           console.error("Error applying node changes:", error);
           return nds;
