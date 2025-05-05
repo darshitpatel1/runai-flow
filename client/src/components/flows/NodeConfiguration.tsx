@@ -70,10 +70,25 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     if (node.type === 'setVariable') {
       const updatedData = { ...nodeData };
       
-      // If the user is creating a new variable
-      if (!updatedData.variableKey && updatedData.newVariableKey) {
+      // Handle the special "__new__" value and use the newVariableKey instead
+      if (updatedData.variableKey === "__new__" && updatedData.newVariableKey) {
         updatedData.variableKey = updatedData.newVariableKey;
         delete updatedData.newVariableKey;
+      } 
+      // Backward compatibility for older implementation
+      else if (!updatedData.variableKey && updatedData.newVariableKey) {
+        updatedData.variableKey = updatedData.newVariableKey;
+        delete updatedData.newVariableKey;
+      }
+      
+      // Validate the variable key
+      if (!updatedData.variableKey || updatedData.variableKey === "__new__") {
+        toast({
+          title: "Invalid Variable Name",
+          description: "Please enter a name for your variable.",
+          variant: "destructive"
+        });
+        return;
       }
       
       updateNodeData(node.id, updatedData);
