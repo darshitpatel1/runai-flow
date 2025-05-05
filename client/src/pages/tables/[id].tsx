@@ -392,9 +392,10 @@ export default function TableDetailPage() {
             
             <Button 
               onClick={() => setIsAddingRow(true)}
+              disabled={isAddingRow}
             >
               <PlusIcon className="mr-2 h-4 w-4" />
-              Add Row
+              {isAddingRow ? "Adding Row..." : "Add Row"}
             </Button>
           </div>
         </div>
@@ -551,10 +552,6 @@ export default function TableDetailPage() {
                               <DropdownMenuContent align="start">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => navigate(`/tables/${tableId}/edit-row/${row.id}`)}>
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  Edit Row
-                                </DropdownMenuItem>
                                 <DropdownMenuItem 
                                   onClick={() => {
                                     if (confirm("Are you sure you want to delete this row? This action cannot be undone.")) {
@@ -740,7 +737,7 @@ export default function TableDetailPage() {
                               <Button
                                 variant="link"
                                 className="mt-2"
-                                onClick={() => navigate(`/tables/${tableId}/add-row`)}
+                                onClick={() => setIsAddingRow(true)}
                               >
                                 Add your first row
                               </Button>
