@@ -287,7 +287,7 @@ export function FlowBuilder({
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge({ 
       ...params, 
-      type: ConnectionLineType.SmoothStep,
+      type: 'step',
       animated: true, 
       style: { stroke: '#4f46e5', strokeWidth: 2 } 
     }, eds)),
@@ -439,7 +439,7 @@ export function FlowBuilder({
                         sourceHandle: sourceHandle,
                         target: newNodeId,
                         targetHandle: null, // Auto-select the default target handle
-                        type: ConnectionLineType.SmoothStep, // Match the type used in defaultEdgeOptions
+                        type: 'step', // Match the type used in defaultEdgeOptions
                         animated: true,
                         style: { stroke: '#4f46e5', strokeWidth: 2 }
                       };
@@ -1146,7 +1146,6 @@ export function FlowBuilder({
           <ReactFlowProvider>
             <div style={{ width: '100%', height: '100%' }} className="transform-gpu">
               <ReactFlow 
-                className="transform-gpu"
                 nodes={nodes}
                 edges={edges}
                 onNodesChange={onNodesChange}
@@ -1170,13 +1169,13 @@ export function FlowBuilder({
                 nodesDraggable={true}
                 elementsSelectable={true}
                 preventScrolling={false}
-                connectionLineType={ConnectionLineType.SmoothStep}
+                connectionLineType={ConnectionLineType.Step}
                 defaultEdgeOptions={{ 
-                  type: ConnectionLineType.SmoothStep,
+                  type: 'step',
                   animated: true,
                   style: { stroke: '#4f46e5', strokeWidth: 2 }
                 }}
-                style={{ width: '100%', height: '100%' }}
+                style={{ background: 'transparent' }}
                 defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
                 proOptions={{ hideAttribution: true }}
               >
