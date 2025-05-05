@@ -567,7 +567,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Create new variable</SelectItem>
-                {/* Get all existing variables */}
+                {/* Show existing variables from other SetVariable nodes */}
                 {getExistingVariables().map((variable) => (
                   <SelectItem key={variable} value={variable}>
                     {variable}

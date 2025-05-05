@@ -52,7 +52,10 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
 
   // Collect all available variables from nodes
   const collectVariables = useCallback(() => {
+    // Get nodes from either manual nodes or ReactFlow
     const nodes = getNodes();
+    console.log("Variable Selector - Nodes:", nodes);
+    
     const variableList: Array<{
       nodeId: string;
       nodeName: string;
@@ -61,39 +64,76 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
       path: string;
       source: "variable" | "testResult";
     }> = [];
-
-    // First pass, collect all set variable nodes
-    nodes.forEach((node: any) => {
+    
+    // Helper function to process a node's variables
+    const processNodeVariables = (node: any) => {
+      // Check if it's a SetVariable node with a variableKey
       if (node.type === 'setVariable' && node.data?.variableKey) {
-        variableList.push({
-          nodeId: node.id,
-          nodeName: node.data.label || "Set Variable",
-          nodeType: "setVariable",
-          variableName: node.data.variableKey || "variable", // Ensure we have a fallback
-          path: `vars.${node.data.variableKey}`,
-          source: "variable"
-        });
-      }
-    });
-
-    // Second pass, collect all test results from all nodes
-    nodes.forEach((node: any) => {
-      if (node.data?.testResult) {
-        // For each test result, generate variables for its properties
-        generateVariablePaths(node.data.testResult).forEach(path => {
-          const variableName = path.split('.').pop() || 'result';
+        // Check if this variable is already in the list
+        const exists = variableList.some(v => 
+          v.source === "variable" && v.path === `vars.${node.data.variableKey}`
+        );
+        
+        if (!exists) {
           variableList.push({
             nodeId: node.id,
-            nodeName: node.data.label || node.type || "Node",
-            nodeType: node.type || "unknown",
-            variableName: variableName,
-            path: `${node.id}.result.${path}`,
-            source: "testResult"
+            nodeName: node.data.label || "Set Variable",
+            nodeType: "setVariable",
+            variableName: node.data.variableKey || "variable",
+            path: `vars.${node.data.variableKey}`,
+            source: "variable"
           });
+          console.log("Found variable:", node.data.variableKey);
+        }
+      }
+      
+      // Check for test results
+      if (node.data?.testResult) {
+        console.log("Found test result in node:", node.id, node.data.label);
+        
+        // For each test result, generate variables for its properties
+        const paths = generateVariablePaths(node.data.testResult);
+        console.log("Generated paths:", paths);
+        
+        paths.forEach(path => {
+          const variableName = path.split('.').pop() || 'result';
+          
+          // Check if this test result path is already in the list
+          const exists = variableList.some(v => 
+            v.source === "testResult" && v.path === `${node.id}.result.${path}`
+          );
+          
+          if (!exists) {
+            variableList.push({
+              nodeId: node.id,
+              nodeName: node.data.label || node.type || "Node",
+              nodeType: node.type || "unknown",
+              variableName: variableName,
+              path: `${node.id}.result.${path}`,
+              source: "testResult"
+            });
+          }
+        });
+      }
+    };
+    
+    // First process all the direct nodes
+    nodes.forEach(processNodeVariables);
+    
+    // Then check if any node contains allNodes data (which has other nodes)
+    nodes.forEach((node: any) => {
+      if (node.data?.allNodes && Array.isArray(node.data.allNodes)) {
+        console.log("Found allNodes data in node:", node.id);
+        // Process other nodes saved in this node's data
+        node.data.allNodes.forEach((otherNode: any) => {
+          // Skip the current node to avoid duplicates
+          if (otherNode.id === node.id) return;
+          processNodeVariables(otherNode);
         });
       }
     });
-
+    
+    console.log("Final variable list:", variableList);
     setVariables(variableList);
   }, [getNodes]);
 
@@ -156,11 +196,11 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
     variablesByNode[variable.nodeId].push(variable);
   });
 
-  // Position the selector to appear on the left side of the settings panel
+  // Position the selector to appear beside the settings panel on the left
   return (
     <div className={`fixed z-50 top-0 left-0 w-full h-full ${open ? 'block' : 'hidden'}`} onClick={onClose}>
       <div 
-        className="absolute right-96 top-32 w-80 bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-lg shadow-lg p-4"
+        className="absolute right-[25rem] top-32 w-80 bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-lg shadow-lg p-4"
         onClick={(e) => e.stopPropagation()} // Prevent clicks inside from closing
       >
         <div className="flex items-center justify-between mb-4">
