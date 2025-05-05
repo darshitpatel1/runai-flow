@@ -206,6 +206,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors }:
   };
   
   const renderIfElseConfig = () => {
+    const useVisualEditor = !nodeData.condition; // Use visual editor by default if no condition is set
+    
     return (
       <div className="space-y-4">
         <div>
@@ -217,20 +219,72 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors }:
           />
         </div>
         
-        <div>
-          <Label className="block text-sm font-medium mb-1">Condition</Label>
-          <Textarea
-            value={nodeData.condition || ''}
-            onChange={(e) => handleChange('condition', e.target.value)}
-            placeholder="{{step1.status}} === 200"
-            className="font-mono text-sm h-20"
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Enter a JavaScript condition using variables from previous steps
-          </p>
-        </div>
+        <Tabs defaultValue={useVisualEditor ? "visual" : "code"} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="visual">Visual Editor</TabsTrigger>
+            <TabsTrigger value="code">Code Editor</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="visual" className="space-y-4 mt-2">
+            <div>
+              <Label className="block text-sm font-medium mb-1">Variable</Label>
+              <Input
+                value={nodeData.variable || ''}
+                onChange={(e) => handleChange('variable', e.target.value)}
+                placeholder="response.data.status"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter a variable name from previous steps
+              </p>
+            </div>
+            
+            <div>
+              <Label className="block text-sm font-medium mb-1">Operator</Label>
+              <Select 
+                value={nodeData.operator || 'equals'} 
+                onValueChange={(value) => handleChange('operator', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an operator" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="equals">Equals (==)</SelectItem>
+                  <SelectItem value="notEquals">Not Equals (!=)</SelectItem>
+                  <SelectItem value="contains">Contains</SelectItem>
+                  <SelectItem value="notContains">Does Not Contain</SelectItem>
+                  <SelectItem value="greaterThan">Greater Than (&gt;)</SelectItem>
+                  <SelectItem value="lessThan">Less Than (&lt;)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label className="block text-sm font-medium mb-1">Value</Label>
+              <Input
+                value={nodeData.value || ''}
+                onChange={(e) => handleChange('value', e.target.value)}
+                placeholder="success"
+              />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="code" className="space-y-4 mt-2">
+            <div>
+              <Label className="block text-sm font-medium mb-1">Condition</Label>
+              <Textarea
+                value={nodeData.condition || ''}
+                onChange={(e) => handleChange('condition', e.target.value)}
+                placeholder="{{step1.status}} === 200"
+                className="font-mono text-sm h-20"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter a JavaScript condition using variables from previous steps
+              </p>
+            </div>
+          </TabsContent>
+        </Tabs>
         
-        <div className="bg-muted/50 rounded-lg p-3">
+        <div className="bg-muted/50 dark:bg-black dark:border dark:border-slate-800 rounded-lg p-3">
           <h3 className="text-sm font-medium mb-2">Condition Help</h3>
           <div className="text-xs text-muted-foreground space-y-1">
             <p>Examples:</p>
@@ -238,6 +292,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors }:
               <li><code>{"{{step1.status}} === 200"}</code> - Check if HTTP status is 200</li>
               <li><code>{"{{step1.body.user.active}} === true"}</code> - Check if user is active</li>
               <li><code>{"{{step1.body.items.length}} > 0"}</code> - Check if items array is not empty</li>
+              <li><code>{"{{response.body}}.includes('success')"}</code> - Check if response body contains 'success'</li>
             </ul>
           </div>
         </div>

@@ -1,22 +1,77 @@
 import { memo } from "react";
 import { Handle, Position } from "reactflow";
+import { MoreHorizontal } from "lucide-react";
 
 interface IfElseNodeProps {
   data: {
     label: string;
     condition?: string;
     selected?: boolean;
+    variable?: string;
+    operator?: string;
+    value?: string;
+    id?: string; // Add id to the data interface
   };
+  id: string; // Add id to the props
   selected: boolean;
 }
 
-export const IfElseNode = memo(({ data, selected }: IfElseNodeProps) => {
+export const IfElseNode = memo(({ data, id, selected }: IfElseNodeProps) => {
   const nodeClassName = `
-    bg-white dark:bg-slate-700 rounded-2xl shadow-lg p-3 
+    bg-white dark:bg-black rounded-2xl shadow-lg p-3 
     border-2 ${selected ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-amber-500'} 
     ${data.selected ? 'node-highlight' : ''}
     min-w-[280px] w-[280px]
   `;
+  
+  const showContextMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Dispatch a custom event that will be caught by the flow builder
+    const event = new CustomEvent('node:contextmenu', {
+      bubbles: true,
+      detail: { nodeId: id, x: e.clientX, y: e.clientY }
+    });
+    e.currentTarget.dispatchEvent(event);
+  };
+
+  const getConditionDisplay = () => {
+    if (data.condition) {
+      return data.condition;
+    }
+    
+    if (data.variable && data.operator && data.value !== undefined) {
+      // Format the condition based on operator
+      let operatorDisplay = '';
+      switch(data.operator) {
+        case 'equals':
+          operatorDisplay = '==';
+          break;
+        case 'notEquals':
+          operatorDisplay = '!=';
+          break;
+        case 'contains':
+          operatorDisplay = 'contains';
+          break;
+        case 'notContains':
+          operatorDisplay = 'not contains';
+          break;
+        case 'greaterThan':
+          operatorDisplay = '>';
+          break;
+        case 'lessThan':
+          operatorDisplay = '<';
+          break;
+        default:
+          operatorDisplay = data.operator;
+      }
+      
+      return `${data.variable} ${operatorDisplay} ${data.value}`;
+    }
+    
+    return '';
+  };
+  
+  const conditionDisplay = getConditionDisplay();
   
   return (
     <div className={nodeClassName}>
@@ -27,11 +82,9 @@ export const IfElseNode = memo(({ data, selected }: IfElseNodeProps) => {
           </svg>
         </div>
         <h3 className="font-medium">{data.label}</h3>
-        <div className="ml-auto">
+        <div className="ml-auto context-menu-trigger" onClick={showContextMenu}>
           <button className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-            </svg>
+            <MoreHorizontal className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -55,9 +108,9 @@ export const IfElseNode = memo(({ data, selected }: IfElseNodeProps) => {
         </div>
       </div>
       
-      {data.condition && (
-        <div className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg mb-2 font-semibold">
-          If: {data.condition}
+      {conditionDisplay && (
+        <div className="text-xs px-2 py-1 bg-slate-100 dark:bg-black dark:border dark:border-slate-700 rounded-lg mb-2 font-semibold">
+          If: {conditionDisplay}
         </div>
       )}
       
