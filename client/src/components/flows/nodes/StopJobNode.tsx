@@ -86,11 +86,26 @@ export const StopJobNode = memo(({ id, data, selected }: StopJobNodeProps) => {
   
   const colors = getColors();
   
+  // Handle border color in a more direct way to avoid template string issues
+  let borderClass = colors.border;
+  let ringClass = '';
+  
+  if (selected) {
+    // Apply specific ring class based on stop type
+    if (data.stopType === 'error') {
+      ringClass = 'ring-2 ring-red-500/20';
+    } else if (data.stopType === 'cancel') {
+      ringClass = 'ring-2 ring-amber-500/20';
+    } else {
+      ringClass = 'ring-2 ring-green-500/20';
+    }
+  }
+  
   const nodeClassName = `
     bg-white dark:bg-black rounded-2xl shadow-lg p-3 
-    border-2 ${selected ? `${colors.border} ring-2 ring-${colors.border}/20` : colors.border} 
+    border-2 ${borderClass} ${ringClass}
     ${data.selected ? 'node-highlight' : ''}
-    min-w-[320px] w-[320px]
+    min-w-[280px] w-[280px]
     transform-gpu
   `;
   
@@ -144,7 +159,13 @@ export const StopJobNode = memo(({ id, data, selected }: StopJobNodeProps) => {
         <Handle
           type="target"
           position={Position.Top}
-          className={`w-3 h-3 -top-1.5 !${colors.bgFrom}`}
+          style={{
+            width: '12px',
+            height: '12px',
+            top: '-6px',
+            background: data.stopType === 'error' ? '#ef4444' : 
+                        data.stopType === 'cancel' ? '#f59e0b' : '#22c55e'
+          }}
         />
       </div>
     </div>

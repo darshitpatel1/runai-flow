@@ -136,7 +136,7 @@ export function FlowBuilder({
                 
                 // Report changes to parent with minimal delay
                 if (reportNodesChange && typeof reportNodesChange === 'function') {
-                  requestAnimationFrame(() => reportNodesChange(updatedNodes));
+                  setTimeout(() => reportNodesChange(updatedNodes), 50);
                 }
                 
                 return updatedNodes;
@@ -151,7 +151,7 @@ export function FlowBuilder({
       
       // Smart throttling for performance
       const now = Date.now();
-      if (isCurrentlyDragging && now - lastUpdateTime < 16) { // ~60fps timing
+      if (isCurrentlyDragging && now - lastUpdateTime < 25) { // More forgiving timing (40fps)
         // Skip rapid updates during dragging
         return;
       }
@@ -160,29 +160,23 @@ export function FlowBuilder({
       // Apply changes with optimization
       setNodes(nds => {
         try {
-          // If actively dragging, optimize for performance
-          if (isCurrentlyDragging && draggedNodeId) {
-            const updatedNodes = applyNodeChanges(changes, nds);
-            
-            // For dragged node specifically, ensure smooth movement with GPU acceleration
-            return updatedNodes.map(node => {
-              if (node.id === draggedNodeId) {
-                return {
-                  ...node,
-                  // Add GPU acceleration
-                  style: {
-                    ...node.style,
-                    transform: 'translate3d(0,0,0)',
-                    willChange: 'transform',
-                  }
-                };
-              }
-              return node;
-            });
-          }
+          // For all operations, ensure proper node position stabilization
+          const updatedNodes = applyNodeChanges(changes, nds);
           
-          // For non-dragging operations, just apply the changes normally
-          return applyNodeChanges(changes, nds);
+          return updatedNodes.map(node => {
+            // Only add style enhancements if the node is valid
+            if (!node) return node;
+            
+            // Add GPU acceleration to all nodes for consistent rendering
+            return {
+              ...node,
+              style: {
+                ...node.style,
+                transform: 'translate3d(0,0,0)',
+                willChange: 'transform',
+              }
+            };
+          });
         } catch (error) {
           console.error("Error applying node changes:", error);
           return nds;
@@ -355,15 +349,23 @@ export function FlowBuilder({
       // Create a unique ID for the node
       const newNodeId = `${nodeType}_${Date.now()}`;
       
-      // Create the new node
+      // Create the new node with proper initial properties
       const newNode = {
         id: newNodeId,
         type: nodeType,
         position,
+        positionAbsolute: position, // To ensure position stability
+        dragging: false,
+        selected: false,
         data: { 
           ...nodeData, 
           label: `New ${nodeData.label}`,
         },
+        // Add GPU acceleration styles for smoother rendering
+        style: {
+          transform: 'translate3d(0,0,0)',
+          willChange: 'transform',
+        }
       };
       
       // Add node first, then create connection
@@ -372,62 +374,81 @@ export function FlowBuilder({
           // First add the new node
           const updatedNodes = nds.concat(newNode);
           
-          // Find the nearest node above this node to auto-connect
-          // Safe handling of empty node arrays
-          if (nds && nds.length > 0) {
-            // Use setTimeout to ensure the node is added to the graph before creating the edge
-            setTimeout(() => {
-              try {
-                // Find potential source nodes (any node above the new node)
-                const sourceNodes = nds.filter(node => 
-                  node && node.position && node.position.y < position.y
-                );
-                
-                if (sourceNodes.length > 0) {
-                  // Find the closest node above the new node
-                  const closestNode = sourceNodes.reduce((closest, current) => {
-                    // Safe distance calculation with fallbacks
-                    const closestDist = Math.hypot(
-                      (closest.position?.x || 0) - position.x,
-                      (closest.position?.y || 0) - position.y
-                    );
-                    const currentDist = Math.hypot(
-                      (current.position?.x || 0) - position.x,
-                      (current.position?.y || 0) - position.y
-                    );
-                    return currentDist < closestDist ? current : closest;
-                  }, sourceNodes[0]);
-                  
-                  // Create connection from closest node to new node
-                  // Determine source handle based on node type
-                  let sourceHandle = null;
-                  if (closestNode.type === 'ifElse') {
-                    // For if/else nodes, connect to the "true" path
-                    sourceHandle = 'true';
-                  }
-                  
-                  // Create a unique ID for the edge
-                  const edgeId = `e-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-                  
-                  // Create the connection parameters
-                  const params = {
-                    id: edgeId,
-                    source: closestNode.id,
-                    sourceHandle: sourceHandle,
-                    target: newNodeId,
-                    targetHandle: null, // Auto-select the default target handle
-                    animated: true,
-                    style: { stroke: '#4f46e5', strokeWidth: 2 }
-                  };
-                  
-                  // Create the edge connection
-                  setEdges((eds) => addEdge(params, eds));
-                }
-              } catch (error) {
-                console.error("Error creating edge connection:", error);
+          // Improved node auto-connection logic with better timing
+          requestAnimationFrame(() => {
+            // We use requestAnimationFrame to ensure we have the latest DOM state
+            try {
+              // First, ensure the node is properly added to the graph
+              if (!nds || nds.length === 0) {
+                console.log("No existing nodes to connect to");
+                return;
               }
-            }, 100); // Increased timeout for better reliability
-          }
+              
+              // Wait longer to ensure React Flow has properly rendered the new node
+              setTimeout(() => {
+                try {
+                  // Get the latest nodes from ReactFlow instance for accurate positions
+                  const currentNodes = reactFlowInstance.getNodes();
+                  
+                  // Find nodes that would make sense to connect from (above the new node)
+                  const sourceNodes = currentNodes.filter(node => 
+                    node && 
+                    node.id !== newNodeId && // Don't connect to self
+                    node.position && 
+                    node.position.y < position.y - 50 // Must be significantly above
+                  );
+                  
+                  if (sourceNodes && sourceNodes.length > 0) {
+                    // Find the closest node that makes sense to connect from
+                    const closestNode = sourceNodes.reduce((closest, current) => {
+                      // Calculate Manhattan distance (more reliable for flow charts)
+                      const closestDist = 
+                        Math.abs((closest.position?.x || 0) - position.x) + 
+                        Math.abs((closest.position?.y || 0) - position.y);
+                      
+                      const currentDist = 
+                        Math.abs((current.position?.x || 0) - position.x) + 
+                        Math.abs((current.position?.y || 0) - position.y);
+                      
+                      return currentDist < closestDist ? current : closest;
+                    }, sourceNodes[0]);
+                    
+                    if (closestNode) {
+                      console.log("Creating connection from:", closestNode.id, "to:", newNodeId);
+                      
+                      // Determine appropriate source handle based on node type
+                      let sourceHandle = null;
+                      if (closestNode.type === 'ifElse') {
+                        // For if/else nodes, prefer connecting from the "true" path
+                        sourceHandle = 'true';
+                      }
+                      
+                      // Create a unique ID for the edge
+                      const edgeId = `e-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                      
+                      // Create the connection parameters
+                      const params = {
+                        id: edgeId,
+                        source: closestNode.id,
+                        sourceHandle: sourceHandle,
+                        target: newNodeId,
+                        targetHandle: null, // Auto-select the default target handle
+                        animated: true,
+                        style: { stroke: '#4f46e5', strokeWidth: 2 }
+                      };
+                      
+                      // Create the edge connection
+                      setEdges((eds) => addEdge(params, eds));
+                    }
+                  }
+                } catch (error) {
+                  console.error("Error creating edge connection:", error);
+                }
+              }, 200); // Longer timeout for more reliable connections
+            } catch (error) {
+              console.error("Error in auto-connection logic:", error);
+            }
+          });
           
           return updatedNodes;
         } catch (error) {
