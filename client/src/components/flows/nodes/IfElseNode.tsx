@@ -53,7 +53,7 @@ export const IfElseNode = memo(({ data, id, selected }: IfElseNodeProps) => {
     bg-white dark:bg-black rounded-2xl shadow-lg p-3 
     border-2 ${selected ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-amber-500'} 
     ${data.selected ? 'node-highlight' : ''}
-    min-w-[280px] w-[280px]
+    min-w-[320px] w-[320px]
   `;
   
   // Show a visual indicator if the node is skipped

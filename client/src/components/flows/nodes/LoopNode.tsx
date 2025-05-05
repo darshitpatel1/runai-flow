@@ -51,7 +51,7 @@ export const LoopNode = memo(({ id, data, selected }: LoopNodeProps) => {
     bg-white dark:bg-black rounded-2xl shadow-lg p-3 
     border-2 ${selected ? 'border-green-500 ring-2 ring-green-500/20' : 'border-green-500'} 
     ${data.selected ? 'node-highlight' : ''}
-    min-w-[280px] w-[280px]
+    min-w-[320px] w-[320px]
   `;
   
   // Show a visual indicator if the node is skipped

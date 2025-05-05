@@ -21,7 +21,7 @@ export const LogNode = memo(({ data, id, selected }: LogNodeProps) => {
     border-2 ${selected ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-blue-500'} 
     ${data.selected ? 'node-highlight' : ''}
     ${data.skipped ? 'opacity-60' : ''}
-    min-w-[200px]
+    min-w-[320px] w-[320px]
   `;
   
   const showContextMenu = (e: React.MouseEvent) => {

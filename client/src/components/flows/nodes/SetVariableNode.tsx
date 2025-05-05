@@ -51,7 +51,7 @@ export const SetVariableNode = memo(({ id, data, selected }: SetVariableNodeProp
     bg-white dark:bg-black rounded-2xl shadow-lg p-3 
     border-2 ${selected ? 'border-violet-500 ring-2 ring-violet-500/20' : 'border-violet-500'} 
     ${data.selected ? 'node-highlight' : ''}
-    min-w-[280px] w-[280px]
+    min-w-[320px] w-[320px]
   `;
   
   // Show a visual indicator if the node is skipped
