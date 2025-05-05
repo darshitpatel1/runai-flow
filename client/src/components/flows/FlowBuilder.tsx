@@ -68,7 +68,19 @@ export function FlowBuilder({
     if (initialNodes && initialNodes.length > 0) {
       // Create a deep copy to prevent reference issues
       const nodesCopy = JSON.parse(JSON.stringify(initialNodes));
-      setNodes(nodesCopy);
+      
+      // Ensure nodes have stable positions with positionAbsolute
+      const stabilizedNodes = nodesCopy.map((node: any) => ({
+        ...node,
+        // Ensure positionAbsolute matches position to prevent movement
+        positionAbsolute: node.positionAbsolute || node.position,
+        // Prevent node from being selected on load
+        selected: false,
+        // Prevent node from being in dragging state
+        dragging: false
+      }));
+      
+      setNodes(stabilizedNodes);
     }
   }, [initialNodes, setNodes]);
   
@@ -469,10 +481,16 @@ export function FlowBuilder({
                 onEdgeClick={onEdgeClick}
                 nodeTypes={nodeTypes}
                 fitView
+                fitViewOptions={{ 
+                  padding: 0.2, 
+                  minZoom: 0.5, 
+                  maxZoom: 1.5
+                }}
                 snapToGrid
                 snapGrid={[15, 15]}
                 defaultEdgeOptions={{ animated: true }}
                 style={{ width: '100%', height: '100%' }}
+                defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
               >
                 <Controls />
                 <MiniMap />

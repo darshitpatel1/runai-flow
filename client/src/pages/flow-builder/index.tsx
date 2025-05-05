@@ -174,7 +174,7 @@ export default function FlowBuilderPage() {
       const execution = await response.json();
       
       // Store execution ID in the flow for the ExecutionProgress component
-      setFlow(prevFlow => ({
+      setFlow((prevFlow: any) => ({
         ...prevFlow,
         executionId: execution.id
       }));
