@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -10,13 +10,25 @@ import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { ChevronLeft, ChevronRight, Moon, Sun } from "lucide-react";
 
+// Storage key for sidebar collapsed state
+const SIDEBAR_COLLAPSED_KEY = "runai_sidebar_collapsed";
+
 export function Sidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const [loggingOut, setLoggingOut] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  // Initialize the collapsed state from localStorage
+  const [collapsed, setCollapsed] = useState(() => {
+    const savedState = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+    return savedState ? JSON.parse(savedState) : false;
+  });
+  
+  // Save collapsed state to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, JSON.stringify(collapsed));
+  }, [collapsed]);
   
   const handleSignOut = async () => {
     setLoggingOut(true);
