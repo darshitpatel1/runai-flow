@@ -595,6 +595,71 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     );
   };
   
+  // Function to handle variable transformation through JavaScript
+  const applyTransformation = () => {
+    if (!testResult) return;
+    
+    try {
+      // Create a safe function from the transform script
+      const transformFn = new Function('data', `
+        try {
+          ${transformScript}
+          return data;
+        } catch (error) {
+          console.error("Transform error:", error);
+          return null;
+        }
+      `);
+      
+      // Execute the transformation
+      const transformedResult = transformFn(testResult);
+      
+      if (transformedResult) {
+        // Update the test result with the transformed data
+        setTestResult(transformedResult);
+        
+        // Regenerate variable paths based on the new structure
+        const variables = generateVariablePaths(transformedResult);
+        setAvailableVariables(variables);
+        
+        toast({
+          title: "Transformation Applied",
+          description: "The data has been transformed successfully.",
+        });
+      } else {
+        toast({
+          title: "Transformation Failed",
+          description: "The transformation script returned null or undefined.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Transformation Error",
+        description: error.message || "An error occurred in the transformation script",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Handle creating a new variable from the test result
+  const createVariable = (path: string) => {
+    // Create a set variable node using this value
+    const variableName = path.split('.').pop() || 'result';
+    const variableValue = `{{${node.id}.${path}}}`;
+    
+    toast({
+      title: "Variable Reference Copied",
+      description: `Use "${variableValue}" in downstream nodes.`,
+    });
+    
+    // If we're already in a set variable node, we can auto-populate it
+    if (node.type === 'setVariable') {
+      handleChange('variableKey', variableName);
+      handleChange('variableValue', path); // Just use the path directly
+    }
+  };
+  
   return (
     <div className="w-80 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-black flex flex-col">
       <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
@@ -605,7 +670,89 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 dark:bg-black">
-        {renderConfigFields()}
+        {/* Tab interface for configuration and testing */}
+        <Tabs defaultValue="config" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="config">Configure</TabsTrigger>
+            <TabsTrigger value="test">Test & Variables</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="config">
+            {renderConfigFields()}
+          </TabsContent>
+          
+          <TabsContent value="test">
+            <div className="space-y-4">
+              <div>
+                <Button 
+                  className="w-full flex items-center justify-center gap-2" 
+                  onClick={handleTestNode}
+                  disabled={isTestingNode}
+                >
+                  {isTestingNode ? (
+                    <>Testing...</>
+                  ) : (
+                    <>
+                      <PlayIcon className="h-4 w-4" />
+                      Test This Node
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Test this node in isolation and use the result to create variables for downstream nodes.
+                </p>
+              </div>
+              
+              {testResult && (
+                <>
+                  <div className="border border-slate-200 dark:border-slate-700 rounded-md p-3">
+                    <h3 className="text-sm font-medium mb-2 flex items-center justify-between">
+                      <span>Test Result</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs"
+                        onClick={() => setShowVariableDialog(true)}
+                      >
+                        View Variables
+                      </Button>
+                    </h3>
+                    <pre className="text-xs bg-slate-50 dark:bg-slate-900 p-2 rounded overflow-auto max-h-40">
+                      {JSON.stringify(testResult, null, 2)}
+                    </pre>
+                  </div>
+                  
+                  <div>
+                    <Label className="block text-sm font-medium mb-1">Transform Data with JavaScript</Label>
+                    <Textarea
+                      value={transformScript}
+                      onChange={(e) => setTransformScript(e.target.value)}
+                      placeholder="// Example: Add a computed field based on the response
+data.computedField = data.someValue * 2;
+// Or filter an array
+if (data.items) {
+  data.items = data.items.filter(item => item.status === 'active');
+}"
+                      className="font-mono text-xs h-32"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Use JavaScript to transform the response data. The original data is available as <code>data</code>.
+                    </p>
+                    <Button 
+                      onClick={applyTransformation} 
+                      variant="outline" 
+                      size="sm" 
+                      className="mt-2 flex items-center gap-1"
+                    >
+                      <Code2Icon className="h-3 w-3" />
+                      Apply Transformation
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
       
       <div className="p-4 border-t border-slate-200 dark:border-slate-700">
@@ -616,6 +763,41 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           Apply Changes
         </Button>
       </div>
+      
+      {/* Variable list dialog */}
+      <Dialog open={showVariableDialog} onOpenChange={setShowVariableDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Available Variables</DialogTitle>
+            <DialogDescription>
+              Click on a variable path to use it in downstream nodes.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="max-h-80 overflow-y-auto">
+            {availableVariables.length > 0 ? (
+              <div className="space-y-1">
+                {availableVariables.map((path) => (
+                  <div
+                    key={path}
+                    className="flex items-center justify-between p-2 text-xs rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                    onClick={() => createVariable(path)}
+                  >
+                    <code className="font-mono">{path}</code>
+                    <Button size="sm" variant="ghost" className="h-6">
+                      Use
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-center text-muted-foreground py-4">
+                No variables available. Run a test to generate variables.
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

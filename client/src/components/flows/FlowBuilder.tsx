@@ -396,6 +396,185 @@ export function FlowBuilder({
     setEdges((eds) => eds.filter((e) => e.id !== edge.id));
   }, [setEdges]);
   
+  // Test a node in isolation
+  const testNode = useCallback(async (nodeId: string, nodeData: any) => {
+    // Find the node by ID
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) {
+      throw new Error(`Node with ID ${nodeId} not found`);
+    }
+    
+    // Apply the node data to ensure we're using the latest configuration
+    setNodes((nds) =>
+      nds.map((n) => {
+        if (n.id === nodeId) {
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              ...nodeData,
+            },
+          };
+        }
+        return n;
+      })
+    );
+    
+    // Mock execution for this node only
+    let responseData: any = null;
+    
+    // Create a log to track the execution
+    const initialLog = {
+      timestamp: new Date(),
+      type: "info",
+      nodeId,
+      message: `Testing node: "${nodeData.label}" (${node.type})`
+    };
+    setLogs([initialLog]);
+    
+    // Simulate different behavior based on node type
+    if (node.type === 'httpRequest') {
+      // Mock HTTP request execution
+      const method = nodeData.method || 'GET';
+      const endpoint = nodeData.endpoint || '/api';
+      const connector = nodeData.connector || 'No connector';
+      
+      // Log the request details
+      const requestLog = {
+        timestamp: new Date(),
+        type: "http",
+        nodeId: node.id,
+        message: `${method} ${endpoint} using connector: ${connector}`
+      };
+      setLogs((logs) => [...logs, requestLog]);
+      
+      // If it's a POST or PUT request with a body, show the request body
+      if ((method === 'POST' || method === 'PUT' || method === 'PATCH') && nodeData.body) {
+        const bodyLog = {
+          timestamp: new Date(),
+          type: "http",
+          nodeId: node.id,
+          message: `Request Body: ${nodeData.body}`
+        };
+        setLogs((logs) => [...logs, bodyLog]);
+      }
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Generate a response based on the connector and method
+      if (nodeData.connector) {
+        // OAuth connectors (simulate successful authentication)
+        const responseLog = {
+          timestamp: new Date(),
+          type: "success",
+          nodeId: node.id,
+          message: `Response: 200 OK (authenticated with ${nodeData.connector})`
+        };
+        setLogs((logs) => [...logs, responseLog]);
+        
+        // Add mock response data with more realistic schema
+        if (nodeData.connector === 'workday' && nodeData.body && nodeData.body.includes('locationType')) {
+          responseData = {
+            "Total Count": 1,
+            "data": {
+              "Report_Entry": [
+                {
+                  "locationType": "Corporate Office",
+                  "locationIdentifier": "1028",
+                  "locationName": "San Francisco HQ",
+                  "address": {
+                    "addressLine1": "123 Market Street",
+                    "city": "San Francisco",
+                    "region": "CA",
+                    "postalCode": "94105",
+                    "country": "USA"
+                  },
+                  "timeZone": "America/Los_Angeles",
+                  "status": "Active"
+                }
+              ]
+            }
+          };
+        } else if (method === 'GET') {
+          responseData = {
+            "success": true,
+            "data": {"items": [{"id": 1, "name": "Item 1"}, {"id": 2, "name": "Item 2"}]}
+          };
+        } else {
+          responseData = {
+            "success": true,
+            "message": "Operation completed successfully",
+            "id": `req-${Date.now()}`,
+            "timestamp": new Date().toISOString()
+          };
+        }
+        
+        // Log the response data
+        const dataLog = {
+          timestamp: new Date(),
+          type: "info",
+          nodeId: node.id,
+          message: `Response Data: ${JSON.stringify(responseData)}`
+        };
+        setLogs((logs) => [...logs, dataLog]);
+      } else {
+        // No connector selected - simple mock response
+        const successLog = {
+          timestamp: new Date(),
+          type: "success",
+          nodeId: node.id,
+          message: "Response: 200 OK"
+        };
+        setLogs((logs) => [...logs, successLog]);
+        
+        responseData = {
+          "status": 200,
+          "success": true,
+          "data": {
+            "message": "This is a mock response for testing purposes",
+            "timestamp": new Date().toISOString()
+          }
+        };
+      }
+    } else if (node.type === 'setVariable') {
+      // Simply display the variable information
+      const variableLog = {
+        timestamp: new Date(),
+        type: "info",
+        nodeId: node.id,
+        message: `Variable ${nodeData.variableKey} would be set to: ${nodeData.variableValue}`
+      };
+      setLogs((logs) => [...logs, variableLog]);
+      
+      responseData = {
+        variableKey: nodeData.variableKey,
+        variableValue: nodeData.variableValue,
+        type: "variable"
+      };
+    } else {
+      // Generic test response for other node types
+      responseData = {
+        nodeType: node.type,
+        nodeId: node.id,
+        testOnly: true,
+        timestamp: new Date().toISOString()
+      };
+    }
+    
+    // Complete the test
+    const completionLog = {
+      timestamp: new Date(),
+      type: "info",
+      nodeId,
+      message: "Node test completed"
+    };
+    setLogs((logs) => [...logs, completionLog]);
+    
+    // Return the response data for further processing
+    return responseData;
+  }, [nodes, setNodes, setLogs]);
+  
   // Handle the node context menu display
   useEffect(() => {
     const handleNodeContextMenu = (event: CustomEvent) => {
@@ -764,6 +943,7 @@ export function FlowBuilder({
             updateNodeData={updateNodeData} 
             onClose={closeNodeConfig}
             connectors={connectors}
+            onTestNode={testNode}
           />
         )}
         
