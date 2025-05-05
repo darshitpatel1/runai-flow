@@ -74,7 +74,7 @@ export function FlowBuilder({
 }: FlowBuilderProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   // Use regular state for more control over node position handling
-  const [nodes, setNodes] = useState<any[]>([]);
+  const [nodes, setNodes] = useState<any[]>(initialNodes || []);
   
   // Grid size for snapping - should match the snapGrid value in ReactFlow component
   const gridSize = 15;
@@ -239,6 +239,12 @@ export function FlowBuilder({
   const onDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
+    
+    // Ensure the drop is allowed and visible to the user
+    const types = event.dataTransfer.types;
+    if (types.includes('application/reactflow-type')) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
   }, []);
   
   // Handle drag completion to ensure nodes are properly snapped
@@ -276,9 +282,19 @@ export function FlowBuilder({
       
       const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect();
       const nodeType = event.dataTransfer.getData('application/reactflow-type');
-      const nodeData = JSON.parse(event.dataTransfer.getData('application/reactflow-data'));
+      
+      // Safely parse the node data, providing a default if parsing fails
+      let nodeData;
+      try {
+        const dataStr = event.dataTransfer.getData('application/reactflow-data');
+        nodeData = dataStr ? JSON.parse(dataStr) : {};
+      } catch (err) {
+        console.error('Error parsing node data:', err);
+        nodeData = {};
+      }
       
       if (!nodeType || !reactFlowBounds || !reactFlowInstance) {
+        console.log('Missing required elements for node creation');
         return;
       }
       
@@ -297,71 +313,31 @@ export function FlowBuilder({
       // Create a unique ID for the node
       const newNodeId = `${nodeType}_${Date.now()}`;
       
-      // Create the new node
+      // Create the new node with basic required properties
       const newNode = {
         id: newNodeId,
         type: nodeType,
         position,
         data: { 
-          ...nodeData, 
-          label: `New ${nodeData.label}`,
+          label: nodeData.label ? `New ${nodeData.label}` : 'New Node',
+          // Add nodes array reference for variable access in the node
+          nodes: nodes, 
         },
       };
       
-      // Add node first, then create connection
+      console.log('Creating new node:', newNode);
+      
+      // Add node to the flow
       setNodes((nds) => {
-        const updatedNodes = nds.concat(newNode);
-        
-        // Find the nearest node above this node to auto-connect
-        // This prevents the blinking effect by executing all node operations in one go
-        setTimeout(() => {
-          // Find potential source nodes (any node above the new node)
-          if (nds.length > 0) {
-            const sourceNodes = nds.filter(node => {
-              // Node is above the new node (y position is smaller)
-              return node.position.y < position.y;
-            });
-            
-            if (sourceNodes.length > 0) {
-              // Find the closest node above the new node
-              const closestNode = sourceNodes.reduce((closest, current) => {
-                const closestDist = Math.hypot(
-                  closest.position.x - position.x,
-                  closest.position.y - position.y
-                );
-                const currentDist = Math.hypot(
-                  current.position.x - position.x,
-                  current.position.y - position.y
-                );
-                return currentDist < closestDist ? current : closest;
-              }, sourceNodes[0]);
-              
-              // Create connection from closest node to new node
-              // For if/else nodes, connect to appropriate handle
-              let sourceHandle = null;
-              if (closestNode.type === 'ifElse') {
-                // For simple auto-connection, use 'true' path from if/else
-                sourceHandle = 'true';
-              }
-              
-              const params = {
-                id: `e-${Date.now()}`,
-                source: closestNode.id,
-                sourceHandle: sourceHandle,
-                target: newNodeId,
-                animated: true,
-                style: { stroke: '#4f46e5', strokeWidth: 2 }
-              };
-              
-              setEdges((eds) => addEdge(params, eds));
-            }
-          }
-        }, 50);
-        
-        return updatedNodes;
+        return nds.concat(newNode);
       });
+      
+      // Report the change to parent component
+      setTimeout(() => {
+        reportNodesChange([...nodes, newNode]);
+      }, 100);
     },
-    [reactFlowInstance, setNodes, setEdges]
+    [reactFlowInstance, setNodes, nodes, reportNodesChange, gridSize]
   );
   
   const onNodeClick = useCallback((event: React.MouseEvent, node: any) => {
