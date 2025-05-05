@@ -28,13 +28,12 @@ export function NodeContextMenu({ nodeId, onDelete, onSkip }: NodeContextMenuPro
 
   return (
     <div 
-      className="absolute top-2 right-2 z-10" 
       onClick={(e) => e.stopPropagation()}
     >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="context-menu-trigger w-6 h-6 flex items-center justify-center rounded-full bg-white bg-opacity-70 dark:bg-slate-700 dark:bg-opacity-70 hover:bg-opacity-100 dark:hover:bg-opacity-100 transition-all duration-200">
-            <MoreVertical className="h-4 w-4 text-slate-600 dark:text-slate-200" />
+          <button className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+            <MoreVertical className="h-4 w-4" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-40">
