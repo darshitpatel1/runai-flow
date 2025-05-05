@@ -24,6 +24,8 @@ export function useWebSocket(options: WebSocketOptions = {}) {
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastConnectAttempt = useRef<number>(0);
+  const connectRef = useRef<(() => void) | null>(null);
   
   const {
     onOpen,
@@ -56,17 +58,48 @@ export function useWebSocket(options: WebSocketOptions = {}) {
     return `${protocol}//${host}/ws`;
   }, []);
   
+  // Attempt to reconnect - don't rely on connect being fully defined yet
+  const attemptReconnect = useCallback(() => {
+    if (reconnectAttemptsRef.current >= reconnectAttempts) {
+      console.log(`Maximum reconnection attempts (${reconnectAttempts}) reached`);
+      return;
+    }
+    
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+    }
+    
+    reconnectTimerRef.current = setTimeout(() => {
+      reconnectAttemptsRef.current += 1;
+      console.log(`Attempting to reconnect (${reconnectAttemptsRef.current}/${reconnectAttempts})...`);
+      if (connectRef.current) {
+        connectRef.current();
+      }
+    }, reconnectInterval);
+  }, [reconnectAttempts, reconnectInterval]);
+  
   // Create WebSocket connection
   const connect = useCallback(() => {
+    // Don't try to reconnect too quickly to avoid console spam
+    const now = Date.now();
+    if (now - lastConnectAttempt.current < 5000) {
+      console.log('Skipping reconnect attempt, too soon');
+      return;
+    }
+    lastConnectAttempt.current = now;
+    
     // Close existing connection if any
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.close();
+    if (socketRef.current) {
+      try {
+        socketRef.current.close();
+      } catch (e) {
+        // Ignore any errors during closure
+      }
     }
     
     try {
       // Get a valid WebSocket URL
       const wsUrl = getWebSocketUrl();
-      console.log('Connecting to WebSocket:', wsUrl);
       
       // Create the new WebSocket connection
       const socket = new WebSocket(wsUrl);
@@ -91,13 +124,18 @@ export function useWebSocket(options: WebSocketOptions = {}) {
       };
       
       socket.onclose = (event: CloseEvent) => {
-        console.log('WebSocket connection closed', event);
+        // Only log clean closures, not connection errors which are too noisy
+        if (event.wasClean) {
+          console.log('WebSocket connection closed cleanly');
+        }
+        
         setIsConnected(false);
         
         if (onClose) onClose();
         
-        // Attempt to reconnect if enabled and not a deliberate close
-        if (autoReconnect && !event.wasClean) {
+        // Use a more aggressive reconnect strategy
+        if (autoReconnect) {
+          // Even if it was clean, still try to reconnect
           attemptReconnect();
         }
       };
@@ -113,31 +151,16 @@ export function useWebSocket(options: WebSocketOptions = {}) {
       };
       
       socket.onerror = (event: Event) => {
-        console.error('WebSocket error:', event);
+        // Don't log every error to console - it's too noisy
         if (onError) onError(event);
       };
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error);
     }
-  }, [user, getWebSocketUrl, onOpen, onClose, onMessage, onError, autoReconnect]);
+  }, [user, getWebSocketUrl, onOpen, onClose, onMessage, onError, autoReconnect, attemptReconnect]);
   
-  // Attempt to reconnect
-  const attemptReconnect = useCallback(() => {
-    if (reconnectAttemptsRef.current >= reconnectAttempts) {
-      console.log(`Maximum reconnection attempts (${reconnectAttempts}) reached`);
-      return;
-    }
-    
-    if (reconnectTimerRef.current) {
-      clearTimeout(reconnectTimerRef.current);
-    }
-    
-    reconnectTimerRef.current = setTimeout(() => {
-      reconnectAttemptsRef.current += 1;
-      console.log(`Attempting to reconnect (${reconnectAttemptsRef.current}/${reconnectAttempts})...`);
-      connect();
-    }, reconnectInterval);
-  }, [connect, reconnectAttempts, reconnectInterval]);
+  // Save connect function in ref so we can use it in reconnect
+  connectRef.current = connect;
   
   // Send a message through the WebSocket
   const sendMessage = useCallback((message: any) => {

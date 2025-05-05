@@ -1,0 +1,85 @@
+WebSocket connection closed 
+CloseEvent {isTrusted: true}
+WebSocket error: 
+Event {isTrusted: true}
+
+WebSocket connection closed 
+CloseEvent {isTrusted: true}
+Loading initial nodes: 
+(4) [{…}, {…}, {…}, {…}]
+Using Replit domain for WebSocket connection: e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev
+Connecting to WebSocket: wss://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/ws
+Loading initial nodes: 
+(4) [{…}, {…}, {…}, {…}]
+Loading initial edges: 
+(3) [{…}, {…}, {…}]
+Using Replit domain for WebSocket connection: e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev
+Connecting to WebSocket: wss://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/ws
+WebSocket error: 
+Event {isTrusted: true}
+
+WebSocket connection closed 
+CloseEvent {isTrusted: true}
+WebSocket error: 
+Event {isTrusted: true}
+
+WebSocket connection closed 
+CloseEvent {isTrusted: true}
+Loading initial nodes: 
+(4) [{…}, {…}, {…}, {…}]
+Using Replit domain for WebSocket connection: e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev
+Connecting to WebSocket: wss://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/ws
+Loading initial nodes: 
+(4) [{…}, {…}, {…}, {…}]
+Loading initial edges: 
+(3) [{…}, {…}, {…}]
+Using Replit domain for WebSocket connection: e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev
+Connecting to WebSocket: wss://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/ws
+WebSocket error: 
+Event {isTrusted: true}
+
+WebSocket connection closed 
+CloseEvent {isTrusted: true}
+WebSocket error: 
+Event {isTrusted: true}
+
+WebSocket connection closed 
+CloseEvent {isTrusted: true}
+Loading initial nodes: 
+(4) [{…}, {…}, {…}, {…}]
+Using Replit domain for WebSocket connection: e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev
+Connecting to WebSocket: wss://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/ws
+Loading initial nodes: 
+(4) [{…}, {…}, {…}, {…}]
+Loading initial edges: 
+(3) [{…}, {…}, {…}]
+Using Replit domain for WebSocket connection: e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev
+Connecting to WebSocket: wss://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/ws
+Loading initial nodes: 
+(4) [{…}, {…}, {…}, {…}]
+Using Replit domain for WebSocket connection: e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev
+Connecting to WebSocket: wss://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/ws
+WebSocket error: 
+Event {isTrusted: true}
+
+WebSocket connection closed 
+CloseEvent {isTrusted: true}
+WebSocket error: 
+Event {isTrusted: true}
+
+WebSocket connection closed 
+CloseEvent {isTrusted: true}
+WebSocket error: 
+Event {isTrusted: true}
+
+WebSocket connection closed 
+CloseEvent {isTrusted: true}
+Loading initial nodes: 
+(4) [{…}, {…}, {…}, {…}]
+Loading initial edges: 
+(3) [{…}, {…}, {…}]
+Using Replit domain for WebSocket connection: e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev
+Connecting to WebSocket: wss://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/ws
+Loading initial nodes: 
+(4) [{…}, {…}, {…}, {…}]
+Using Replit domain for WebSocket c
