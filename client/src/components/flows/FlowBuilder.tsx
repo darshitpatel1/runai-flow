@@ -67,11 +67,16 @@ export function FlowBuilder({
         
         // Stabilize any nodes that are being dragged or manipulated
         return updatedNodes.map((node: any) => {
-          const change = changes.find(
-            (c: NodeChange) => c.id === node.id && (c.type === 'position' || c.type === 'dimensions')
+          // Look for position changes that match this node's ID
+          const positionChange = changes.find(
+            (c: NodeChange) => 
+              // First check if it's the right type of change
+              (c.type === 'position' || c.type === 'dimensions') && 
+              // Then check if the ID matches (safely accessing the ID)
+              'id' in c && c.id === node.id
           );
           
-          if (change) {
+          if (positionChange) {
             // Round position values to prevent subpixel rendering issues
             const roundedX = Math.round(node.position.x);
             const roundedY = Math.round(node.position.y);

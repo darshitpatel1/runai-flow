@@ -35,6 +35,23 @@ export function useWebSocket(options: WebSocketOptions = {}) {
     autoReconnect = true
   } = options;
   
+  // Helper to get a valid WebSocket URL
+  const getWebSocketUrl = useCallback((): string => {
+    // Use secure protocol if page is loaded over HTTPS
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    
+    // Get the host, falling back to hostname if host is undefined
+    const host = window.location.host || window.location.hostname || 'localhost';
+    
+    // Construct and validate the URL
+    if (!host || host.includes('undefined')) {
+      console.warn('Invalid host detected, falling back to direct hostname');
+      return `${protocol}//${window.location.hostname}/ws`;
+    }
+    
+    return `${protocol}//${host}/ws`;
+  }, []);
+  
   // Create WebSocket connection
   const connect = useCallback(() => {
     // Close existing connection if any
@@ -42,58 +59,63 @@ export function useWebSocket(options: WebSocketOptions = {}) {
       socketRef.current.close();
     }
     
-    // Determine WebSocket URL based on current protocol and host
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    
-    // Create new WebSocket connection
-    const socket = new WebSocket(wsUrl);
-    socketRef.current = socket;
-    
-    socket.onopen = () => {
-      console.log('WebSocket connection established');
-      setIsConnected(true);
-      reconnectAttemptsRef.current = 0;
+    try {
+      // Get a valid WebSocket URL
+      const wsUrl = getWebSocketUrl();
+      console.log('Connecting to WebSocket:', wsUrl);
       
-      // Authenticate the connection by sending user info
-      if (user) {
-        socket.send(JSON.stringify({
-          type: 'auth',
-          token: user.uid, // Using Firebase UID as token
-          userId: user.uid
-        }));
-      }
+      // Create the new WebSocket connection
+      const socket = new WebSocket(wsUrl);
+      socketRef.current = socket;
       
-      if (onOpen) onOpen();
-    };
-    
-    socket.onclose = (event) => {
-      console.log('WebSocket connection closed', event);
-      setIsConnected(false);
+      // Set up event handlers
+      socket.onopen = () => {
+        console.log('WebSocket connection established');
+        setIsConnected(true);
+        reconnectAttemptsRef.current = 0;
+        
+        // Authenticate the connection by sending user info
+        if (user) {
+          socket.send(JSON.stringify({
+            type: 'auth',
+            token: user.uid, // Using Firebase UID as token
+            userId: user.uid
+          }));
+        }
+        
+        if (onOpen) onOpen();
+      };
       
-      if (onClose) onClose();
+      socket.onclose = (event: CloseEvent) => {
+        console.log('WebSocket connection closed', event);
+        setIsConnected(false);
+        
+        if (onClose) onClose();
+        
+        // Attempt to reconnect if enabled and not a deliberate close
+        if (autoReconnect && !event.wasClean) {
+          attemptReconnect();
+        }
+      };
       
-      // Attempt to reconnect if enabled and not a deliberate close
-      if (autoReconnect && !event.wasClean) {
-        attemptReconnect();
-      }
-    };
-    
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        setLastMessage(data);
-        if (onMessage) onMessage(data);
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    };
-    
-    socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      if (onError) onError(error);
-    };
-  }, [user, onOpen, onClose, onMessage, onError, autoReconnect]);
+      socket.onmessage = (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          setLastMessage(data);
+          if (onMessage) onMessage(data);
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+      
+      socket.onerror = (event: Event) => {
+        console.error('WebSocket error:', event);
+        if (onError) onError(event);
+      };
+    } catch (error) {
+      console.error('Failed to create WebSocket connection:', error);
+    }
+  }, [user, getWebSocketUrl, onOpen, onClose, onMessage, onError, autoReconnect]);
   
   // Attempt to reconnect
   const attemptReconnect = useCallback(() => {
