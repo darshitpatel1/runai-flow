@@ -5,11 +5,12 @@ import ReactFlow, {
   Controls, 
   Background, 
   ReactFlowProvider, 
-  useNodesState, 
   useEdgesState,
   Connection,
   Edge,
-  EdgeTypes
+  EdgeTypes,
+  applyNodeChanges,
+  NodeChange
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { collection, addDoc } from "firebase/firestore";
@@ -54,7 +55,47 @@ export function FlowBuilder({
   flowId
 }: FlowBuilderProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  // Use regular state instead of useNodesState to get more control
+  const [nodes, setNodes] = useState<any[]>([]);
+  
+  // Custom nodes change handler to stabilize positions
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      setNodes((nds) => {
+        // Apply changes using the standard handler from ReactFlow
+        const updatedNodes = applyNodeChanges(changes, nds);
+        
+        // Stabilize any nodes that are being dragged or manipulated
+        return updatedNodes.map((node: any) => {
+          const change = changes.find(
+            (c: NodeChange) => c.id === node.id && (c.type === 'position' || c.type === 'dimensions')
+          );
+          
+          if (change) {
+            // Round position values to prevent subpixel rendering issues
+            const roundedX = Math.round(node.position.x);
+            const roundedY = Math.round(node.position.y);
+            
+            return {
+              ...node,
+              position: { 
+                x: roundedX,
+                y: roundedY
+              },
+              positionAbsolute: { 
+                x: roundedX,
+                y: roundedY
+              },
+              // Reset dragging flag to prevent continued animation
+              dragging: false
+            };
+          }
+          return node;
+        });
+      });
+    },
+    [setNodes]
+  );
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [selectedNode, setSelectedNode] = useState<any>(null);
@@ -93,10 +134,31 @@ export function FlowBuilder({
     }
   }, [initialEdges, setEdges]);
   
+  // Stabilize node positions by ensuring positionAbsolute is always synchronized with position
+  const stabilizeNodePositions = useCallback((nodes: any[]) => {
+    return nodes.map((node) => {
+      // Ensure node has positionAbsolute matching its position
+      if (!node.positionAbsolute || 
+          node.positionAbsolute.x !== node.position.x || 
+          node.positionAbsolute.y !== node.position.y) {
+        return {
+          ...node,
+          positionAbsolute: { ...node.position },
+          // Make sure these properties are always set correctly
+          selected: node.selected || false,
+          dragging: false
+        };
+      }
+      return node;
+    });
+  }, []);
+  
   // Update parent component when nodes/edges change
   useEffect(() => {
-    reportNodesChange(nodes);
-  }, [nodes, reportNodesChange]);
+    // Apply stabilization before reporting changes
+    const stabilizedNodes = stabilizeNodePositions(nodes);
+    reportNodesChange(stabilizedNodes);
+  }, [nodes, reportNodesChange, stabilizeNodePositions]);
   
   useEffect(() => {
     reportEdgesChange(edges);
