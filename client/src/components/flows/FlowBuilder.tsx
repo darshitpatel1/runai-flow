@@ -42,6 +42,7 @@ import { LoopNode } from "./nodes/LoopNode";
 import { SetVariableNode } from "./nodes/SetVariableNode";
 import { LogNode } from "./nodes/LogNode";
 import { DelayNode } from "./nodes/DelayNode";
+import { StopJobNode } from "./nodes/StopJobNode";
 import { useToast } from "@/hooks/use-toast";
 
 // Define custom node types
@@ -51,7 +52,8 @@ const nodeTypes = {
   loop: LoopNode,
   setVariable: SetVariableNode,
   log: LogNode,
-  delay: DelayNode
+  delay: DelayNode,
+  stopJob: StopJobNode
 };
 
 interface FlowBuilderProps {
