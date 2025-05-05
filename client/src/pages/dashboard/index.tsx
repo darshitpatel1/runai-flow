@@ -376,6 +376,58 @@ export default function Dashboard() {
       setIsAddingToFolder(false);
     }
   };
+  
+  // Handle remove from folder
+  const handleRemoveFromFolder = async (folderId: string, itemId: string, itemType: string) => {
+    if (!user) return;
+    
+    try {
+      const folderRef = doc(db, "users", user.uid, "folders", folderId);
+      const folderSnap = await getDoc(folderRef);
+      
+      if (!folderSnap.exists()) {
+        throw new Error("Folder does not exist");
+      }
+      
+      const folderData = folderSnap.data();
+      
+      // Get current items
+      const items = folderData.items || [];
+      
+      // Filter out the item to remove
+      const updatedItems = items.filter((item: any) => 
+        !(item.id === itemId && item.type === itemType)
+      );
+      
+      // Update folder document
+      await updateDoc(folderRef, {
+        items: updatedItems,
+        updatedAt: new Date(),
+      });
+      
+      // Update local state
+      setFolders(folders.map(folder => 
+        folder.id === folderId 
+          ? { 
+              ...folder, 
+              items: updatedItems,
+              updatedAt: { toDate: () => new Date() },
+            } 
+          : folder
+      ));
+      
+      toast({
+        title: "Removed from folder",
+        description: `Item has been removed from the folder`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error removing from folder",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -544,7 +596,15 @@ export default function Dashboard() {
                             {folder.items.map((item: any) => (
                               <div 
                                 key={`${item.type}-${item.id}`} 
-                                className="flex items-center gap-2 text-sm p-1 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                                className="flex items-center gap-2 text-sm p-1 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 group cursor-pointer"
+                                onClick={() => {
+                                  if (item.type === 'flow') {
+                                    // Use history to navigate
+                                    window.location.href = `/flow-builder/${item.id}`;
+                                  } else {
+                                    window.location.href = `/connectors?edit=${item.id}`;
+                                  }
+                                }}
                               >
                                 {item.type === 'flow' ? (
                                   <ArrowRightIcon className="h-3 w-3 text-blue-500" />
