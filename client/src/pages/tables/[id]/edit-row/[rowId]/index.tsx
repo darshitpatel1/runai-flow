@@ -43,7 +43,7 @@ export default function EditRowPage() {
   
   // Get table rows to find the current row
   const { data: tableRows, isLoading: isRowsLoading } = useQuery({
-    queryKey: ['/api/tables', tableId, 'rows'],
+    queryKey: [`/api/tables/${tableId}/rows`],
     enabled: !!tableId && !!user,
   });
   
