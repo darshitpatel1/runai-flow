@@ -200,6 +200,10 @@ export function FlowBuilder({
   );
   
   const onNodeClick = useCallback((event: React.MouseEvent, node: any) => {
+    // Don't trigger selection if it's a click on the context menu
+    if ((event.target as HTMLElement).closest('.context-menu-trigger')) {
+      return;
+    }
     setSelectedNode(node);
   }, []);
   

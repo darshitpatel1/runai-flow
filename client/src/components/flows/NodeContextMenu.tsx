@@ -33,7 +33,7 @@ export function NodeContextMenu({ nodeId, onDelete, onSkip }: NodeContextMenuPro
     >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="w-6 h-6 flex items-center justify-center rounded-full bg-white bg-opacity-70 dark:bg-slate-700 dark:bg-opacity-70 hover:bg-opacity-100 dark:hover:bg-opacity-100 transition-all duration-200">
+          <button className="context-menu-trigger w-6 h-6 flex items-center justify-center rounded-full bg-white bg-opacity-70 dark:bg-slate-700 dark:bg-opacity-70 hover:bg-opacity-100 dark:hover:bg-opacity-100 transition-all duration-200">
             <MoreVertical className="h-4 w-4 text-slate-600 dark:text-slate-200" />
           </button>
         </DropdownMenuTrigger>
