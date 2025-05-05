@@ -427,14 +427,6 @@ export default function TableDetailPage() {
               Edit Table
             </Button>
             
-            <Button 
-              onClick={() => setIsAddingRow(true)}
-              disabled={isAddingRow}
-            >
-              <PlusIcon className="mr-2 h-4 w-4" />
-              {isAddingRow ? "Adding Row..." : "Add Row"}
-            </Button>
-            
             <Button
               variant="outline"
               onClick={() => {
@@ -483,6 +475,14 @@ export default function TableDetailPage() {
               <Download className="mr-2 h-4 w-4" />
               Export CSV
             </Button>
+            
+            <Button 
+              onClick={() => setIsAddingRow(true)}
+              disabled={isAddingRow}
+            >
+              <PlusIcon className="mr-2 h-4 w-4" />
+              {isAddingRow ? "Adding Row..." : "Add Row"}
+            </Button>
           </div>
         </div>
         
@@ -490,15 +490,17 @@ export default function TableDetailPage() {
           <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4">
             <div className="flex items-center gap-3">
               <CardTitle>Table Data</CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsFilteringOpen(!isFilteringOpen)}
-                className="flex items-center gap-1"
-              >
-                <Filter className="h-4 w-4" />
-                {Object.keys(columnFilters).length > 0 ? `Filters (${Object.keys(columnFilters).length})` : "Filter"}
-              </Button>
+              {Object.keys(columnFilters).length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setColumnFilters({})}
+                  className="flex items-center gap-1"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Clear Filters ({Object.keys(columnFilters).length})
+                </Button>
+              )}
             </div>
             <div className="w-full md:w-1/3">
               <Input
@@ -509,47 +511,6 @@ export default function TableDetailPage() {
               />
             </div>
           </CardHeader>
-          
-          {isFilteringOpen && (
-            <div className="px-6 pb-4 border-b">
-              <div className="text-sm font-medium mb-2">Filter by column</div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {columns.map((column) => (
-                  <div key={column.id} className="space-y-1">
-                    <label htmlFor={`filter-${column.id}`} className="text-sm font-medium">
-                      {column.name}
-                    </label>
-                    <Input
-                      id={`filter-${column.id}`}
-                      placeholder={`Filter ${column.name}...`}
-                      value={columnFilters[column.id] || ''}
-                      onChange={(e) => {
-                        const newFilters = { ...columnFilters };
-                        if (e.target.value) {
-                          newFilters[column.id] = e.target.value;
-                        } else {
-                          delete newFilters[column.id];
-                        }
-                        setColumnFilters(newFilters);
-                      }}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                ))}
-              </div>
-              {Object.keys(columnFilters).length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setColumnFilters({})}
-                  className="mt-3"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Clear all filters
-                </Button>
-              )}
-            </div>
-          )}
           <CardContent>
             <div className="border rounded-md overflow-hidden">
               <div className="overflow-x-auto">
@@ -559,12 +520,94 @@ export default function TableDetailPage() {
                       <TableHead className="w-[100px]">Actions</TableHead>
                       {columns.map((column: ColumnDefinition) => (
                         <TableHead key={column.id} className="min-w-[150px]">
-                          <div className="flex items-center gap-2">
-                            {column.name}
-                            {column.required && (
-                              <Badge variant="outline" className="ml-1 font-normal">
-                                Required
-                              </Badge>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              {column.name}
+                              {column.required && (
+                                <Badge variant="outline" className="ml-1 font-normal">
+                                  Required
+                                </Badge>
+                              )}
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className={`h-5 w-5 ml-auto p-0 ${columnFilters[column.id] ? 'text-blue-500' : 'text-muted-foreground'}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const popupDiv = document.createElement('div');
+                                  popupDiv.className = 'absolute mt-1 bg-popover border rounded-md shadow-md z-50 p-2 w-64';
+                                  popupDiv.style.left = `${e.currentTarget.getBoundingClientRect().left}px`;
+                                  popupDiv.style.top = `${e.currentTarget.getBoundingClientRect().bottom + window.scrollY}px`;
+                                  
+                                  const handleClickOutside = (evt: MouseEvent) => {
+                                    if (!popupDiv.contains(evt.target as Node)) {
+                                      document.body.removeChild(popupDiv);
+                                      document.removeEventListener('click', handleClickOutside, true);
+                                    }
+                                  };
+                                  
+                                  // Create filter input
+                                  const inputElement = document.createElement('input');
+                                  inputElement.className = 'w-full p-2 text-sm border rounded-md mb-2';
+                                  inputElement.placeholder = `Filter ${column.name}...`;
+                                  inputElement.value = columnFilters[column.id] || '';
+                                  inputElement.addEventListener('input', (inputEvent) => {
+                                    const inputEl = inputEvent.target as HTMLInputElement;
+                                    const newFilters = { ...columnFilters };
+                                    if (inputEl.value) {
+                                      newFilters[column.id] = inputEl.value;
+                                    } else {
+                                      delete newFilters[column.id];
+                                    }
+                                    setColumnFilters(newFilters);
+                                  });
+                                  
+                                  // Create buttons
+                                  const buttonDiv = document.createElement('div');
+                                  buttonDiv.className = 'flex justify-between';
+                                  
+                                  // Clear button
+                                  const clearButton = document.createElement('button');
+                                  clearButton.className = 'px-2 py-1 text-xs bg-muted text-muted-foreground rounded-md hover:bg-muted/80';
+                                  clearButton.textContent = 'Clear';
+                                  clearButton.addEventListener('click', () => {
+                                    const newFilters = { ...columnFilters };
+                                    delete newFilters[column.id];
+                                    setColumnFilters(newFilters);
+                                    document.body.removeChild(popupDiv);
+                                  });
+                                  
+                                  // Apply button
+                                  const applyButton = document.createElement('button');
+                                  applyButton.className = 'px-2 py-1 text-xs bg-primary text-primary-foreground rounded-md hover:bg-primary/90';
+                                  applyButton.textContent = 'Apply';
+                                  applyButton.addEventListener('click', () => {
+                                    document.body.removeChild(popupDiv);
+                                  });
+                                  
+                                  buttonDiv.appendChild(clearButton);
+                                  buttonDiv.appendChild(applyButton);
+                                  
+                                  popupDiv.appendChild(inputElement);
+                                  popupDiv.appendChild(buttonDiv);
+                                  document.body.appendChild(popupDiv);
+                                  
+                                  // Focus the input
+                                  inputElement.focus();
+                                  
+                                  // Add event listener to handle clicks outside
+                                  setTimeout(() => {
+                                    document.addEventListener('click', handleClickOutside, true);
+                                  }, 100);
+                                }}
+                              >
+                                <Filter className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                            {columnFilters[column.id] && (
+                              <div className="text-xs text-blue-500 mt-1 flex items-center gap-1">
+                                <span className="truncate max-w-[120px]">"{columnFilters[column.id]}"</span>
+                              </div>
                             )}
                           </div>
                         </TableHead>
