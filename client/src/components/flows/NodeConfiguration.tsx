@@ -1198,6 +1198,7 @@ if (data.items) {
                 </>
               )}
               
+              {/* Only show previous test result for the current node (not from other nodes) */}
               {!testResult && node.data.testResult && (
                 <div className="border border-slate-200 dark:border-slate-700 rounded-md p-3">
                   <h3 className="text-sm font-medium mb-2 flex items-center justify-between">
@@ -1207,17 +1208,24 @@ if (data.items) {
                     This node has been tested before. The test result is saved and available to downstream nodes.
                   </p>
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-md p-2">
-                    <p className="text-xs text-blue-700 dark:text-blue-400 font-mono">
+                    <p className="text-xs text-blue-700 dark:text-blue-400 font-mono break-all">
                       {`{{${node.id}.result.[path]}}`}
                     </p>
                   </div>
                   <Button 
                     onClick={() => {
-                      setTestResult(node.data.testResult);
-                      if (node.data.testResult && typeof node.data.testResult === 'object') {
-                        const variables = generateVariablePaths(node.data.testResult);
-                        setAvailableVariables(variables);
-                      }
+                      // Clear any previous test results first
+                      setTestResult(null);
+                      setAvailableVariables([]);
+                      
+                      // Then set the current node's test result
+                      setTimeout(() => {
+                        setTestResult(node.data.testResult);
+                        if (node.data.testResult && typeof node.data.testResult === 'object') {
+                          const variables = generateVariablePaths(node.data.testResult);
+                          setAvailableVariables(variables);
+                        }
+                      }, 50);
                     }} 
                     variant="outline" 
                     size="sm" 
