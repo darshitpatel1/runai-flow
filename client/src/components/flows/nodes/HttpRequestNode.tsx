@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Handle, Position, useReactFlow } from "reactflow";
 import { NodeContextMenu } from "../NodeContextMenu";
+import { DatabaseIcon, AlertCircleIcon, CheckCircleIcon } from "lucide-react";
 
 interface HttpRequestNodeProps {
   id: string;
@@ -18,6 +19,8 @@ interface HttpRequestNodeProps {
     failOnError?: boolean;
     skipped?: boolean;
     skipEnabled?: boolean;
+    testResult?: any;
+    _lastTestResult?: any; // Alternative location for test result data
     onNodeDelete?: (nodeId: string) => void;
     onNodeSkip?: (nodeId: string) => void;
   };
@@ -68,8 +71,17 @@ export const HttpRequestNode = memo(({ id, data, selected }: HttpRequestNodeProp
     ));
   };
   
-  // Show a visual indicator if the node is skipped
+  // Show visual indicators for various states
   const isSkipped = data.skipped ?? false;
+  
+  // Check if there's test data available
+  const hasTestData = !!(data.testResult || data._lastTestResult);
+  
+  // Determine if the test was successful
+  const isSuccessfulTest = hasTestData && (
+    (data.testResult?.status?.toString().startsWith('2') || 
+     data._lastTestResult?.status?.toString().startsWith('2'))
+  );
   
   return (
     <div className="relative">
@@ -120,6 +132,30 @@ export const HttpRequestNode = memo(({ id, data, selected }: HttpRequestNodeProp
                 : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100'
             }`}>
               {data.status}
+            </span>
+          )}
+          
+          {/* Test Data Indicator */}
+          {hasTestData && (
+            <span 
+              className={`px-2 py-0.5 flex items-center gap-1 rounded-full text-xs ${
+                isSuccessfulTest
+                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100' 
+                  : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100'
+              }`}
+              title="This node has test result data available"
+            >
+              {isSuccessfulTest ? (
+                <>
+                  <CheckCircleIcon className="h-3 w-3" />
+                  Test Data
+                </>
+              ) : (
+                <>
+                  <DatabaseIcon className="h-3 w-3" />
+                  Test Data
+                </>
+              )}
             </span>
           )}
         </div>
