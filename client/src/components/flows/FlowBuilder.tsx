@@ -299,43 +299,82 @@ export function FlowBuilder({
       }
       
       // Get the raw position from mouse coordinates
-      const rawPosition = reactFlowInstance.project({
+      const position = reactFlowInstance.screenToFlowPosition({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       });
       
       // Snap the position to our grid
-      const position = {
-        x: Math.round(rawPosition.x / gridSize) * gridSize,
-        y: Math.round(rawPosition.y / gridSize) * gridSize
+      const snappedPosition = {
+        x: Math.round(position.x / gridSize) * gridSize,
+        y: Math.round(position.y / gridSize) * gridSize
       };
       
       // Create a unique ID for the node
       const newNodeId = `${nodeType}_${Date.now()}`;
       
-      // Create the new node with basic required properties
+      // Create node data based on node type
+      const defaultData = {
+        label: nodeData.label ? `New ${nodeData.label}` : 'New Node',
+      };
+      
+      // Special data initialization for different node types
+      let nodeSpecificData = {};
+      
+      if (nodeType === 'httpRequest') {
+        nodeSpecificData = {
+          method: 'GET',
+          endpoint: '',
+          headers: [],
+          body: '',
+        };
+      } else if (nodeType === 'ifElse') {
+        nodeSpecificData = {
+          type: 'comparison',
+          comparison: {
+            left: '',
+            operator: '==',
+            right: '',
+          },
+        };
+      } else if (nodeType === 'loop') {
+        nodeSpecificData = {
+          dataPath: '',
+          outputPath: '',
+        };
+      } else if (nodeType === 'setVariable') {
+        nodeSpecificData = {
+          variableName: '',
+          variableValue: '',
+          variableType: 'string',
+        };
+      }
+      
+      // Create the new node with proper data
       const newNode = {
         id: newNodeId,
         type: nodeType,
-        position,
+        position: snappedPosition,
+        // Use positionAbsolute to prevent the node from moving after being placed
+        positionAbsolute: snappedPosition,
         data: { 
-          label: nodeData.label ? `New ${nodeData.label}` : 'New Node',
-          // Add nodes array reference for variable access in the node
-          nodes: nodes, 
+          ...defaultData,
+          ...nodeSpecificData,
+          // Add all existing nodes reference for variable access
+          nodes: nodes,
         },
       };
       
       console.log('Creating new node:', newNode);
       
       // Add node to the flow
-      setNodes((nds) => {
-        return nds.concat(newNode);
-      });
+      setNodes((nds) => nds.concat(newNode));
       
       // Report the change to parent component
       setTimeout(() => {
-        reportNodesChange([...nodes, newNode]);
-      }, 100);
+        const updatedNodes = [...nodes, newNode];
+        reportNodesChange(updatedNodes);
+      }, 50);
     },
     [reactFlowInstance, setNodes, nodes, reportNodesChange, gridSize]
   );

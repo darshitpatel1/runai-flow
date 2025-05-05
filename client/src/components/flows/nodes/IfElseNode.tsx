@@ -336,25 +336,11 @@ export default function IfElseNode({ id, data, isConnectable, selected }: NodePr
           </DropdownMenu>
         </CardHeader>
 
-        <CardContent className="px-3 py-2 space-y-4">
-          <div className="space-y-2">
-            <Label className="text-xs">Condition Type</Label>
-            <Select
-              value={nodeData.type}
-              onValueChange={(value) => handleConditionTypeChange(value as any)}
-            >
-              <SelectTrigger className="h-8">
-                <SelectValue placeholder="Select condition type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="comparison">Simple Comparison</SelectItem>
-                <SelectItem value="expression">Custom Expression</SelectItem>
-                <SelectItem value="exists">Check if Exists</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {renderConditionEditor()}
+        <CardContent className="px-3 py-2">
+          <p className="text-sm text-center mb-2">Configure this node in the settings panel</p>
+          <p className="text-xs text-muted-foreground text-center mb-2">
+            Click the node and use the right sidebar to set up the condition
+          </p>
         </CardContent>
 
         <CardFooter className="px-3 py-2 border-t flex justify-between items-center text-xs text-muted-foreground">
