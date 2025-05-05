@@ -86,7 +86,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors }:
         <div>
           <Label className="block text-sm font-medium mb-1">HTTP Method</Label>
           <div className="flex flex-wrap gap-2">
-            {['GET', 'POST', 'PUT', 'DELETE'].map((method) => (
+            {['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map((method) => (
               <Button
                 key={method}
                 type="button"
@@ -114,7 +114,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors }:
           </div>
         </div>
         
-        {(nodeData.method === 'POST' || nodeData.method === 'PUT') && (
+        {/* Body configuration for methods that support it */}
+        {(nodeData.method === 'POST' || nodeData.method === 'PUT' || nodeData.method === 'PATCH') && (
           <div>
             <Label className="block text-sm font-medium mb-1">Request Body</Label>
             <Textarea
@@ -126,7 +127,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors }:
           </div>
         )}
         
-        {nodeData.method === 'GET' && (
+        {/* Query parameters for methods that typically use them */}
+        {(nodeData.method === 'GET' || nodeData.method === 'DELETE') && (
           <div>
             <Label className="block text-sm font-medium mb-1">Query Parameters</Label>
             <div className="space-y-2">

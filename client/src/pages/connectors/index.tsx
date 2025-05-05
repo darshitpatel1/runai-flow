@@ -375,16 +375,44 @@ export default function Connectors() {
           return newState;
         });
         
-        // Update connector in Firestore to store connection status
-        if (user) {
+        // Save connection details if available
+        if (data.connectionDetails) {
+          // We want to store these details for display in the connector UI
           try {
             const connectorRef = doc(db, "users", user.uid, "connectors", connectorId);
             updateDoc(connectorRef, {
-              connectionStatus: 'connected', 
+              connectionStatus: 'connected',
+              connectionDetails: data.connectionDetails,
               updatedAt: new Date()
             }).catch(err => console.error('Failed to update connector status:', err));
+            
+            // Update local state
+            setConnectors(connectors.map(c => {
+              if (c.id === connectorId) {
+                return {
+                  ...c,
+                  connectionStatus: 'connected',
+                  connectionDetails: data.connectionDetails,
+                  updatedAt: new Date()
+                };
+              }
+              return c;
+            }));
           } catch (err) {
             console.error('Failed to update connector in Firestore:', err);
+          }
+        } else {
+          // Update just the connection status 
+          if (user) {
+            try {
+              const connectorRef = doc(db, "users", user.uid, "connectors", connectorId);
+              updateDoc(connectorRef, {
+                connectionStatus: 'connected', 
+                updatedAt: new Date()
+              }).catch(err => console.error('Failed to update connector status:', err));
+            } catch (err) {
+              console.error('Failed to update connector in Firestore:', err);
+            }
           }
         }
         
@@ -396,9 +424,19 @@ export default function Connectors() {
           authTypeMsg = " using OAuth Client Credentials";
         }
         
+        // Enhanced message if we have connection details
+        let enhancedMsg = "";
+        if (data.connectionDetails) {
+          if (connector.authType === "basic" && data.connectionDetails.authenticatedAs) {
+            enhancedMsg = ` (Authenticated as ${data.connectionDetails.authenticatedAs})`;
+          } else if (connector.authType === "oauth2" && data.connectionDetails.expiresIn) {
+            enhancedMsg = ` (Valid for ${data.connectionDetails.expiresIn})`;
+          }
+        }
+        
         toast({
           title: "Connection successful",
-          description: `Successfully connected to ${connector.name}${authTypeMsg}`,
+          description: `Successfully connected to ${connector.name}${authTypeMsg}${enhancedMsg}`,
         });
       } else {
         throw new Error(data.message || "Unknown response from server");
