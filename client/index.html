@@ -3,6 +3,47 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <script type="text/javascript">
+      // Fix for Vite WebSocket connection issues in replit environment
+      window.__fixViteWebSocketURL = function() {
+        // Only run this once
+        if (window.__fixedViteWebSocket) return;
+        window.__fixedViteWebSocket = true;
+        
+        // Store the original WebSocket constructor
+        const OriginalWebSocket = window.WebSocket;
+        
+        // Override the WebSocket constructor
+        window.WebSocket = function(url, protocols) {
+          // Only intercept Vite HMR WebSocket connections
+          if (url && typeof url === 'string' && url.includes('localhost:undefined')) {
+            console.log('Fixing invalid WebSocket URL:', url);
+            // Replace the invalid localhost:undefined with the current hostname
+            const fixedUrl = url.replace('localhost:undefined', window.location.host);
+            console.log('Fixed WebSocket URL:', fixedUrl);
+            return new OriginalWebSocket(fixedUrl, protocols);
+          }
+          
+          // Otherwise, use the original WebSocket constructor
+          return new OriginalWebSocket(url, protocols);
+        };
+        
+        // Copy all properties from the original WebSocket constructor
+        for (const prop in OriginalWebSocket) {
+          if (OriginalWebSocket.hasOwnProperty(prop)) {
+            window.WebSocket[prop] = OriginalWebSocket[prop];
+          }
+        }
+        
+        // Ensure the prototype chain is correct
+        window.WebSocket.prototype = OriginalWebSocket.prototype;
+        
+        console.log('WebSocket constructor patched to fix Vite HMR connection issues');
+      };
+      
+      // Run the fix immediately
+      window.__fixViteWebSocketURL();
+    </script>
   </head>
   <body>
     <div id="root"></div>

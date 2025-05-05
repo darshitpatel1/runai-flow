@@ -55,51 +55,67 @@ export function FlowBuilder({
   flowId
 }: FlowBuilderProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  // Use regular state instead of useNodesState to get more control
+  // Use regular state for more control over node position handling
   const [nodes, setNodes] = useState<any[]>([]);
   
-  // Custom nodes change handler to stabilize positions
+  // Grid size for snapping - should match the snapGrid value in ReactFlow component
+  const gridSize = 15;
+  
+  // Custom nodes change handler with enhanced stability
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      // Process the changes
       setNodes((nds) => {
-        // Apply changes using the standard handler from ReactFlow
+        // Apply basic changes first using ReactFlow's utility
         const updatedNodes = applyNodeChanges(changes, nds);
         
-        // Stabilize any nodes that are being dragged or manipulated
-        return updatedNodes.map((node: any) => {
-          // Look for position changes that match this node's ID
-          const positionChange = changes.find(
-            (c: NodeChange) => 
-              // First check if it's the right type of change
-              (c.type === 'position' || c.type === 'dimensions') && 
-              // Then check if the ID matches (safely accessing the ID)
-              'id' in c && c.id === node.id
-          );
+        // Get list of nodes that were moved in this change set
+        const movedNodeIds = changes
+          .filter((change): change is NodePositionChange => 
+            change.type === 'position' && 'position' in change && 'id' in change)
+          .map(change => change.id);
+        
+        // Process each node - apply snapping and stabilize positions
+        return updatedNodes.map((node) => {
+          // Skip null nodes or nodes without position
+          if (!node || !node.position) return node;
           
-          if (positionChange) {
-            // Round position values to prevent subpixel rendering issues
-            const roundedX = Math.round(node.position.x);
-            const roundedY = Math.round(node.position.y);
+          // If this node was just moved, apply grid snapping
+          if (movedNodeIds.includes(node.id)) {
+            // Snap to grid
+            const snappedX = Math.round(node.position.x / gridSize) * gridSize;
+            const snappedY = Math.round(node.position.y / gridSize) * gridSize;
             
+            // Apply the snapped position
             return {
               ...node,
+              // Clean position values
               position: { 
-                x: roundedX,
-                y: roundedY
+                x: snappedX,
+                y: snappedY 
               },
+              // Match absolute position to avoid jitter
               positionAbsolute: { 
-                x: roundedX,
-                y: roundedY
+                x: snappedX,
+                y: snappedY 
               },
-              // Reset dragging flag to prevent continued animation
+              // No dragging animation
               dragging: false
             };
           }
-          return node;
+          
+          // For nodes that weren't moved, ensure positions are clean
+          return {
+            ...node,
+            // Ensure absolute position is synchronized
+            positionAbsolute: node.position,
+            // No dragging animation
+            dragging: false
+          };
         });
       });
     },
-    [setNodes]
+    [setNodes, gridSize]
   );
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
@@ -139,22 +155,44 @@ export function FlowBuilder({
     }
   }, [initialEdges, setEdges]);
   
-  // Stabilize node positions by ensuring positionAbsolute is always synchronized with position
+  // Snap node positions to grid and stabilize them
   const stabilizeNodePositions = useCallback((nodes: any[]) => {
+    const gridSize = 15; // Should match the snapGrid value in ReactFlow component
+    
     return nodes.map((node) => {
-      // Ensure node has positionAbsolute matching its position
-      if (!node.positionAbsolute || 
-          node.positionAbsolute.x !== node.position.x || 
-          node.positionAbsolute.y !== node.position.y) {
-        return {
-          ...node,
-          positionAbsolute: { ...node.position },
-          // Make sure these properties are always set correctly
-          selected: node.selected || false,
-          dragging: false
-        };
+      if (!node) return node;
+      
+      // Make sure position exists
+      if (!node.position) {
+        node.position = { x: 0, y: 0 };
       }
-      return node;
+      
+      // Get current position 
+      const { x, y } = node.position;
+      
+      // Snap to grid by rounding to nearest grid point
+      const snappedX = Math.round(x / gridSize) * gridSize;
+      const snappedY = Math.round(y / gridSize) * gridSize;
+      
+      // Return a new node with stabilized properties
+      return {
+        ...node,
+        // Set exact coordinates
+        position: { 
+          x: snappedX,
+          y: snappedY
+        },
+        // Always keep positionAbsolute in sync with position (prevents UI jitter)
+        positionAbsolute: { 
+          x: snappedX,
+          y: snappedY
+        },
+        // Ensure these properties are always reset to prevent animation issues
+        selected: node.selected || false,
+        dragging: false,
+        // Add a timestamp to force React to re-render the node
+        __lastUpdate: Date.now()
+      };
     });
   }, []);
   
@@ -191,10 +229,17 @@ export function FlowBuilder({
         return;
       }
       
-      const position = reactFlowInstance.project({
+      // Get the raw position from mouse coordinates
+      const rawPosition = reactFlowInstance.project({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       });
+      
+      // Snap the position to our grid
+      const position = {
+        x: Math.round(rawPosition.x / gridSize) * gridSize,
+        y: Math.round(rawPosition.y / gridSize) * gridSize
+      };
       
       // Create a unique ID for the node
       const newNodeId = `${nodeType}_${Date.now()}`;
