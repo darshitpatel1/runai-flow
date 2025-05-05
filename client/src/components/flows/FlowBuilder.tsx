@@ -654,6 +654,23 @@ export function FlowBuilder({
     };
     setLogs((logs) => [...logs, completionLog]);
     
+    // Store the test result in the node data to make it available for downstream nodes
+    setNodes((nds) =>
+      nds.map((n) => {
+        if (n.id === nodeId) {
+          return {
+            ...n,
+            data: {
+              ...n.data,
+              testResult: responseData,  // Store the full test result
+              _lastTestTimestamp: new Date().toISOString(),  // Track when it was last tested
+            },
+          };
+        }
+        return n;
+      })
+    );
+    
     // Return the response data for further processing
     return responseData;
   }, [nodes, setNodes, setLogs]);

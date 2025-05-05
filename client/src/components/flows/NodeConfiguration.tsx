@@ -702,7 +702,7 @@ return sourceData * 2;"
   const createVariable = (path: string) => {
     // Create a set variable node using this value
     const variableName = path.split('.').pop() || 'result';
-    const variableValue = `{{${node.id}.${path}}}`;
+    const variableValue = `{{${node.id}.result.${path}}}`;
     
     toast({
       title: "Variable Reference Copied",
@@ -712,8 +712,11 @@ return sourceData * 2;"
     // If we're already in a set variable node, we can auto-populate it
     if (node.type === 'setVariable') {
       handleChange('variableKey', variableName);
-      handleChange('variableValue', path); // Just use the path directly
+      handleChange('variableValue', `${node.id}.result.${path}`); // Reference path to the test result
     }
+    
+    // Close the dialog
+    setShowVariableDialog(false);
   };
   
   return (
@@ -778,6 +781,19 @@ return sourceData * 2;"
                     </pre>
                   </div>
                   
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-md p-3 my-2">
+                    <h3 className="text-sm font-medium mb-1 text-blue-800 dark:text-blue-300">Using this result in other nodes</h3>
+                    <p className="text-xs text-blue-700 dark:text-blue-400 mb-1">
+                      The test result is now saved and available to downstream nodes using:
+                    </p>
+                    <pre className="text-xs bg-white dark:bg-slate-900 p-2 rounded mb-2 font-mono">
+                      {`{{${node.id}.result.[path]}}`}
+                    </pre>
+                    <p className="text-xs text-blue-700 dark:text-blue-400">
+                      For example: <code>{`{{${node.id}.result.data.items[0].id}}`}</code>
+                    </p>
+                  </div>
+                  
                   <div>
                     <Label className="block text-sm font-medium mb-1">Transform Data with JavaScript</Label>
                     <Textarea
@@ -805,6 +821,36 @@ if (data.items) {
                     </Button>
                   </div>
                 </>
+              )}
+              
+              {!testResult && node.data.testResult && (
+                <div className="border border-slate-200 dark:border-slate-700 rounded-md p-3">
+                  <h3 className="text-sm font-medium mb-2 flex items-center justify-between">
+                    <span>Previous Test Result Available</span>
+                  </h3>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    This node has been tested before. The test result is saved and available to downstream nodes.
+                  </p>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-md p-2">
+                    <p className="text-xs text-blue-700 dark:text-blue-400 font-mono">
+                      {`{{${node.id}.result.[path]}}`}
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={() => {
+                      setTestResult(node.data.testResult);
+                      if (node.data.testResult && typeof node.data.testResult === 'object') {
+                        const variables = generateVariablePaths(node.data.testResult);
+                        setAvailableVariables(variables);
+                      }
+                    }} 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-2 w-full"
+                  >
+                    View Previous Test Result
+                  </Button>
+                </div>
               )}
             </div>
           </TabsContent>
