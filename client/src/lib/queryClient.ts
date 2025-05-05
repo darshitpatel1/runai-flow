@@ -18,10 +18,14 @@ export async function apiRequest(
   const method = options?.method || 'GET';
   const data = options?.data;
   
+  // Get current Firebase user and token
+  const firebaseToken = await getFirebaseToken();
+  
   const res = await fetch(url, {
     method,
     headers: {
       ...(data ? { "Content-Type": "application/json" } : {}),
+      ...(firebaseToken ? { "Authorization": `Bearer ${firebaseToken}` } : {}),
       ...options?.headers
     },
     body: data ? JSON.stringify(data) : undefined,
@@ -44,14 +48,40 @@ export async function apiRequest(
   }
 }
 
+// Helper function to get Firebase token
+async function getFirebaseToken(): Promise<string | null> {
+  try {
+    const { auth } = await import('@/lib/firebase');
+    const currentUser = auth.currentUser;
+    
+    if (!currentUser) {
+      console.warn('No user is signed in');
+      return null;
+    }
+    
+    // Get the Firebase authentication token
+    const token = await currentUser.getIdToken(true);
+    return token;
+  } catch (error) {
+    console.error('Error getting Firebase token:', error);
+    return null;
+  }
+}
+
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    // Get Firebase token for authentication
+    const firebaseToken = await getFirebaseToken();
+    
     const res = await fetch(queryKey[0] as string, {
       credentials: "include",
+      headers: {
+        ...(firebaseToken ? { "Authorization": `Bearer ${firebaseToken}` } : {})
+      }
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
