@@ -536,9 +536,42 @@ export default function Dashboard() {
                         </div>
                       </CardHeader>
                       <CardContent className="py-2">
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground mb-2">
                           {folder.items?.length || 0} items
                         </p>
+                        {folder.items && folder.items.length > 0 && (
+                          <div className="space-y-1">
+                            {folder.items.map((item: any) => (
+                              <div 
+                                key={`${item.type}-${item.id}`} 
+                                className="flex items-center gap-2 text-sm p-1 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                              >
+                                {item.type === 'flow' ? (
+                                  <ArrowRightIcon className="h-3 w-3 text-blue-500" />
+                                ) : (
+                                  <div className="h-3 w-3 rounded-full bg-green-500" />
+                                )}
+                                <span className="truncate">
+                                  {item.name}
+                                </span>
+                                <Badge variant="outline" className="ml-auto text-xs">
+                                  {item.type}
+                                </Badge>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-5 w-5 ml-1 opacity-0 group-hover:opacity-100"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveFromFolder(folder.id, item.id, item.type);
+                                  }}
+                                >
+                                  <TrashIcon className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}
@@ -597,6 +630,13 @@ export default function Dashboard() {
                             onClick={() => openFlowSettings(flow)}
                           >
                             <SettingsIcon className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openAddToFolderDialog(flow, 'flow')}
+                          >
+                            <FolderIcon className="h-4 w-4" />
                           </Button>
                         </div>
                       </CardFooter>
@@ -658,9 +698,18 @@ export default function Dashboard() {
                           Edit
                         </Button>
                       </Link>
-                      <Button variant="ghost" size="sm">
-                        Test
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm">
+                          Test
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => openAddToFolderDialog(connector, 'connector')}
+                        >
+                          <FolderIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </CardFooter>
                   </Card>
                 ))}
@@ -827,6 +876,62 @@ export default function Dashboard() {
                   </>
                 ) : (
                   "Save Changes"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add to folder dialog */}
+      <Dialog open={addToFolderDialogOpen} onOpenChange={setAddToFolderDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add to Folder</DialogTitle>
+            <DialogDescription>
+              Choose a folder to add this {selectedItemType} to.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleAddToFolder}>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="folder">Select Folder</Label>
+                <select
+                  id="folder"
+                  className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-black"
+                  value={selectedFolderId}
+                  onChange={(e) => setSelectedFolderId(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>
+                    Select a folder
+                  </option>
+                  {folders.map((folder) => (
+                    <option key={folder.id} value={folder.id}>
+                      {folder.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => setAddToFolderDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isAddingToFolder || !selectedFolderId}>
+                {isAddingToFolder ? (
+                  <>
+                    <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  "Add to Folder"
                 )}
               </Button>
             </DialogFooter>
