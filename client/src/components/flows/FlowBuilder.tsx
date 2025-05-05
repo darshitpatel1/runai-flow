@@ -11,6 +11,8 @@ import ReactFlow, {
   EdgeTypes,
   applyNodeChanges,
   NodeChange,
+  useReactFlow,
+  getConnectedEdges,
 } from 'reactflow';
 
 // Define a custom type for position changes since not all NodeChange types have an ID
@@ -69,56 +71,31 @@ export function FlowBuilder({
   // Grid size for snapping - should match the snapGrid value in ReactFlow component
   const gridSize = 15;
   
-  // Custom nodes change handler with enhanced stability
+  // Use a much simpler node change handler that directly fixes zigzag issues
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      // Process the changes
+      // Direct approach - apply changes then fix positions in one go
       setNodes((nds) => {
-        // Apply basic changes first using ReactFlow's utility
+        // First pass - just apply the changes directly
         const updatedNodes = applyNodeChanges(changes, nds);
         
-        // Get list of nodes that were moved in this change set
-        const movedNodeIds = changes
-          .filter((change): change is NodePositionChange => 
-            change.type === 'position' && 'position' in change && 'id' in change)
-          .map(change => change.id);
-        
-        // Process each node - apply snapping and stabilize positions
+        // Second pass - fix ALL nodes to ensure grid alignment
         return updatedNodes.map((node) => {
-          // Skip null nodes or nodes without position
+          // Skip null/undefined nodes
           if (!node || !node.position) return node;
           
-          // If this node was just moved, apply grid snapping
-          if (movedNodeIds.includes(node.id)) {
-            // Snap to grid
-            const snappedX = Math.round(node.position.x / gridSize) * gridSize;
-            const snappedY = Math.round(node.position.y / gridSize) * gridSize;
-            
-            // Apply the snapped position
-            return {
-              ...node,
-              // Clean position values
-              position: { 
-                x: snappedX,
-                y: snappedY 
-              },
-              // Match absolute position to avoid jitter
-              positionAbsolute: { 
-                x: snappedX,
-                y: snappedY 
-              },
-              // No dragging animation
-              dragging: false
-            };
-          }
+          // Force grid alignment for ALL nodes
+          const x = Math.round(node.position.x / gridSize) * gridSize;
+          const y = Math.round(node.position.y / gridSize) * gridSize;
           
-          // For nodes that weren't moved, ensure positions are clean
+          // Return a stabilized node
           return {
             ...node,
-            // Ensure absolute position is synchronized
-            positionAbsolute: node.position,
-            // No dragging animation
-            dragging: false
+            position: { x, y },
+            positionAbsolute: { x, y },
+            dragging: false,
+            // Ensure the node is fully re-rendered
+            __lastUpdate: Date.now()
           };
         });
       });
@@ -614,10 +591,14 @@ export function FlowBuilder({
                 snapGrid={[gridSize, gridSize]}
                 nodesDraggable={true}
                 elementsSelectable={true}
-                preventScrolling={true}
-                defaultEdgeOptions={{ animated: true }}
+                preventScrolling={false}
+                defaultEdgeOptions={{ 
+                  animated: true,
+                  style: { stroke: '#4f46e5', strokeWidth: 2 }
+                }}
                 style={{ width: '100%', height: '100%' }}
                 defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+                proOptions={{ hideAttribution: true }}
               >
                 <Controls />
                 <MiniMap />

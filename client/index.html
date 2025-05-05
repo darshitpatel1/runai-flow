@@ -15,13 +15,34 @@
         
         // Override the WebSocket constructor
         window.WebSocket = function(url, protocols) {
-          // Only intercept Vite HMR WebSocket connections
-          if (url && typeof url === 'string' && url.includes('localhost:undefined')) {
-            console.log('Fixing invalid WebSocket URL:', url);
-            // Replace the invalid localhost:undefined with the current hostname
-            const fixedUrl = url.replace('localhost:undefined', window.location.host);
-            console.log('Fixed WebSocket URL:', fixedUrl);
-            return new OriginalWebSocket(fixedUrl, protocols);
+          // Fix for both localhost:undefined and any problematic URLs
+          if (url && typeof url === 'string') {
+            // Get the current Replit domain
+            const currentUrl = window.location.href;
+            const replitMatch = currentUrl.match(/https?:\/\/([^/]+)/);
+            
+            if (url.includes('localhost:undefined') || url.includes('undefined')) {
+              console.log('Fixing invalid WebSocket URL:', url);
+              
+              // Extract the path and query params from the original URL
+              const originalUrl = new URL(url);
+              const path = originalUrl.pathname;
+              const search = originalUrl.search;
+              
+              // Construct a new URL with the current domain
+              let fixedUrl;
+              if (replitMatch && replitMatch[1]) {
+                // Use the protocol from the current page
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                fixedUrl = `${wsProtocol}//${replitMatch[1]}${path}${search}`;
+              } else {
+                // Fallback to using hostname directly
+                fixedUrl = url.replace(/\/\/[^/]+(\/|$)/, `//${window.location.host}$1`);
+              }
+              
+              console.log('Fixed WebSocket URL:', fixedUrl);
+              return new OriginalWebSocket(fixedUrl, protocols);
+            }
           }
           
           // Otherwise, use the original WebSocket constructor

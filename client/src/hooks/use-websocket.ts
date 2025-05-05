@@ -40,15 +40,19 @@ export function useWebSocket(options: WebSocketOptions = {}) {
     // Use secure protocol if page is loaded over HTTPS
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     
-    // Get the host, falling back to hostname if host is undefined
+    // In Replit environment, we need to use the specific URL format
+    const url = window.location.href;
+    const replitMatch = url.match(/https?:\/\/([^/]+)/);
+    
+    if (replitMatch && replitMatch[1]) {
+      // We are in a Replit environment, use the domain directly
+      console.log('Using Replit domain for WebSocket connection:', replitMatch[1]);
+      return `${protocol}//${replitMatch[1]}/ws`;
+    } 
+    
+    // Fallback - use the best host we can find
     const host = window.location.host || window.location.hostname || 'localhost';
-    
-    // Construct and validate the URL
-    if (!host || host.includes('undefined')) {
-      console.warn('Invalid host detected, falling back to direct hostname');
-      return `${protocol}//${window.location.hostname}/ws`;
-    }
-    
+    console.log('Using host for WebSocket connection:', host);
     return `${protocol}//${host}/ws`;
   }, []);
   
