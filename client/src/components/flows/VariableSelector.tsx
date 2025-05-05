@@ -21,6 +21,16 @@ interface VariableSelectorProps {
   manualNodes?: any[];
 }
 
+// Variable entry type
+type VariableEntry = {
+  nodeId: string;
+  nodeName: string;
+  nodeType: string;
+  variableName: string;
+  path: string;
+  source: "variable" | "testResult";
+};
+
 export function VariableSelector({ open, onClose, onSelectVariable, currentNodeId, manualNodes }: VariableSelectorProps) {
   // Safely try to use ReactFlow context, but don't crash if it's not available
   const reactFlowInstance = (() => {
@@ -32,34 +42,24 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
   })();
   
   const [search, setSearch] = useState("");
-  const [variables, setVariables] = useState<Array<{
-    nodeId: string;
-    nodeName: string;
-    nodeType: string;
-    variableName: string;
-    path: string;
-    source: "variable" | "testResult";
-  }>>([]);
+  const [variables, setVariables] = useState<VariableEntry[]>([]);
 
-  // Get nodes either from ReactFlow context or the manualNodes prop
+  // Get nodes either from ReactFlow context or the manualNodes prop (optimized)
   const getNodes = useCallback(() => {
     // First check for manually provided nodes (used when outside ReactFlow context)
     if (manualNodes && Array.isArray(manualNodes) && manualNodes.length > 0) {
-      console.log("Using manually provided nodes:", manualNodes);
       return manualNodes;
     }
     
     // Then try to get nodes from ReactFlow
     try {
       if (!reactFlowInstance) {
-        console.warn("ReactFlow instance not available");
         return [];
       }
       
       const flowNodes = reactFlowInstance.getNodes();
       
       if (!flowNodes || !Array.isArray(flowNodes)) {
-        console.warn("No valid nodes from ReactFlow");
         return [];
       }
       
@@ -67,141 +67,17 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
       // This is the case when a node's config panel is open
       for (const node of flowNodes) {
         if (node?.data?.allNodes && Array.isArray(node.data.allNodes) && node.data.allNodes.length > 0) {
-          console.log("Found allNodes data in node:", node.id);
           return node.data.allNodes;
         }
       }
       
       return flowNodes;
     } catch (e) {
-      console.warn("Failed to get nodes from ReactFlow", e);
       return [];
     }
   }, [manualNodes, reactFlowInstance]);
 
-  // Collect all available variables from nodes
-  const collectVariables = useCallback(() => {
-    // Get nodes from either manual nodes or ReactFlow
-    const nodes = getNodes();
-    console.log("Variable Selector - Nodes:", nodes);
-    
-    // Check if we're inside a SetVariable node configuration
-    // by looking for a node with data.allNodes (indicating we're in config panel)
-    let isInSetVariableConfig = false;
-    let currentConfigNodeId = null;
-    
-    // Find the node that's currently being configured
-    for (const node of nodes) {
-      if (node?.data?.allNodes && Array.isArray(node.data.allNodes) && node.data.allNodes.length > 0) {
-        currentConfigNodeId = node.id;
-        isInSetVariableConfig = node.type === 'setVariable';
-        console.log(`Currently configuring node ${node.id} of type ${node.type}`);
-        break;
-      }
-    }
-    
-    const variableList: Array<{
-      nodeId: string;
-      nodeName: string;
-      nodeType: string;
-      variableName: string;
-      path: string;
-      source: "variable" | "testResult";
-    }> = [];
-    
-    // Helper function to process a node's variables
-    const processNodeVariables = (node: any) => {
-      // Check if it's a SetVariable node with a variableKey
-      if (node.type === 'setVariable' && node.data?.variableKey) {
-        // Check if this variable is already in the list
-        const exists = variableList.some(v => 
-          v.source === "variable" && v.path === `vars.${node.data.variableKey}`
-        );
-        
-        if (!exists) {
-          variableList.push({
-            nodeId: node.id,
-            nodeName: node.data.label || "Set Variable",
-            nodeType: "setVariable",
-            variableName: node.data.variableKey || "variable",
-            path: `vars.${node.data.variableKey}`,
-            source: "variable"
-          });
-          console.log("Found variable:", node.data.variableKey);
-        }
-      }
-      
-      // Check for test results - only include actual test results
-      // that were explicitly generated (not placeholder suggestions)
-      const testResult = node.data?.testResult || node.data?._lastTestResult;
-      if (testResult) {
-        console.log("Found test result in node:", node.id, node.data?.label || "Unknown");
-        
-        try {
-          // For each test result, generate variables for its properties
-          const paths = generateVariablePaths(testResult);
-          console.log("Generated paths:", paths);
-          
-          paths.forEach(path => {
-            // Extract variable name - get the last part of the path
-            const variableName = path.split('.').pop() || 'result';
-            
-            // Check if this test result path is already in the list
-            const exists = variableList.some(v => 
-              v.source === "testResult" && v.path === `${node.id}.result.${path}`
-            );
-            
-            if (!exists) {
-              variableList.push({
-                nodeId: node.id,
-                nodeName: node.data?.label || node.type || "Node",
-                nodeType: node.type || "unknown",
-                variableName: variableName,
-                path: `${node.id}.result.${path}`,
-                source: "testResult"
-              });
-            }
-          });
-        } catch (error) {
-          console.error("Error processing test result:", error);
-        }
-      }
-      
-      // IMPORTANT CHANGE: We're removing the placeholder HTTP suggestions
-      // HTTP variables should ONLY show up if they've been explicitly tested
-      // Otherwise, they shouldn't appear in the variable selector at all
-      
-      // The actual test results are already handled above in the testResult section
-    };
-    
-    // First process all the direct nodes
-    nodes.forEach(processNodeVariables);
-    
-    // Then check if any node contains allNodes data (which has other nodes)
-    nodes.forEach((node: any) => {
-      if (node.data?.allNodes && Array.isArray(node.data.allNodes)) {
-        console.log("Found allNodes data in node:", node.id);
-        // Process other nodes saved in this node's data
-        node.data.allNodes.forEach((otherNode: any) => {
-          // Skip the current node to avoid duplicates
-          if (otherNode.id === node.id) return;
-          processNodeVariables(otherNode);
-        });
-      }
-    });
-    
-    console.log("Final variable list:", variableList);
-    setVariables(variableList);
-  }, [getNodes]);
-
-  // Effect to collect variables when the dialog opens
-  useEffect(() => {
-    if (open) {
-      collectVariables();
-    }
-  }, [open, collectVariables]);
-
-  // Function to generate dot notation paths for all properties in an object
+  // Function to generate dot notation paths for all properties in an object (optimized)
   const generateVariablePaths = (obj: any, prefix = ""): string[] => {
     if (!obj || typeof obj !== 'object') return [];
     
@@ -237,6 +113,109 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
     return paths;
   };
 
+  // Collect all available variables from nodes (optimized with no console logs)
+  const collectVariables = useCallback(() => {
+    // Get nodes from either manual nodes or ReactFlow
+    const nodes = getNodes();
+    
+    // Check if we're inside a SetVariable node configuration
+    let isInSetVariableConfig = false;
+    let currentConfigNodeId = null;
+    
+    // Find the node that's currently being configured
+    for (const node of nodes) {
+      if (node?.data?.allNodes && Array.isArray(node.data.allNodes) && node.data.allNodes.length > 0) {
+        currentConfigNodeId = node.id;
+        isInSetVariableConfig = node.type === 'setVariable';
+        break;
+      }
+    }
+    
+    const variableList: VariableEntry[] = [];
+    
+    // Helper function to process a node's variables
+    const processNodeVariables = (node: any) => {
+      // Skip invalid nodes
+      if (!node || !node.id) return;
+      
+      // Check if it's a SetVariable node with a variableKey
+      if (node.type === 'setVariable' && node.data?.variableKey) {
+        // Check if this variable is already in the list
+        const exists = variableList.some(v => 
+          v.source === "variable" && v.path === `vars.${node.data.variableKey}`
+        );
+        
+        if (!exists) {
+          variableList.push({
+            nodeId: node.id,
+            nodeName: node.data.label || "Set Variable",
+            nodeType: "setVariable",
+            variableName: node.data.variableKey || "variable",
+            path: `vars.${node.data.variableKey}`,
+            source: "variable"
+          });
+        }
+      }
+      
+      // Check for test results - only include actual test results
+      // that were explicitly generated (not placeholder suggestions)
+      const testResult = node.data?.testResult || node.data?._lastTestResult;
+      if (testResult) {
+        try {
+          // For each test result, generate variables for its properties
+          const paths = generateVariablePaths(testResult);
+          
+          paths.forEach(path => {
+            // Extract variable name - get the last part of the path
+            const variableName = path.split('.').pop() || 'result';
+            
+            // Check if this test result path is already in the list
+            const exists = variableList.some(v => 
+              v.source === "testResult" && v.path === `${node.id}.result.${path}`
+            );
+            
+            if (!exists) {
+              variableList.push({
+                nodeId: node.id,
+                nodeName: node.data?.label || node.type || "Node",
+                nodeType: node.type || "unknown",
+                variableName: variableName,
+                path: `${node.id}.result.${path}`,
+                source: "testResult"
+              });
+            }
+          });
+        } catch (error) {
+          // Silent error handling to avoid console spam
+        }
+      }
+    };
+    
+    // First process all the direct nodes
+    nodes.forEach(processNodeVariables);
+    
+    // Then check if any node contains allNodes data (which has other nodes)
+    nodes.forEach((node: any) => {
+      if (node.data?.allNodes && Array.isArray(node.data.allNodes)) {
+        // Process other nodes saved in this node's data
+        node.data.allNodes.forEach((otherNode: any) => {
+          // Skip the current node to avoid duplicates
+          if (otherNode.id === node.id) return;
+          processNodeVariables(otherNode);
+        });
+      }
+    });
+    
+    setVariables(variableList);
+  }, [getNodes]);
+
+  // Effect to collect variables when the dialog opens
+  useEffect(() => {
+    if (open) {
+      collectVariables();
+    }
+  }, [open, collectVariables]);
+
   // Filter variables based on search
   const filteredVariables = variables.filter(v => 
     v.variableName.toLowerCase().includes(search.toLowerCase()) ||
@@ -245,7 +224,7 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
   );
 
   // Group variables by node for better organization
-  const variablesByNode: Record<string, typeof variables> = {};
+  const variablesByNode: Record<string, VariableEntry[]> = {};
   
   // First, collect all the nodes and their positions to determine order
   const nodeOrder: Record<string, number> = {};
@@ -254,15 +233,11 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
   const nodes = getNodes();
   
   if (Array.isArray(nodes)) {
-    console.log("Total nodes in flow:", nodes.length);
-    
     // First, identify if we're in a node configuration panel
-    // and which node is being configured
     let configNodeId: string | null = null;
     for (const node of nodes) {
       if (node?.data?.allNodes && Array.isArray(node.data.allNodes)) {
         configNodeId = node.id;
-        console.log("Found node being configured:", configNodeId);
         break;
       }
     }
@@ -282,10 +257,8 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
         }
       }
     } catch (e) {
-      console.error("Failed to get edges:", e);
+      // Silent error handling
     }
-    
-    console.log("Found edges:", edges);
     
     // Sort nodes by their y-position as a fallback
     const sortedNodes = [...nodes].sort((a, b) => {
@@ -301,8 +274,6 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
         nodeOrder[node.id] = index;
       }
     });
-    
-    console.log("Node order based on positions:", nodeOrder);
   }
   
   // Now organize variables by node
@@ -323,31 +294,11 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
     return orderA - orderB;
   });
   
-  // Important change: We're going to simplify and disable the filtering for now, as it's causing issues
-  // This will make all variables available while we debug the order detection
-  
-  // Just for debugging - log all nodes and their properties
-  console.log("All available nodes:", nodes.map((n: any) => ({ 
-    id: n.id, 
-    type: n.type,
-    position: n.position,
-    data: {
-      label: n.data?.label,
-      isConfiguring: n.data?.isConfiguring || false,
-      hasAllNodes: n.data?.allNodes ? true : false
-    }
-  })));
-  
-  // Use currentNodeId from props if available
-  console.log("Current node ID from props:", currentNodeId);
-  
   // Get the index of the current node being configured
   const currentIndex = currentNodeId ? nodeOrder[currentNodeId] : -1;
   
+  // Filter to only show variables from nodes that come before the current node
   if (currentNodeId && currentIndex >= 0) {
-    console.log(`Current node ${currentNodeId} is at position ${currentIndex}`);
-    
-    // Filter to only show variables from nodes that come before the current node
     nodeVariableEntries = nodeVariableEntries.filter(([nodeId, _]) => {
       const nodeIdx = nodeOrder[nodeId];
       // If we can't determine node's position, include it to be safe
@@ -356,12 +307,7 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
       // Only include nodes that appear BEFORE the current node
       return nodeIdx < currentIndex;
     });
-    console.log("Filtered variables to only include nodes before current node");
-  } else {
-    console.log("No filtering applied - showing all variables");
   }
-  
-  console.log("Node entries after filtering:", nodeVariableEntries.map(([id]) => id));
 
   // Position the selector to appear beside the settings panel on the left
   return (

@@ -165,7 +165,7 @@ export function FlowBuilder({
   
   // Load initial nodes and edges only on initial component mount or when they change
   useEffect(() => {
-    console.log("Loading initial nodes:", initialNodes);
+    // Initial nodes loaded
     if (initialNodes && initialNodes.length > 0) {
       // Create a deep copy to prevent reference issues
       const nodesCopy = JSON.parse(JSON.stringify(initialNodes));
