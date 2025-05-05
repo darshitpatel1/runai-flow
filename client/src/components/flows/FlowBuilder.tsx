@@ -13,6 +13,7 @@ import ReactFlow, {
   NodeChange,
   useReactFlow,
   getConnectedEdges,
+  Node
 } from 'reactflow';
 
 // Define a custom type for position changes since not all NodeChange types have an ID
@@ -33,6 +34,7 @@ import { getAuth } from "firebase/auth";
 import { db } from "@/lib/firebase";
 import { NodePanel } from "./NodePanel";
 import { NodeConfiguration } from "./NodeConfiguration";
+import { NodeContextMenu } from "./NodeContextMenu";
 import { ConsoleOutput } from "./ConsoleOutput";
 import { HttpRequestNode } from "./nodes/HttpRequestNode";
 import { IfElseNode } from "./nodes/IfElseNode";
@@ -134,6 +136,8 @@ export function FlowBuilder({
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [contextMenuNodeId, setContextMenuNodeId] = useState<string | null>(null);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number, y: number } | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [isTestRunning, setIsTestRunning] = useState(false);
   const { toast } = useToast();
@@ -391,6 +395,87 @@ export function FlowBuilder({
   const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
     setEdges((eds) => eds.filter((e) => e.id !== edge.id));
   }, [setEdges]);
+  
+  // Handle the node context menu display
+  useEffect(() => {
+    const handleNodeContextMenu = (event: CustomEvent) => {
+      const { nodeId, x, y } = event.detail;
+      setContextMenuNodeId(nodeId);
+      setContextMenuPosition({ x, y });
+    };
+    
+    // Listen for the custom event from node components
+    document.addEventListener('node:contextmenu' as any, handleNodeContextMenu);
+    
+    // Close the context menu when clicking elsewhere
+    const handleGlobalClick = () => {
+      setContextMenuNodeId(null);
+      setContextMenuPosition(null);
+    };
+    
+    document.addEventListener('click', handleGlobalClick);
+    
+    return () => {
+      document.removeEventListener('node:contextmenu' as any, handleNodeContextMenu);
+      document.removeEventListener('click', handleGlobalClick);
+    };
+  }, []);
+  
+  // Handle node deletion
+  const handleDeleteNode = useCallback((nodeId: string) => {
+    // Get connected edges to also remove
+    const edgesToRemove = edges.filter(
+      (edge) => edge.source === nodeId || edge.target === nodeId
+    );
+    
+    // Remove node
+    setNodes((nodes) => nodes.filter((node) => node.id !== nodeId));
+    
+    // Remove connected edges
+    if (edgesToRemove.length > 0) {
+      setEdges((edges) => 
+        edges.filter((edge) => 
+          !(edge.source === nodeId || edge.target === nodeId)
+        )
+      );
+    }
+    
+    // Close the context menu
+    setContextMenuNodeId(null);
+    setContextMenuPosition(null);
+    
+    toast({
+      title: "Node Deleted",
+      description: "The node has been removed from the flow",
+    });
+  }, [edges, setNodes, setEdges, toast]);
+  
+  // Handle node skipping (marking as skipped in execution)
+  const handleSkipNode = useCallback((nodeId: string) => {
+    setNodes((nodes) =>
+      nodes.map((node) => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              skipped: !node.data.skipped,
+            },
+          };
+        }
+        return node;
+      })
+    );
+    
+    // Close the context menu
+    setContextMenuNodeId(null);
+    setContextMenuPosition(null);
+    
+    toast({
+      title: "Node Skip Status Changed",
+      description: "The node will be skipped during execution",
+    });
+  }, [setNodes, toast]);
   
   const runFlowTest = useCallback(() => {
     if (nodes.length === 0) {
@@ -680,6 +765,25 @@ export function FlowBuilder({
             onClose={closeNodeConfig}
             connectors={connectors}
           />
+        )}
+        
+        {/* Node Context Menu */}
+        {contextMenuNodeId && contextMenuPosition && (
+          <div 
+            style={{
+              position: 'absolute',
+              left: contextMenuPosition.x,
+              top: contextMenuPosition.y,
+              zIndex: 1000
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <NodeContextMenu 
+              nodeId={contextMenuNodeId}
+              onDelete={handleDeleteNode}
+              onSkip={handleSkipNode}
+            />
+          </div>
         )}
       </div>
       
