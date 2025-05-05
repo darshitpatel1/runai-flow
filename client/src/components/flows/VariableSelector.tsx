@@ -15,10 +15,20 @@ interface VariableSelectorProps {
   open: boolean;
   onClose: () => void;
   onSelectVariable: (variablePath: string) => void;
+  // Optional manual nodes for when used outside ReactFlow context
+  manualNodes?: any[];
 }
 
-export function VariableSelector({ open, onClose, onSelectVariable }: VariableSelectorProps) {
-  const { getNodes } = useReactFlow();
+export function VariableSelector({ open, onClose, onSelectVariable, manualNodes }: VariableSelectorProps) {
+  // Safely try to use ReactFlow context, but don't crash if it's not available
+  const reactFlowInstance = (() => {
+    try {
+      return useReactFlow();
+    } catch (e) {
+      return { getNodes: () => [] };
+    }
+  })();
+  
   const [search, setSearch] = useState("");
   const [variables, setVariables] = useState<Array<{
     nodeId: string;
@@ -28,6 +38,17 @@ export function VariableSelector({ open, onClose, onSelectVariable }: VariableSe
     path: string;
     source: "variable" | "testResult";
   }>>([]);
+
+  // Get nodes either from ReactFlow context or the manualNodes prop
+  const getNodes = useCallback(() => {
+    if (manualNodes) return manualNodes;
+    try {
+      return reactFlowInstance.getNodes();
+    } catch (e) {
+      console.warn("Failed to get nodes from ReactFlow", e);
+      return [];
+    }
+  }, [manualNodes, reactFlowInstance]);
 
   // Collect all available variables from nodes
   const collectVariables = useCallback(() => {
@@ -42,8 +63,8 @@ export function VariableSelector({ open, onClose, onSelectVariable }: VariableSe
     }> = [];
 
     // First pass, collect all set variable nodes
-    nodes.forEach(node => {
-      if (node.type === 'setVariable' && node.data.variableKey) {
+    nodes.forEach((node: any) => {
+      if (node.type === 'setVariable' && node.data?.variableKey) {
         variableList.push({
           nodeId: node.id,
           nodeName: node.data.label || "Set Variable",
@@ -56,8 +77,8 @@ export function VariableSelector({ open, onClose, onSelectVariable }: VariableSe
     });
 
     // Second pass, collect all test results from all nodes
-    nodes.forEach(node => {
-      if (node.data.testResult) {
+    nodes.forEach((node: any) => {
+      if (node.data?.testResult) {
         // For each test result, generate variables for its properties
         generateVariablePaths(node.data.testResult).forEach(path => {
           const variableName = path.split('.').pop() || 'result';

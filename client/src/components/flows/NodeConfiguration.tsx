@@ -1000,12 +1000,16 @@ if (data.items) {
         </DialogContent>
       </Dialog>
       
-      {/* Global variable selector dialog */}
-      <VariableSelector 
-        open={showVariableSelector} 
-        onClose={() => setShowVariableSelector(false)} 
-        onSelectVariable={handleSelectVariable}
-      />
+      {/* Only render the variable selector when shown to avoid ReactFlow context issues */}
+      {showVariableSelector && (
+        <VariableSelector 
+          open={showVariableSelector} 
+          onClose={() => setShowVariableSelector(false)} 
+          onSelectVariable={handleSelectVariable}
+          // If we're outside the FlowBuilder context, we need to pass nodes manually
+          manualNodes={[node]} // Just include the current node for safety
+        />
+      )}
     </div>
   );
 }
