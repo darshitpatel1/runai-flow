@@ -254,15 +254,30 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
                       handleChange('queryParams', newParams);
                     }}
                   />
-                  <Input
-                    placeholder="Value"
-                    value={param.value}
-                    onChange={(e) => {
-                      const newParams = [...(nodeData.queryParams || [])];
-                      newParams[index].value = e.target.value;
-                      handleChange('queryParams', newParams);
-                    }}
-                  />
+                  <div className="relative flex-1">
+                    <Input
+                      placeholder="Value"
+                      value={param.value}
+                      onChange={(e) => {
+                        const newParams = [...(nodeData.queryParams || [])];
+                        newParams[index].value = e.target.value;
+                        handleChange('queryParams', newParams);
+                      }}
+                      className="pr-10"
+                    />
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => {
+                        // Store the current index to update the correct parameter
+                        setActiveInputField(`queryParams-${index}`);
+                        setShowVariableSelector(true);
+                      }}
+                      className="absolute top-0 right-0 h-full"
+                    >
+                      <Variable className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <Button 
                     variant="ghost" 
                     size="icon"
@@ -875,7 +890,7 @@ return sourceData * 2;"
                         View Variables
                       </Button>
                     </h3>
-                    <pre className="text-xs bg-slate-50 dark:bg-slate-900 p-2 rounded overflow-auto max-h-40">
+                    <pre className="text-xs bg-slate-50 dark:bg-slate-900 p-2 rounded overflow-x-auto overflow-y-auto max-h-40 whitespace-pre-wrap">
                       {JSON.stringify(testResult, null, 2)}
                     </pre>
                   </div>
@@ -895,17 +910,27 @@ return sourceData * 2;"
                   
                   <div>
                     <Label className="block text-sm font-medium mb-1">Transform Data with JavaScript</Label>
-                    <Textarea
-                      value={transformScript}
-                      onChange={(e) => setTransformScript(e.target.value)}
-                      placeholder="// Example: Add a computed field based on the response
+                    <div className="relative">
+                      <Textarea
+                        value={transformScript}
+                        onChange={(e) => setTransformScript(e.target.value)}
+                        placeholder="// Example: Add a computed field based on the response
 data.computedField = data.someValue * 2;
 // Or filter an array
 if (data.items) {
   data.items = data.items.filter(item => item.status === 'active');
 }"
-                      className="font-mono text-xs h-32"
-                    />
+                        className="font-mono text-xs h-32 pr-10"
+                      />
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleOpenVariableSelector('transformScript')}
+                        className="absolute bottom-2 right-2"
+                      >
+                        <Variable className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       Use JavaScript to transform the response data. The original data is available as <code>data</code>.
                     </p>

@@ -156,15 +156,16 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
     variablesByNode[variable.nodeId].push(variable);
   });
 
+  // Use a popover positioned to the left instead of a dialog
   return (
-    <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Available Variables</DialogTitle>
-          <DialogDescription>
-            Select a variable to use in this field
-          </DialogDescription>
-        </DialogHeader>
+    <div className={`fixed z-50 top-0 left-0 w-full h-full ${open ? 'block' : 'hidden'}`} onClick={onClose}>
+      <div 
+        className="absolute left-4 top-1/4 w-80 bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-lg shadow-lg p-4"
+        onClick={(e) => e.stopPropagation()} // Prevent clicks inside from closing
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium">Available Variables</h3>
+        </div>
 
         <div className="space-y-4">
           <Input
@@ -174,7 +175,7 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
             className="w-full"
           />
 
-          <ScrollArea className="h-96">
+          <div className="h-96 overflow-y-auto pr-2">
             {Object.keys(variablesByNode).length > 0 ? (
               <div className="space-y-4">
                 {Object.entries(variablesByNode).map(([nodeId, nodeVariables]) => (
@@ -225,9 +226,9 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
                 No variables available. Create variables using Set Variable nodes or by testing other nodes.
               </div>
             )}
-          </ScrollArea>
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
