@@ -11,6 +11,9 @@ import Dashboard from "@/pages/dashboard";
 import Connectors from "@/pages/connectors";
 import FlowBuilder from "@/pages/flow-builder";
 import History from "@/pages/history";
+import TablesPage from "@/pages/tables";
+import TableDetailPage from "@/pages/tables/[id]";
+import TableEditPage from "@/pages/tables/[id]/edit";
 import SettingsPage from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
