@@ -156,11 +156,11 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
     variablesByNode[variable.nodeId].push(variable);
   });
 
-  // Use a popover positioned to the left instead of a dialog
+  // Position the selector to appear on the left side of the settings panel
   return (
     <div className={`fixed z-50 top-0 left-0 w-full h-full ${open ? 'block' : 'hidden'}`} onClick={onClose}>
       <div 
-        className="absolute left-4 top-1/4 w-80 bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-lg shadow-lg p-4"
+        className="absolute right-96 top-32 w-80 bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-lg shadow-lg p-4"
         onClick={(e) => e.stopPropagation()} // Prevent clicks inside from closing
       >
         <div className="flex items-center justify-between mb-4">

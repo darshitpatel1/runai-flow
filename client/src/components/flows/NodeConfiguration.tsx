@@ -41,8 +41,43 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     setNodeData({ ...nodeData, [field]: value });
   };
   
+  // Function to get existing variables from all SetVariable nodes
+  const getExistingVariables = () => {
+    try {
+      // If we're using with FlowBuilder, nodes will be provided via manualNodes
+      const allNodes = node.data.allNodes || []; 
+      
+      // Find all SetVariable nodes and collect their variable keys
+      const variables: string[] = [];
+      allNodes.forEach((n: any) => {
+        if (n.type === 'setVariable' && n.data?.variableKey && n.id !== node.id) {
+          variables.push(n.data.variableKey);
+        }
+      });
+      
+      return variables;
+    } catch (error) {
+      console.error("Failed to get existing variables", error);
+      return [];
+    }
+  };
+
   const handleApplyChanges = () => {
-    updateNodeData(node.id, nodeData);
+    // For SetVariable node, handle new variable creation
+    if (node.type === 'setVariable') {
+      const updatedData = { ...nodeData };
+      
+      // If the user is creating a new variable
+      if (!updatedData.variableKey && updatedData.newVariableKey) {
+        updatedData.variableKey = updatedData.newVariableKey;
+        delete updatedData.newVariableKey;
+      }
+      
+      updateNodeData(node.id, updatedData);
+    } else {
+      // For other node types, just apply the changes directly
+      updateNodeData(node.id, nodeData);
+    }
   };
   
   const handleTestNode = async () => {
@@ -522,11 +557,33 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
         
         <div>
           <Label className="block text-sm font-medium mb-1">Variable Key</Label>
-          <Input
-            value={nodeData.variableKey || ''}
-            onChange={(e) => handleChange('variableKey', e.target.value)}
-            placeholder="myVariable"
-          />
+          <div className="space-y-2">
+            <Select
+              value={nodeData.variableKey || ''}
+              onValueChange={(value) => handleChange('variableKey', value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select or create variable" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Create new variable</SelectItem>
+                {/* Get all existing variables */}
+                {getExistingVariables().map((variable) => (
+                  <SelectItem key={variable} value={variable}>
+                    {variable}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {!nodeData.variableKey && (
+              <Input
+                value={nodeData.newVariableKey || ''}
+                onChange={(e) => handleChange('newVariableKey', e.target.value)}
+                placeholder="Enter new variable name"
+              />
+            )}
+          </div>
         </div>
         
         <Tabs defaultValue={nodeData.useTransform ? "transform" : "simple"} className="w-full mt-4">
@@ -924,11 +981,11 @@ return sourceData * 2;"
                     <p className="text-xs text-blue-700 dark:text-blue-400 mb-1">
                       The test result is now saved and available to downstream nodes using:
                     </p>
-                    <pre className="text-xs bg-white dark:bg-slate-900 p-2 rounded mb-2 font-mono">
+                    <pre className="text-xs bg-white dark:bg-slate-900 p-2 rounded mb-2 font-mono whitespace-pre-wrap break-all">
                       {`{{${node.id}.result.[path]}}`}
                     </pre>
                     <p className="text-xs text-blue-700 dark:text-blue-400">
-                      For example: <code>{`{{${node.id}.result.data.items[0].id}}`}</code>
+                      For example: <code className="break-all whitespace-pre-wrap">{`{{${node.id}.result.data.items[0].id}}`}</code>
                     </p>
                   </div>
                   

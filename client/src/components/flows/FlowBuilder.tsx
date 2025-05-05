@@ -370,11 +370,22 @@ export function FlowBuilder({
     }
     
     try {
+      // Get all nodes in the flow to make them available for variable selection
+      const allNodes = reactFlowInstance.getNodes();
+      
       // Make sure the node data is a clean object without reactflow-specific properties
       // that might cause issues when used outside the ReactFlow context
       const safeNode = {
         ...node,
-        data: { ...node.data }
+        data: { 
+          ...node.data,
+          // Add all nodes to the node data so variable selector can use them
+          allNodes: allNodes.map(n => ({
+            id: n.id,
+            type: n.type,
+            data: { ...n.data }
+          }))
+        }
       };
       
       // Set the selected node with this safe copy
@@ -383,7 +394,7 @@ export function FlowBuilder({
       console.error("Error selecting node:", error);
       // If there's an error, don't update the selected node
     }
-  }, []);
+  }, [reactFlowInstance]);
   
   const updateNodeData = useCallback((nodeId: string, newData: any) => {
     setNodes((nds) =>
