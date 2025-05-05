@@ -418,11 +418,11 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors }:
           <Textarea
             value={nodeData.message || ''}
             onChange={(e) => handleChange('message', e.target.value)}
-            placeholder="Processing order: {{step1.body.orderId}}"
+            placeholder="Processing order: {order_id}"
             className="font-mono text-sm h-20"
           />
-          <p className="text-xs text-muted-foreground mt-1">
-            You can include dynamic values using the {{variable}} syntax
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            You can include dynamic values with curly braces, e.g., {'{'}variable{'}'}
           </p>
         </div>
       </div>
@@ -509,15 +509,15 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors }:
   };
   
   return (
-    <div className="w-80 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col">
+    <div className="w-80 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-black flex flex-col">
       <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
         <h2 className="font-medium">Configure Node</h2>
-        <Button variant="ghost" size="icon" onClick={onClose}>
+        <Button variant="ghost" size="icon" onClick={onClose} className="dark:hover:bg-slate-800">
           <XIcon className="h-5 w-5" />
         </Button>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 dark:bg-black">
         {renderConfigFields()}
       </div>
       
