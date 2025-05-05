@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { XIcon } from "lucide-react";
+import { XIcon, PlayIcon, Code2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,16 +9,26 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface NodeConfigurationProps {
   node: any;
   updateNodeData: (nodeId: string, newData: any) => void;
   onClose: () => void;
   connectors: any[];
+  onTestNode?: (nodeId: string, data: any) => Promise<any>;
 }
 
-export function NodeConfiguration({ node, updateNodeData, onClose, connectors }: NodeConfigurationProps) {
+export function NodeConfiguration({ node, updateNodeData, onClose, connectors, onTestNode }: NodeConfigurationProps) {
+  const { toast } = useToast();
   const [nodeData, setNodeData] = useState(node.data);
+  const [testResult, setTestResult] = useState<any>(null);
+  const [showTestResult, setShowTestResult] = useState(false);
+  const [isTestingNode, setIsTestingNode] = useState(false);
+  const [showVariableDialog, setShowVariableDialog] = useState(false);
+  const [transformScript, setTransformScript] = useState("");
+  const [availableVariables, setAvailableVariables] = useState<string[]>([]);
   
   useEffect(() => {
     setNodeData(node.data);
@@ -30,6 +40,83 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors }:
   
   const handleApplyChanges = () => {
     updateNodeData(node.id, nodeData);
+  };
+  
+  const handleTestNode = async () => {
+    if (!onTestNode) {
+      toast({
+        title: "Test functionality not available",
+        description: "Please save the flow first to enable node testing.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      setIsTestingNode(true);
+      // Apply any unsaved changes before testing
+      updateNodeData(node.id, nodeData);
+      
+      // Run the test
+      const result = await onTestNode(node.id, nodeData);
+      setTestResult(result);
+      setShowTestResult(true);
+      
+      // Automatically generate a list of available variables from the result
+      if (result && typeof result === 'object') {
+        const variables = generateVariablePaths(result);
+        setAvailableVariables(variables);
+      }
+      
+      toast({
+        title: "Node Test Complete",
+        description: "Test completed successfully. View the result and create variables.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Test Failed",
+        description: error.message || "An error occurred while testing the node",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingNode(false);
+    }
+  };
+  
+  // Helper function to generate dot notation paths for all properties in an object
+  const generateVariablePaths = (obj: any, prefix = ""): string[] => {
+    if (!obj || typeof obj !== 'object') return [];
+    
+    let paths: string[] = [];
+    
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        const newPrefix = prefix ? `${prefix}.${key}` : key;
+        paths.push(newPrefix);
+        
+        if (obj[key] && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+          paths = [...paths, ...generateVariablePaths(obj[key], newPrefix)];
+        }
+        
+        // Handle arrays specifically
+        if (Array.isArray(obj[key])) {
+          paths.push(`${newPrefix}.length`);
+          
+          // Add paths for the first few array items as examples
+          if (obj[key].length > 0) {
+            paths.push(`${newPrefix}[0]`);
+            
+            // If the first item is an object, also include its paths
+            if (typeof obj[key][0] === 'object' && obj[key][0] !== null) {
+              const itemPaths = generateVariablePaths(obj[key][0], `${newPrefix}[0]`);
+              paths = [...paths, ...itemPaths];
+            }
+          }
+        }
+      }
+    }
+    
+    return paths;
   };
   
   // Render different configuration fields based on node type
