@@ -309,55 +309,72 @@ export function FlowBuilder({
       
       // Add node first, then create connection
       setNodes((nds) => {
-        const updatedNodes = nds.concat(newNode);
-        
-        // Find the nearest node above this node to auto-connect
-        // This prevents the blinking effect by executing all node operations in one go
-        setTimeout(() => {
-          // Find potential source nodes (any node above the new node)
-          if (nds.length > 0) {
-            const sourceNodes = nds.filter(node => {
-              // Node is above the new node (y position is smaller)
-              return node.position.y < position.y;
-            });
-            
-            if (sourceNodes.length > 0) {
-              // Find the closest node above the new node
-              const closestNode = sourceNodes.reduce((closest, current) => {
-                const closestDist = Math.hypot(
-                  closest.position.x - position.x,
-                  closest.position.y - position.y
+        try {
+          // First add the new node
+          const updatedNodes = nds.concat(newNode);
+          
+          // Find the nearest node above this node to auto-connect
+          // Safe handling of empty node arrays
+          if (nds && nds.length > 0) {
+            // Use setTimeout to ensure the node is added to the graph before creating the edge
+            setTimeout(() => {
+              try {
+                // Find potential source nodes (any node above the new node)
+                const sourceNodes = nds.filter(node => 
+                  node && node.position && node.position.y < position.y
                 );
-                const currentDist = Math.hypot(
-                  current.position.x - position.x,
-                  current.position.y - position.y
-                );
-                return currentDist < closestDist ? current : closest;
-              }, sourceNodes[0]);
-              
-              // Create connection from closest node to new node
-              // For if/else nodes, connect to appropriate handle
-              let sourceHandle = null;
-              if (closestNode.type === 'ifElse') {
-                // For simple auto-connection, use 'true' path from if/else
-                sourceHandle = 'true';
+                
+                if (sourceNodes.length > 0) {
+                  // Find the closest node above the new node
+                  const closestNode = sourceNodes.reduce((closest, current) => {
+                    // Safe distance calculation with fallbacks
+                    const closestDist = Math.hypot(
+                      (closest.position?.x || 0) - position.x,
+                      (closest.position?.y || 0) - position.y
+                    );
+                    const currentDist = Math.hypot(
+                      (current.position?.x || 0) - position.x,
+                      (current.position?.y || 0) - position.y
+                    );
+                    return currentDist < closestDist ? current : closest;
+                  }, sourceNodes[0]);
+                  
+                  // Create connection from closest node to new node
+                  // Determine source handle based on node type
+                  let sourceHandle = null;
+                  if (closestNode.type === 'ifElse') {
+                    // For if/else nodes, connect to the "true" path
+                    sourceHandle = 'true';
+                  }
+                  
+                  // Create a unique ID for the edge
+                  const edgeId = `e-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                  
+                  // Create the connection parameters
+                  const params = {
+                    id: edgeId,
+                    source: closestNode.id,
+                    sourceHandle: sourceHandle,
+                    target: newNodeId,
+                    targetHandle: null, // Auto-select the default target handle
+                    animated: true,
+                    style: { stroke: '#4f46e5', strokeWidth: 2 }
+                  };
+                  
+                  // Create the edge connection
+                  setEdges((eds) => addEdge(params, eds));
+                }
+              } catch (error) {
+                console.error("Error creating edge connection:", error);
               }
-              
-              const params = {
-                id: `e-${Date.now()}`,
-                source: closestNode.id,
-                sourceHandle: sourceHandle,
-                target: newNodeId,
-                animated: true,
-                style: { stroke: '#4f46e5', strokeWidth: 2 }
-              };
-              
-              setEdges((eds) => addEdge(params, eds));
-            }
+            }, 100); // Increased timeout for better reliability
           }
-        }, 50);
-        
-        return updatedNodes;
+          
+          return updatedNodes;
+        } catch (error) {
+          console.error("Error adding new node:", error);
+          return nds; // Return original nodes on error
+        }
       });
     },
     [reactFlowInstance, setNodes, setEdges]
@@ -370,21 +387,41 @@ export function FlowBuilder({
     }
     
     try {
+      // Make sure we have a valid ReactFlow instance first
+      if (!reactFlowInstance) {
+        console.error("ReactFlow instance not available");
+        return;
+      }
+      
       // Get all nodes in the flow to make them available for variable selection
       const allNodes = reactFlowInstance.getNodes();
       
+      if (!allNodes || !Array.isArray(allNodes)) {
+        console.error("Failed to get nodes from ReactFlow instance");
+        return;
+      }
+      
+      // Create a clean, safe version of each node to avoid circular references
+      const safeAllNodes = allNodes.map(n => {
+        if (!n || typeof n !== 'object') return null;
+        
+        return {
+          id: n.id,
+          type: n.type,
+          data: n.data ? {
+            ...n.data,
+            label: n.data.label || n.type || "Node"
+          } : { label: n.type || "Node" }
+        };
+      }).filter(Boolean); // Remove any null entries
+      
       // Make sure the node data is a clean object without reactflow-specific properties
-      // that might cause issues when used outside the ReactFlow context
       const safeNode = {
         ...node,
         data: { 
           ...node.data,
           // Add all nodes to the node data so variable selector can use them
-          allNodes: allNodes.map(n => ({
-            id: n.id,
-            type: n.type,
-            data: { ...n.data }
-          }))
+          allNodes: safeAllNodes
         }
       };
       

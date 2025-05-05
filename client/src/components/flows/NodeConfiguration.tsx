@@ -44,13 +44,16 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
   // Function to get existing variables from all SetVariable nodes
   const getExistingVariables = () => {
     try {
-      // If we're using with FlowBuilder, nodes will be provided via manualNodes
-      const allNodes = node.data.allNodes || []; 
+      // Make sure we have allNodes data before attempting to use it
+      if (!node?.data?.allNodes || !Array.isArray(node.data.allNodes)) {
+        console.log("No allNodes data available");
+        return [];
+      }
       
       // Find all SetVariable nodes and collect their variable keys
       const variables: string[] = [];
-      allNodes.forEach((n: any) => {
-        if (n.type === 'setVariable' && n.data?.variableKey && n.id !== node.id) {
+      node.data.allNodes.forEach((n: any) => {
+        if (n && n.type === 'setVariable' && n.data?.variableKey && n.id !== node.id) {
           variables.push(n.data.variableKey);
         }
       });

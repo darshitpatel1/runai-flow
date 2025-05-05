@@ -41,9 +41,36 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
 
   // Get nodes either from ReactFlow context or the manualNodes prop
   const getNodes = useCallback(() => {
-    if (manualNodes) return manualNodes;
+    // First check for manually provided nodes (used when outside ReactFlow context)
+    if (manualNodes && Array.isArray(manualNodes) && manualNodes.length > 0) {
+      console.log("Using manually provided nodes:", manualNodes);
+      return manualNodes;
+    }
+    
+    // Then try to get nodes from ReactFlow
     try {
-      return reactFlowInstance.getNodes();
+      if (!reactFlowInstance) {
+        console.warn("ReactFlow instance not available");
+        return [];
+      }
+      
+      const flowNodes = reactFlowInstance.getNodes();
+      
+      if (!flowNodes || !Array.isArray(flowNodes)) {
+        console.warn("No valid nodes from ReactFlow");
+        return [];
+      }
+      
+      // Check if any node has allNodes data that contains other nodes
+      // This is the case when a node's config panel is open
+      for (const node of flowNodes) {
+        if (node?.data?.allNodes && Array.isArray(node.data.allNodes) && node.data.allNodes.length > 0) {
+          console.log("Found allNodes data in node:", node.id);
+          return node.data.allNodes;
+        }
+      }
+      
+      return flowNodes;
     } catch (e) {
       console.warn("Failed to get nodes from ReactFlow", e);
       return [];
