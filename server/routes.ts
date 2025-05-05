@@ -12,24 +12,50 @@ import { z } from "zod";
 // Store active WebSocket connections by user ID
 const connections = new Map<string, WebSocket[]>();
 
-// Helper function to send execution updates to connected users
+// Helper function to send execution updates to connected users with improved error handling
 function sendExecutionUpdate(userId: string, executionData: any) {
   const userConnections = connections.get(userId.toString());
   
-  if (userConnections && userConnections.length > 0) {
+  if (!userConnections || userConnections.length === 0) {
+    console.log(`No active connections for user ${userId}`);
+    return;
+  }
+  
+  // Filter out connections that are not in OPEN state
+  const activeConnections = userConnections.filter(ws => ws.readyState === WebSocket.OPEN);
+  
+  if (activeConnections.length === 0) {
+    console.log(`No open connections for user ${userId}`);
+    return;
+  }
+  
+  try {
     const message = JSON.stringify({
       type: 'execution_update',
       data: executionData
     });
     
-    // Send to all connections for this user
-    userConnections.forEach(ws => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(message);
-      }
-    });
+    // Send message to all active connections
+    let successCount = 0;
     
-    console.log(`Sent execution update to ${userConnections.length} connection(s) for user ${userId}`);
+    for (const ws of activeConnections) {
+      try {
+        ws.send(message);
+        successCount++;
+      } catch (error) {
+        console.error(`Error sending execution update to a client: ${error.message}`);
+        // Connection is likely broken - terminate it
+        try {
+          ws.terminate();
+        } catch (e) {
+          // Ignore error during termination
+        }
+      }
+    }
+    
+    console.log(`Successfully sent execution update to ${successCount}/${activeConnections.length} connection(s) for user ${userId}`);
+  } catch (error) {
+    console.error(`Error preparing execution update: ${error.message}`);
   }
 }
 
@@ -764,22 +790,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Set up WebSocket server
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  // Set up WebSocket server with more robust error handling
+  const wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/ws',
+    // More robust error handling
+    clientTracking: true,
+    perMessageDeflate: {
+      zlibDeflateOptions: {
+        chunkSize: 1024,
+        memLevel: 7,
+        level: 3
+      },
+      zlibInflateOptions: {
+        chunkSize: 10 * 1024
+      }
+    }
+  });
   
-  wss.on('connection', (ws) => {
+  // Keep track of connection errors server-wide
+  wss.on('error', (error) => {
+    console.error('WebSocket server error:', error.message);
+  });
+  
+  // Set up heartbeat to detect disconnected clients
+  function heartbeat() {
+    // @ts-ignore - add isAlive property to track client state
+    this.isAlive = true;
+  }
+  
+  const interval = setInterval(function ping() {
+    wss.clients.forEach(function each(ws) {
+      // @ts-ignore - check if client is still connected
+      if (ws.isAlive === false) {
+        console.log('Terminating dead WebSocket connection');
+        return ws.terminate();
+      }
+      
+      // @ts-ignore - reset alive status
+      ws.isAlive = false;
+      try {
+        ws.ping();
+      } catch (e) {
+        console.error('Error sending ping:', e.message);
+        ws.terminate();
+      }
+    });
+  }, 30000);
+  
+  wss.on('close', function close() {
+    clearInterval(interval);
+  });
+  
+  wss.on('connection', (ws, req) => {
     console.log('WebSocket client connected');
     
-    // Set up a ping interval to keep the connection alive
-    const pingInterval = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.ping();
-      }
-    }, 30000);
+    // Initialize client as alive and set up heartbeat
+    // @ts-ignore
+    ws.isAlive = true;
+    ws.on('pong', heartbeat);
     
     // Handle incoming messages
     ws.on('message', (message) => {
       try {
+        // Prevent large messages from causing issues
+        if ((message as any).length > 100000) {
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: 'Message too large'
+          }));
+          return;
+        }
+        
         const data = JSON.parse(message.toString());
         
         // Handle authentication
@@ -790,38 +872,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!connections.has(userId)) {
               connections.set(userId, []);
             }
+            
             // Add this connection to the user's connections
             const userConnections = connections.get(userId);
             if (userConnections) {
-              userConnections.push(ws);
-              console.log(`User ${userId} authenticated on WebSocket`);
+              // Check if connection already exists for this user
+              if (!userConnections.includes(ws)) {
+                userConnections.push(ws);
+                console.log(`User ${userId} authenticated on WebSocket`);
+              }
               
               // Send confirmation
-              ws.send(JSON.stringify({
-                type: 'auth_success',
-                message: 'Authentication successful'
-              }));
+              try {
+                ws.send(JSON.stringify({
+                  type: 'auth_success',
+                  message: 'Authentication successful'
+                }));
+              } catch (e) {
+                console.error('Error sending auth success message:', e.message);
+              }
             }
           } else {
-            ws.send(JSON.stringify({
-              type: 'auth_error',
-              message: 'Authentication failed: missing token or userId'
-            }));
+            try {
+              ws.send(JSON.stringify({
+                type: 'auth_error',
+                message: 'Authentication failed: missing token or userId'
+              }));
+            } catch (e) {
+              console.error('Error sending auth error message:', e.message);
+            }
           }
         }
       } catch (error) {
-        console.error('Error processing WebSocket message:', error);
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: 'Failed to process message'
-        }));
+        console.error('Error processing WebSocket message:', error.message);
+        try {
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: 'Failed to process message'
+          }));
+        } catch (e) {
+          console.error('Error sending error message:', e.message);
+        }
       }
     });
     
+    // Handle connection errors
+    ws.on('error', (error) => {
+      console.error('WebSocket connection error:', error.message);
+    });
+    
     // Handle connection close
-    ws.on('close', () => {
-      console.log('WebSocket client disconnected');
-      clearInterval(pingInterval);
+    ws.on('close', (code, reason) => {
+      console.log(`WebSocket client disconnected. Code: ${code}, Reason: ${reason || 'No reason provided'}`);
       
       // Remove connection from all user connections
       for (const [userId, userConnections] of connections.entries()) {
