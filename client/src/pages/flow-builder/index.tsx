@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { SaveIcon, PlayIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { LogMessage } from "@/components/flows/ConsoleOutput";
+import { ExecutionProgress } from "@/components/flows/ExecutionProgress";
 
 export default function FlowBuilderPage() {
   const { id } = useParams();
@@ -148,154 +149,46 @@ export default function FlowBuilderPage() {
     setTesting(true);
     
     try {
-      // Create a proper execution record in Firebase
-      const startTime = new Date();
-      
-      // Create example logs for the test run
-      const logs: LogMessage[] = [
-        {
-          timestamp: new Date(),
-          type: "info",
-          message: "Starting flow execution..."
-        }
-      ];
-      
-      // Add logs for each node in the flow
-      for (const node of nodes) {
-        logs.push({
-          timestamp: new Date(),
-          type: "info",
-          nodeId: node.id,
-          message: `Executing node: "${node.data.label}" (${node.type})`
-        });
-        
-        // If it's an HTTP request, add more detailed logs
-        if (node.type === 'httpRequest') {
-          const method = node.data.method || 'GET';
-          const endpoint = node.data.endpoint || '/api';
-          const connector = node.data.connector || 'None';
-          
-          logs.push({
-            timestamp: new Date(),
-            type: "http",
-            nodeId: node.id,
-            message: `${method} ${endpoint} using connector: ${connector}`
-          });
-          
-          // Add request body log if applicable
-          if ((method === 'POST' || method === 'PUT') && node.data.body) {
-            logs.push({
-              timestamp: new Date(),
-              type: "http",
-              nodeId: node.id,
-              message: `Request Body: ${node.data.body}`
-            });
+      // Use the API endpoint to execute the flow
+      // This will trigger real-time updates through WebSockets
+      const response = await fetch(`/api/flows/${id}/execute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.uid}`
+        },
+        body: JSON.stringify({
+          input: {
+            // Any input parameters for the flow
+            timestamp: new Date().toISOString(),
+            testMode: true
           }
-          
-          // Add success response
-          logs.push({
-            timestamp: new Date(),
-            type: "success",
-            nodeId: node.id,
-            message: `Response: 200 OK${connector ? ` (authenticated with ${connector})` : ''}`
-          });
-          
-          // Add response data
-          if (node.data.connector === 'workday') {
-            logs.push({
-              timestamp: new Date(),
-              type: "info",
-              nodeId: node.id,
-              message: `Response Data: {
-                "Total Count": 1,
-                "data": {
-                  "Report_Entry": [
-                    {
-                      "locationType": "Corporate Office",
-                      "locationIdentifier": "1028",
-                      "locationName": "San Francisco HQ",
-                      "address": {
-                        "addressLine1": "123 Market Street",
-                        "city": "San Francisco",
-                        "region": "CA",
-                        "postalCode": "94105",
-                        "country": "USA"
-                      },
-                      "timeZone": "America/Los_Angeles",
-                      "status": "Active"
-                    }
-                  ]
-                },
-                "id": "req-${Date.now()}",
-                "timestamp": "${new Date().toISOString()}"
-              }`
-            });
-          } else {
-            logs.push({
-              timestamp: new Date(),
-              type: "info",
-              nodeId: node.id,
-              message: `Response Data: {
-                "success": true,
-                "data": {
-                  "items": [
-                    {"id": 1, "name": "Item 1", "createdAt": "${new Date().toISOString()}"},
-                    {"id": 2, "name": "Item 2", "createdAt": "${new Date().toISOString()}"}
-                  ],
-                  "status": "success",
-                  "count": 2
-                },
-                "id": "req-${Date.now()}",
-                "timestamp": "${new Date().toISOString()}"
-              }`
-            });
-          }
-        } else {
-          // For non-HTTP nodes, add simple success log
-          logs.push({
-            timestamp: new Date(),
-            type: "success",
-            nodeId: node.id,
-            message: `Node "${node.data.label}" executed successfully`
-          });
-        }
-        
-        // Add a small delay between node executions for realism
-        await new Promise(resolve => setTimeout(resolve, 200));
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to execute flow');
       }
       
-      // Add completion log
-      logs.push({
-        timestamp: new Date(),
-        type: "info",
-        message: "Flow execution completed"
-      });
+      const execution = await response.json();
       
-      const endTime = new Date();
-      const duration = endTime.getTime() - startTime.getTime();
-      
-      // Save execution to Firebase for history tracking
-      const executionsRef = collection(db, "users", user.uid, "executions");
-      await addDoc(executionsRef, {
-        flowId: flow.id,
-        status: "success",
-        startedAt: startTime,
-        finishedAt: endTime,
-        duration: duration,
-        logs: logs
-      });
+      // Store execution ID in the flow for the ExecutionProgress component
+      setFlow(prevFlow => ({
+        ...prevFlow,
+        executionId: execution.id
+      }));
       
       toast({
-        title: "Flow test completed",
-        description: "Flow executed successfully. View details in the History tab.",
+        title: "Flow execution started",
+        description: "The flow is running. Watch the progress in real-time.",
       });
     } catch (error: any) {
       toast({
-        title: "Error testing flow",
+        title: "Error executing flow",
         description: error.message,
         variant: "destructive",
       });
-    } finally {
       setTesting(false);
     }
   };
@@ -351,14 +244,27 @@ export default function FlowBuilderPage() {
         
         {/* Flow Builder Component */}
         <div className="flex-1 flex overflow-hidden" style={{ height: 'calc(100% - 4rem)' }}>
-          <FlowBuilder
-            initialNodes={nodes}
-            initialEdges={edges}
-            onNodesChange={setNodes}
-            onEdgesChange={setEdges}
-            connectors={connectors}
-            flowId={id}
-          />
+          {/* Main Flow Builder */}
+          <div className="flex-1 relative">
+            <FlowBuilder
+              initialNodes={nodes}
+              initialEdges={edges}
+              onNodesChange={setNodes}
+              onEdgesChange={setEdges}
+              connectors={connectors}
+              flowId={id}
+            />
+            
+            {/* Execution Progress Panel */}
+            {id && (
+              <div className="absolute top-4 right-4 w-72">
+                <ExecutionProgress 
+                  flowId={id} 
+                  executionId={flow?.executionId}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </AppLayout>

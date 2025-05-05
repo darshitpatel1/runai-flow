@@ -352,7 +352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Simulate node-by-node execution with progress updates
-      const nodeCount = flow.nodes.length || 5; // Fallback to 5 if no nodes defined
+      const nodeCount = (flow.nodes && Array.isArray(flow.nodes) ? flow.nodes.length : 0) || 5; // Fallback to 5 if no nodes defined
       let currentNode = 0;
       
       const processNodes = () => {
