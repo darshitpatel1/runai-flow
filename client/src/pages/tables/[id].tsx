@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -53,20 +53,44 @@ export default function TableDetailPage() {
   const { data: table, isLoading: isTableLoading, error: tableError } = useQuery({
     queryKey: ['/api/tables', tableId],
     enabled: !!tableId && !!user,
-    onSuccess: (data) => {
-      console.log("Table data received:", data);
-      console.log("Table columns:", data?.columns);
-    }
   });
   
   // Get table rows
   const { data: tableRows, isLoading: isRowsLoading, error: rowsError } = useQuery({
     queryKey: [`/api/tables/${tableId}/rows`],
-    onSuccess: (data) => {
-      console.log("Table rows received:", data);
-    },
     enabled: !!tableId && !!user,
   });
+  
+  // Make sure columns is properly parsed as an array
+  const columns = useMemo(() => {
+    if (!table) return [];
+    
+    return Array.isArray(table.columns) 
+      ? table.columns 
+      : (typeof table.columns === 'string' 
+          ? JSON.parse(table.columns) 
+          : (table.columns ? [table.columns] : [])) as ColumnDefinition[];
+  }, [table]);
+  
+  // Debug function to show table structure in console
+  useEffect(() => {
+    if (table) {
+      console.log("Table data received:", table);
+      console.log("Table ID:", table.id);
+      console.log("Columns data:", table.columns);
+      console.log("Columns array type:", Array.isArray(table.columns));
+      console.log("Columns after parsing:", columns);
+      
+      if (tableRows && tableRows.length > 0) {
+        console.log("Table rows received:", tableRows);
+        console.log("First row data:", tableRows[0]);
+        console.log("Row data structure:", tableRows[0].data);
+        if (tableRows[0].data?.data) {
+          console.log("Nested data structure detected", tableRows[0].data.data);
+        }
+      }
+    }
+  }, [table, tableRows, columns]);
   
   // Handle errors with useEffect
   useEffect(() => {
@@ -131,6 +155,9 @@ export default function TableDetailPage() {
   };
   
   const isLoading = isTableLoading || isRowsLoading;
+  const filteredRows = useMemo(() => filterRows(), [tableRows, searchQuery]);
+  const paginatedRows = useMemo(() => getPaginatedRows(), [filteredRows, page, pageSize]);
+  const totalPages = useMemo(() => Math.ceil(filteredRows.length / pageSize), [filteredRows, pageSize]);
   
   if (isLoading) {
     return (
@@ -172,37 +199,7 @@ export default function TableDetailPage() {
       </AppLayout>
     );
   }
-  
-  // Make sure columns is properly parsed as an array
-  const columns = Array.isArray(table.columns) 
-    ? table.columns 
-    : (typeof table.columns === 'string' 
-        ? JSON.parse(table.columns) 
-        : (table.columns ? [table.columns] : [])) as ColumnDefinition[];
-  
-  // Debug function to show table structure in console
-  useEffect(() => {
-    if (table) {
-      console.log("Table structure:", table);
-      console.log("Table ID:", table.id);
-      console.log("Columns data:", table.columns);
-      console.log("Columns array type:", Array.isArray(table.columns));
-      console.log("Columns after parsing:", columns);
-      
-      if (tableRows && tableRows.length > 0) {
-        console.log("First row data:", tableRows[0]);
-        console.log("Row data structure:", tableRows[0].data);
-        if (tableRows[0].data?.data) {
-          console.log("Nested data structure detected", tableRows[0].data.data);
-        }
-      }
-    }
-  }, [table, tableRows, columns]);
-  
-  const filteredRows = filterRows();
-  const paginatedRows = getPaginatedRows();
-  const totalPages = Math.ceil(filteredRows.length / pageSize);
-  
+
   return (
     <AppLayout>
       <div className="container mx-auto p-6 max-w-6xl">
