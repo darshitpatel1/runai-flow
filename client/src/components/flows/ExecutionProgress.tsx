@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, CheckCircle, XCircle, AlertTriangle, Minimize2, Maximize2 } from 'lucide-react';
 import { useWebSocket } from '@/hooks/use-websocket';
 import { LogMessage } from '@/components/flows/ConsoleOutput';
 
@@ -22,6 +23,7 @@ export function ExecutionProgress({
   const [progress, setProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState('Ready to execute');
   const [logs, setLogs] = useState<LogMessage[]>([]);
+  const [minimized, setMinimized] = useState(false);
 
   // Connect to WebSocket for real-time updates
   const { lastMessage, isConnected } = useWebSocket({
@@ -29,6 +31,10 @@ export function ExecutionProgress({
       console.log('WebSocket message received:', data);
     }
   });
+
+  const toggleMinimize = () => {
+    setMinimized(!minimized);
+  };
 
   // Process incoming WebSocket messages
   useEffect(() => {
@@ -122,26 +128,43 @@ export function ExecutionProgress({
   };
 
   return (
-    <div className="rounded-md border p-4 space-y-3 bg-white dark:bg-slate-800">
+    <div className={`rounded-md border transition-all duration-200 ${minimized ? 'p-2' : 'p-4 space-y-3'} bg-white dark:bg-black`}>
       <div className="flex justify-between items-center">
-        <h3 className="text-sm font-medium">Execution Progress</h3>
-        <StatusBadge />
-      </div>
-      
-      <Progress value={progress} className="h-2" />
-      
-      <div className="text-xs text-slate-500 dark:text-slate-400">
-        {statusMessage}
-        {progress > 0 && progress < 100 && (
-          <span className="font-medium ml-1">{progress}%</span>
-        )}
-      </div>
-      
-      {!isConnected && (
-        <div className="text-xs text-amber-500 flex items-center gap-1 mt-1">
-          <AlertTriangle className="w-3 h-3" />
-          Waiting for connection...
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium">Execution Progress</h3>
+          {minimized && <StatusBadge />}
         </div>
+        <div className="flex items-center gap-2">
+          {!minimized && <StatusBadge />}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-6 w-6 p-0"
+            onClick={toggleMinimize}
+          >
+            {minimized ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
+          </Button>
+        </div>
+      </div>
+      
+      {!minimized && (
+        <>
+          <Progress value={progress} className="h-2" />
+          
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            {statusMessage}
+            {progress > 0 && progress < 100 && (
+              <span className="font-medium ml-1">{progress}%</span>
+            )}
+          </div>
+          
+          {!isConnected && (
+            <div className="text-xs text-amber-500 flex items-center gap-1 mt-1">
+              <AlertTriangle className="w-3 h-3" />
+              Waiting for connection...
+            </div>
+          )}
+        </>
       )}
     </div>
   );

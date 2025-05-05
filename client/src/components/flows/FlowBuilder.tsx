@@ -629,7 +629,7 @@ export function FlowBuilder({
         <NodePanel />
         
         {/* Flow Canvas */}
-        <div className="flex-1 relative bg-slate-100 dark:bg-slate-800 overflow-hidden" ref={reactFlowWrapper}>
+        <div className="flex-1 relative bg-slate-100 dark:bg-black overflow-hidden" ref={reactFlowWrapper}>
           <ReactFlowProvider>
             <div style={{ width: '100%', height: '100%' }}>
               <ReactFlow
