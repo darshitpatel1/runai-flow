@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { collection, query, orderBy, getDocs, limit, startAfter, where, getDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
@@ -341,68 +341,65 @@ export default function History() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12"></TableHead>
-                    <TableHead>Flow Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Start Time</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Execution ID</TableHead>
+                    <TableHead className="text-left">Flow Name</TableHead>
+                    <TableHead className="text-left">Status</TableHead>
+                    <TableHead className="text-left">Start Time</TableHead>
+                    <TableHead className="text-left">Duration</TableHead>
+                    <TableHead className="text-left">Execution ID</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {executions.map((execution) => (
-                    <Collapsible 
-                      key={execution.id}
-                      open={expandedRows[execution.id]}
-                      onOpenChange={() => toggleRowExpand(execution.id)}
+                  {executions.map((execution) => [
+                    // Regular Row
+                    <TableRow 
+                      key={`row-${execution.id}`}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => toggleRowExpand(execution.id)}
                     >
-                      <TableRow className="cursor-pointer hover:bg-muted/50">
-                        <TableCell>
-                          <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="sm" className="p-0 h-6 w-6">
-                              <ChevronRightIcon 
-                                className={`h-4 w-4 transition-transform ${expandedRows[execution.id] ? 'rotate-90' : ''}`}
-                              />
-                            </Button>
-                          </CollapsibleTrigger>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {flowsMap[execution.flowId]?.name || "Unknown Flow"}
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(execution.status)}
-                        </TableCell>
-                        <TableCell>
-                          {execution.startedAt?.toDate 
-                            ? new Date(execution.startedAt.toDate()).toLocaleString() 
+                      <TableCell>
+                        <Button variant="ghost" size="sm" className="p-0 h-6 w-6">
+                          <ChevronRightIcon 
+                            className={`h-4 w-4 transition-transform ${expandedRows[execution.id] ? 'rotate-90' : ''}`}
+                          />
+                        </Button>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {flowsMap[execution.flowId]?.name || "Unknown Flow"}
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(execution.status)}
+                      </TableCell>
+                      <TableCell>
+                        {execution.startedAt?.toDate 
+                          ? new Date(execution.startedAt.toDate()).toLocaleString() 
+                          : "Unknown"}
+                      </TableCell>
+                      <TableCell>
+                        {execution.duration 
+                          ? `${execution.duration}ms`
+                          : execution.status === "running" 
+                            ? "Running..."
                             : "Unknown"}
-                        </TableCell>
-                        <TableCell>
-                          {execution.duration 
-                            ? `${execution.duration}ms`
-                            : execution.status === "running" 
-                              ? "Running..."
-                              : "Unknown"}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {execution.id.substring(0, 8)}...
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {execution.id.substring(0, 8)}...
+                      </TableCell>
+                    </TableRow>,
+                    
+                    // Expanded Content Row - only rendered when expanded
+                    expandedRows[execution.id] ? (
+                      <TableRow key={`content-${execution.id}`}>
+                        <TableCell colSpan={6} className="bg-muted/30 p-0">
+                          <div className="p-4">
+                            <ExecutionDetail 
+                              execution={execution} 
+                              flowData={flowsMap[execution.flowId]} 
+                            />
+                          </div>
                         </TableCell>
                       </TableRow>
-                      
-                      <CollapsibleContent>
-                        <TableRow>
-                          <TableCell colSpan={6} className="bg-muted/30 p-0">
-                            <div className="p-4">
-                              {/* Import the ExecutionDetail component at the top of the file */}
-                              <ExecutionDetail 
-                                execution={execution} 
-                                flowData={flowsMap[execution.flowId]} 
-                              />
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  ))}
+                    ) : null
+                  ].filter(Boolean))}
                 </TableBody>
               </Table>
             </div>
