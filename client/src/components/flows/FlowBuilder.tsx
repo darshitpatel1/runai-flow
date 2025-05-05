@@ -47,7 +47,7 @@ import { StopJobNode } from "./nodes/StopJobNode";
 import { useToast } from "@/hooks/use-toast";
 
 // Define custom node types
-const nodeTypes = {
+const nodeTypes: {[key: string]: React.ComponentType<any>} = {
   httpRequest: HttpRequestNode,
   ifElse: IfElseNode,
   loop: LoopNode,
@@ -287,7 +287,7 @@ export function FlowBuilder({
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge({ 
       ...params, 
-      type: 'smoothstep',
+      type: ConnectionLineType.SmoothStep,
       animated: true, 
       style: { stroke: '#4f46e5', strokeWidth: 2 } 
     }, eds)),
@@ -397,7 +397,7 @@ export function FlowBuilder({
                   const currentNodes = reactFlowInstance.getNodes();
                   
                   // Find nodes that would make sense to connect from (above the new node)
-                  const sourceNodes = currentNodes.filter(node => 
+                  const sourceNodes = currentNodes.filter((node: Node) => 
                     node && 
                     node.id !== newNodeId && // Don't connect to self
                     node.position && 
@@ -406,7 +406,7 @@ export function FlowBuilder({
                   
                   if (sourceNodes && sourceNodes.length > 0) {
                     // Find the closest node that makes sense to connect from
-                    const closestNode = sourceNodes.reduce((closest, current) => {
+                    const closestNode = sourceNodes.reduce((closest: Node, current: Node) => {
                       // Calculate Manhattan distance (more reliable for flow charts)
                       const closestDist = 
                         Math.abs((closest.position?.x || 0) - position.x) + 
@@ -439,7 +439,7 @@ export function FlowBuilder({
                         sourceHandle: sourceHandle,
                         target: newNodeId,
                         targetHandle: null, // Auto-select the default target handle
-                        type: 'smoothstep', // Match the type used in defaultEdgeOptions
+                        type: ConnectionLineType.SmoothStep, // Match the type used in defaultEdgeOptions
                         animated: true,
                         style: { stroke: '#4f46e5', strokeWidth: 2 }
                       };
@@ -1172,7 +1172,7 @@ export function FlowBuilder({
                 preventScrolling={false}
                 connectionLineType={ConnectionLineType.SmoothStep}
                 defaultEdgeOptions={{ 
-                  type: 'smoothstep',
+                  type: ConnectionLineType.SmoothStep,
                   animated: true,
                   style: { stroke: '#4f46e5', strokeWidth: 2 }
                 }}
