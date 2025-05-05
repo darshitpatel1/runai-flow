@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -22,10 +22,23 @@ export default function TablesPage() {
     enabled: !!user,
   });
   
+  // Handle errors with useEffect
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load tables",
+        variant: "destructive",
+      });
+    }
+  }, [error, toast]);
+  
   // Filter tables by name
-  const filteredTables = tables?.filter((table: DataTable) => 
-    table.name.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  const filteredTables = tables && Array.isArray(tables) 
+    ? tables.filter((table: DataTable) => 
+        table.name.toLowerCase().includes(searchQuery.toLowerCase())
+      ) 
+    : [];
   
   // Format date for display
   const formatDate = (date: string | Date) => {
@@ -33,14 +46,6 @@ export default function TablesPage() {
     const d = new Date(date);
     return d.toLocaleDateString();
   };
-  
-  if (error) {
-    toast({
-      title: "Error",
-      description: "Failed to load tables",
-      variant: "destructive",
-    });
-  }
   
   return (
     <AppLayout>

@@ -13,7 +13,10 @@ import FlowBuilder from "@/pages/flow-builder";
 import History from "@/pages/history";
 import TablesPage from "@/pages/tables";
 import TableDetailPage from "@/pages/tables/[id]";
+import NewTablePage from "@/pages/tables/new";
 import TableEditPage from "@/pages/tables/[id]/edit";
+import AddRowPage from "@/pages/tables/[id]/add-row";
+import EditRowPage from "@/pages/tables/[id]/edit-row/[rowId]";
 import SettingsPage from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
@@ -27,8 +30,11 @@ function Router() {
       <Route path="/flow-builder/:id?" component={FlowBuilder} />
       <Route path="/history" component={History} />
       <Route path="/tables" component={TablesPage} />
-      <Route path="/tables/:id" component={TableDetailPage} />
+      <Route path="/tables/new" component={NewTablePage} />
+      <Route path="/tables/:id/add-row" component={AddRowPage} />
+      <Route path="/tables/:id/edit-row/:rowId" component={EditRowPage} />
       <Route path="/tables/:id/edit" component={TableEditPage} />
+      <Route path="/tables/:id" component={TableDetailPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

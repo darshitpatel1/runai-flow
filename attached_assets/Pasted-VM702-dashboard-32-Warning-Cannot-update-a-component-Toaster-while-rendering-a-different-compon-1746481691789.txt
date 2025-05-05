@@ -1,0 +1,46 @@
+VM702 dashboard:32 Warning: Cannot update a component (`Toaster`) while rendering a different component (`TablesPage`). To locate the bad setState() call inside `TablesPage`, follow the stack trace as described in https://reactjs.org/link/setstate-in-render
+    at TablesPage (https://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/src/pages/tables/index.tsx:29:20)
+    at Route (https://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=004c48d3:206:16)
+    at Switch (https://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=004c48d3:262:17)
+    at Router
+    at AuthProvider (https://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/src/context/AuthContext.tsx:25:32)
+    at ThemeProvider (https://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/src/context/ThemeContext.tsx:25:33)
+    at QueryClientProvider (https://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=004c48d3:2879:3)
+    at App
+console.error @ VM702 dashboard:32Understand this errorAI
+2chunk-RPCDYKBN.js:11555 Uncaught Error: Too many re-renders. React limits the number of renders to prevent an infinite loop.
+    at renderWithHooks (chunk-RPCDYKBN.js:11555:23)
+    at updateFunctionComponent (chunk-RPCDYKBN.js:14582:28)
+    at beginWork (chunk-RPCDYKBN.js:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js:19116:15)Understand this errorAI
+VM702 dashboard:32 The above error occurred in the <TablesPage> component:
+
+    at TablesPage (https://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/src/pages/tables/index.tsx:29:20)
+    at Route (https://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=004c48d3:206:16)
+    at Switch (https://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=004c48d3:262:17)
+    at Router
+    at AuthProvider (https://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/src/context/AuthContext.tsx:25:32)
+    at ThemeProvider (https://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/src/context/ThemeContext.tsx:25:33)
+    at QueryClientProvider (https://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=004c48d3:2879:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+console.error @ VM702 dashboard:32Understand this errorAI
+chunk-RPCDYKBN.js:9129 Uncaught Error: Too many re-renders. React limits the number of renders to prevent an infinite loop.
+    at renderWithHooks (chunk-RPCDYKBN.js:11555:23)
+    at updateFunctionComponent (chunk-RPCDYKBN.js:14582:28)
+    at beginWork (chunk-RPCDYKBN.js:15924:22)
+    at beginWork$1 (chunk-RPCDYKBN.js:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js:18736:28)
+    at performSyncWorkOnRoot (chunk-RPCDYKBN.js:18879:28)
+    at flushSyncCallbacks (chunk-RPCDYKBN.js:9119:30)

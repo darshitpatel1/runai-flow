@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { useRoute, useLocation } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useLocation } from "wouter";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -15,29 +15,17 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Save, Trash2Icon, X } from "lucide-react";
+import { ArrowLeft, Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DataTable, ColumnDefinition } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
-// Form schema for table editing
+// Form schema for table creation
 const tableFormSchema = z.object({
   name: z.string().min(1, "Table name is required"),
   description: z.string().optional(),
@@ -62,25 +50,14 @@ const defaultColumnValues = {
   default: null,
 };
 
-export default function TableEditPage() {
-  const [, params] = useRoute('/tables/:id/edit');
+export default function NewTablePage() {
   const [, navigate] = useLocation();
-  const tableId = params?.id ? parseInt(params.id) : null;
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  // State for delete confirmation
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  
   // State to manage column options for select-type columns
   const [optionInputs, setOptionInputs] = useState<Record<number, string>>({});
-  
-  // Get table data
-  const { data: table, isLoading } = useQuery({
-    queryKey: ['/api/tables', tableId],
-    enabled: !!tableId && !!user,
-  });
   
   // Setup form
   const form = useForm<TableFormValues>({
@@ -92,71 +69,26 @@ export default function TableEditPage() {
     },
   });
   
-  // Update form values when table data is loaded
-  useEffect(() => {
-    if (table) {
-      form.reset({
-        name: table.name,
-        description: table.description || "",
-        columns: Array.isArray(table.columns) 
-          ? table.columns.map((col: ColumnDefinition) => ({
-              id: col.id,
-              name: col.name,
-              type: col.type,
-              required: !!col.required,
-              options: col.options || [],
-              default: col.default,
-            }))
-          : [{ ...defaultColumnValues }],
-      });
-    }
-  }, [table, form]);
-  
-  // Update table mutation
-  const updateTableMutation = useMutation({
+  // Create table mutation
+  const createTableMutation = useMutation({
     mutationFn: async (data: TableFormValues) => {
-      return await apiRequest(`/api/tables/${tableId}`, {
-        method: 'PUT',
+      return await apiRequest('/api/tables', {
+        method: 'POST',
         data,
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
-        title: "Table updated",
-        description: "The table has been updated successfully",
+        title: "Table created",
+        description: "The table has been created successfully",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/tables'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/tables', tableId] });
-      navigate(`/tables/${tableId}`);
+      navigate(`/tables/${data.id}`);
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to update table",
-        variant: "destructive",
-      });
-    }
-  });
-  
-  // Delete table mutation
-  const deleteTableMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest(`/api/tables/${tableId}`, {
-        method: 'DELETE',
-      });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Table deleted",
-        description: "The table has been deleted successfully",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/tables'] });
-      navigate('/tables');
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to delete table",
+        description: "Failed to create table",
         variant: "destructive",
       });
     }
@@ -258,18 +190,13 @@ export default function TableEditPage() {
       return { ...column, default: defaultValue };
     });
     
-    updateTableMutation.mutate({
+    createTableMutation.mutate({
       ...values,
       columns: cleanedColumns,
     });
   };
   
-  // Handle table deletion
-  const handleDeleteTable = () => {
-    deleteTableMutation.mutate();
-  };
-  
-  // Generate a slug from the column name
+  // Generate a slug from the table name
   const generateColumnId = (name: string) => {
     return name.toLowerCase()
       .replace(/[^a-z0-9]+/g, '_') // Replace non-alphanumeric chars with underscore
@@ -277,86 +204,20 @@ export default function TableEditPage() {
       .substring(0, 32); // Limit length
   };
   
-  if (isLoading) {
-    return (
-      <AppLayout>
-        <div className="container mx-auto p-6 max-w-6xl">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-4"></div>
-            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-8"></div>
-            <div className="h-12 bg-gray-200 dark:bg-gray-700 rounded w-full mb-8"></div>
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 bg-gray-200 dark:bg-gray-700 rounded w-full mb-4"></div>
-            ))}
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
-  
-  if (!table) {
-    return (
-      <AppLayout>
-        <div className="container mx-auto p-6 max-w-6xl">
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold">Table not found</h2>
-            <p className="text-muted-foreground mt-2">The table you're looking for doesn't exist.</p>
-            <Button 
-              className="mt-4" 
-              onClick={() => navigate('/tables')}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Tables
-            </Button>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
-  
   return (
     <AppLayout>
       <div className="container mx-auto p-6 max-w-6xl">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-          <div className="mb-4 md:mb-0">
-            <Button 
-              variant="link" 
-              className="text-sm text-muted-foreground hover:text-foreground p-0 mb-2"
-              onClick={() => navigate(`/tables/${tableId}`)}
-            >
-              <ArrowLeft className="mr-1 h-4 w-4" />
-              Back to {table.name}
-            </Button>
-            <h1 className="text-3xl font-bold tracking-tight">Edit Table</h1>
-            <p className="text-muted-foreground mt-1">Modify your table structure and settings</p>
-          </div>
-          
-          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive">
-                <Trash2Icon className="mr-2 h-4 w-4" />
-                Delete Table
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the table
-                  "{table.name}" and all of its data.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDeleteTable}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+        <div className="flex flex-col mb-6">
+          <Button 
+            variant="link" 
+            className="text-sm text-muted-foreground hover:text-foreground w-fit p-0 mb-2"
+            onClick={() => navigate("/tables")}
+          >
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            Back to Tables
+          </Button>
+          <h1 className="text-3xl font-bold tracking-tight">Create New Table</h1>
+          <p className="text-muted-foreground mt-1">Define your table structure with columns and data types</p>
         </div>
         
         <Form {...form}>
@@ -432,7 +293,7 @@ export default function TableEditPage() {
                                 {...field} 
                                 onChange={(e) => {
                                   field.onChange(e);
-                                  // Auto-generate column ID when name changes if it's empty
+                                  // Auto-generate column ID when name changes
                                   if (e.target.value && !form.getValues(`columns.${index}.id`)) {
                                     form.setValue(
                                       `columns.${index}.id`, 
@@ -457,13 +318,10 @@ export default function TableEditPage() {
                               <Input 
                                 placeholder="Enter column ID" 
                                 {...field} 
-                                disabled={index < (table.columns?.length || 0)} // Disable existing column IDs
                               />
                             </FormControl>
                             <FormDescription>
-                              {index < (table.columns?.length || 0) 
-                                ? "ID cannot be changed for existing columns" 
-                                : "Unique identifier for this column"}
+                              Unique identifier for this column
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -487,7 +345,6 @@ export default function TableEditPage() {
                                   form.setValue(`columns.${index}.options`, []);
                                 }
                               }}
-                              disabled={index < (table.columns?.length || 0)} // Disable existing column types
                             >
                               <FormControl>
                                 <SelectTrigger>
@@ -502,11 +359,6 @@ export default function TableEditPage() {
                                 <SelectItem value="select">Select (Dropdown)</SelectItem>
                               </SelectContent>
                             </Select>
-                            <FormDescription>
-                              {index < (table.columns?.length || 0) 
-                                ? "Type cannot be changed for existing columns" 
-                                : "The data type for this column"}
-                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -608,16 +460,15 @@ export default function TableEditPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate(`/tables/${tableId}`)}
+                onClick={() => navigate("/tables")}
               >
                 Cancel
               </Button>
               <Button 
                 type="submit" 
-                disabled={updateTableMutation.isPending}
+                disabled={createTableMutation.isPending}
               >
-                <Save className="mr-2 h-4 w-4" />
-                {updateTableMutation.isPending ? "Saving..." : "Save Changes"}
+                {createTableMutation.isPending ? "Creating..." : "Create Table"}
               </Button>
             </div>
           </form>
