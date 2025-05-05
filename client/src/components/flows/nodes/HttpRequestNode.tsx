@@ -69,144 +69,60 @@ function generateId() {
 }
 
 export default function HttpRequestNode({ id, data, isConnectable, selected }: NodeProps) {
-  // Initialize with safe defaults to prevent undefined errors
-  const defaultData: HttpRequestNodeData = {
-    label: data.label || 'HTTP Request',
-    method: data.method || 'GET',
-    url: data.url || '',
-    headers: Array.isArray(data.headers) ? data.headers : [],
-    queryParams: Array.isArray(data.queryParams) ? data.queryParams : [],
-    body: data.body || '',
-    authType: data.authType || 'none',
-    authConfig: data.authConfig || {},
-    responseType: data.responseType || 'json'
+  // Define a minimal default data structure to handle missing properties
+  const safeData = {
+    label: data?.label || 'HTTP Request',
+    method: data?.method || 'GET',
+    url: data?.url || ''
   };
   
-  const [nodeData, setNodeData] = useState<HttpRequestNodeData>(defaultData);
-  const [activeTab, setActiveTab] = useState("request");
-  const [variableDialogOpen, setVariableDialogOpen] = useState(false);
-  const [currentEditField, setCurrentEditField] = useState<{
-    field: string;
-    paramType?: string;
-    paramId?: string;
-  } | null>(null);
+  // Simple node version for the flow visual without all settings controls
+  return (
+    <>
+      <Card
+        className={`border-2 ${selected ? "border-blue-500" : "border-border"} shadow-md bg-background`}
+        style={{ width: 220 }}
+      >
+        <CardHeader className="p-3 flex flex-row items-center justify-between space-y-0">
+          <div className="flex items-center">
+            <Globe className="w-4 h-4 mr-2 text-primary" />
+            <CardTitle className="text-sm font-medium">
+              {safeData.label}
+            </CardTitle>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="p-3 text-xs">
+          <div className="text-muted-foreground">
+            <Badge variant="outline" className="bg-primary/10 text-primary">
+              {safeData.method}
+            </Badge>{' '}
+            <span className="truncate block mt-1">
+              {safeData.url || 'No URL specified'}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
 
-  // Update parent data when nodeData changes
-  useEffect(() => {
-    if (data.onChange) {
-      data.onChange(id, nodeData);
-    }
-  }, [id, nodeData, data]);
+      {/* Input handle */}
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="in"
+        isConnectable={isConnectable}
+        className="w-2 h-2 rounded-full border-2 bg-background border-primary"
+      />
 
-  const handleMethodChange = (method: string) => {
-    setNodeData((prev) => ({ ...prev, method }));
-  };
-
-  const handleUrlChange = (url: string) => {
-    setNodeData((prev) => ({ ...prev, url }));
-  };
-
-  const handleAddHeader = () => {
-    setNodeData((prev) => ({
-      ...prev,
-      headers: [
-        ...prev.headers,
-        { id: generateId(), key: "", value: "" },
-      ],
-    }));
-  };
-
-  const handleHeaderChange = (id: string, field: "key" | "value", value: string) => {
-    setNodeData((prev) => ({
-      ...prev,
-      headers: prev.headers.map((header) =>
-        header.id === id ? { ...header, [field]: value } : header
-      ),
-    }));
-  };
-
-  const handleRemoveHeader = (id: string) => {
-    setNodeData((prev) => ({
-      ...prev,
-      headers: prev.headers.filter((header) => header.id !== id),
-    }));
-  };
-
-  const handleAddQueryParam = () => {
-    setNodeData((prev) => ({
-      ...prev,
-      queryParams: [
-        ...prev.queryParams,
-        { id: generateId(), key: "", value: "" },
-      ],
-    }));
-  };
-
-  const handleQueryParamChange = (id: string, field: "key" | "value", value: string) => {
-    setNodeData((prev) => ({
-      ...prev,
-      queryParams: prev.queryParams.map((param) =>
-        param.id === id ? { ...param, [field]: value } : param
-      ),
-    }));
-  };
-
-  const handleRemoveQueryParam = (id: string) => {
-    setNodeData((prev) => ({
-      ...prev,
-      queryParams: prev.queryParams.filter((param) => param.id !== id),
-    }));
-  };
-
-  const handleBodyChange = (body: string) => {
-    setNodeData((prev) => ({ ...prev, body }));
-  };
-
-  const handleAuthTypeChange = (authType: string) => {
-    setNodeData((prev) => ({
-      ...prev,
-      authType,
-      authConfig: {},
-    }));
-  };
-
-  const handleAuthConfigChange = (key: string, value: string) => {
-    setNodeData((prev) => ({
-      ...prev,
-      authConfig: {
-        ...prev.authConfig,
-        [key]: value,
-      },
-    }));
-  };
-
-  const handleResponseTypeChange = (responseType: string) => {
-    setNodeData((prev) => ({ ...prev, responseType }));
-  };
-
-  const openVariableDialog = (field: string, paramType?: string, paramId?: string) => {
-    setCurrentEditField({ field, paramType, paramId });
-    setVariableDialogOpen(true);
-  };
-
-  const handleVariableSelect = (variablePath: string) => {
-    if (!currentEditField) return;
-
-    const { field, paramType, paramId } = currentEditField;
-
-    if (field === "url") {
-      setNodeData((prev) => ({ ...prev, url: prev.url + variablePath }));
-    } else if (field === "body") {
-      setNodeData((prev) => ({ ...prev, body: prev.body + variablePath }));
-    } else if (field === "header" && paramId) {
-      handleHeaderChange(paramId, paramType as "key" | "value", variablePath);
-    } else if (field === "queryParam" && paramId) {
-      handleQueryParamChange(paramId, paramType as "key" | "value", variablePath);
-    } else if (field.startsWith("auth_")) {
-      const authField = field.replace("auth_", "");
-      handleAuthConfigChange(authField, variablePath);
-    }
-  };
+      {/* Output handle */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="out"
+        isConnectable={isConnectable}
+        className="w-2 h-2 rounded-full border-2 bg-background border-primary"
+      />
+    </>
+  );
 
   return (
     <>
