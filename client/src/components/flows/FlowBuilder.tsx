@@ -324,9 +324,13 @@ export function FlowBuilder({
       if (nodeType === 'httpRequest') {
         nodeSpecificData = {
           method: 'GET',
-          endpoint: '',
+          url: '',
           headers: [],
+          queryParams: [],
           body: '',
+          authType: 'none',
+          authConfig: {},
+          responseType: 'json'
         };
       } else if (nodeType === 'ifElse') {
         nodeSpecificData = {
@@ -564,7 +568,7 @@ export function FlowBuilder({
         // Simulate API call if it's an HTTP node
         if (node.type === 'httpRequest') {
           const method = node.data.method || 'GET';
-          const endpoint = node.data.endpoint || '/api';
+          const endpoint = node.data.url || '/api';
           const connector = node.data.connector || 'No connector';
           
           // Log the request details

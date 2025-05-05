@@ -69,7 +69,20 @@ function generateId() {
 }
 
 export default function HttpRequestNode({ id, data, isConnectable, selected }: NodeProps) {
-  const [nodeData, setNodeData] = useState<HttpRequestNodeData>(data);
+  // Initialize with safe defaults to prevent undefined errors
+  const defaultData: HttpRequestNodeData = {
+    label: data.label || 'HTTP Request',
+    method: data.method || 'GET',
+    url: data.url || '',
+    headers: Array.isArray(data.headers) ? data.headers : [],
+    queryParams: Array.isArray(data.queryParams) ? data.queryParams : [],
+    body: data.body || '',
+    authType: data.authType || 'none',
+    authConfig: data.authConfig || {},
+    responseType: data.responseType || 'json'
+  };
+  
+  const [nodeData, setNodeData] = useState<HttpRequestNodeData>(defaultData);
   const [activeTab, setActiveTab] = useState("request");
   const [variableDialogOpen, setVariableDialogOpen] = useState(false);
   const [currentEditField, setCurrentEditField] = useState<{
