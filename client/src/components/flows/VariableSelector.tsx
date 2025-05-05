@@ -216,11 +216,46 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
 
   // Group variables by node for better organization
   const variablesByNode: Record<string, typeof variables> = {};
+  
+  // First, collect all the nodes and their positions to determine order
+  const nodeOrder: Record<string, number> = {};
+  let nodeIndex = 0;
+  
+  // Get all nodes from the graph in their current order
+  const nodes = getNodes();
+  if (Array.isArray(nodes)) {
+    // Sort nodes by their vertical position (top to bottom)
+    const sortedNodes = [...nodes].sort((a, b) => {
+      // Use y position for sort order, with default to 0 if undefined
+      const posA = a?.position?.y || 0;
+      const posB = b?.position?.y || 0;
+      return posA - posB;
+    });
+    
+    // Assign index to each node based on its sorted position
+    sortedNodes.forEach((node, index) => {
+      if (node && node.id) {
+        nodeOrder[node.id] = index;
+      }
+    });
+  }
+  
+  // Now organize variables by node
   filteredVariables.forEach(variable => {
     if (!variablesByNode[variable.nodeId]) {
       variablesByNode[variable.nodeId] = [];
     }
     variablesByNode[variable.nodeId].push(variable);
+  });
+  
+  // Convert to array for sorting
+  const nodeVariableEntries = Object.entries(variablesByNode);
+  
+  // Sort nodes by their vertical position in the flow
+  nodeVariableEntries.sort((a, b) => {
+    const orderA = nodeOrder[a[0]] ?? Number.MAX_SAFE_INTEGER;
+    const orderB = nodeOrder[b[0]] ?? Number.MAX_SAFE_INTEGER;
+    return orderA - orderB;
   });
 
   // Position the selector to appear beside the settings panel on the left
@@ -243,12 +278,18 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
           />
 
           <div className="h-96 overflow-y-auto pr-2">
-            {Object.keys(variablesByNode).length > 0 ? (
+            {nodeVariableEntries.length > 0 ? (
               <div className="space-y-4">
-                {Object.entries(variablesByNode).map(([nodeId, nodeVariables]) => (
+                {nodeVariableEntries.map(([nodeId, nodeVariables]) => (
                   <div key={nodeId} className="border dark:border-slate-700 rounded-lg p-3">
-                    <h3 className="text-sm font-medium mb-2">
-                      {nodeVariables[0].nodeName} <Badge variant="outline" className="ml-1">{nodeVariables[0].nodeType}</Badge>
+                    <h3 className="text-sm font-medium mb-2 flex items-center">
+                      <span>{nodeVariables[0].nodeName}</span> 
+                      <Badge variant="outline" className="ml-1">{nodeVariables[0].nodeType}</Badge>
+                      {nodeOrder[nodeId] !== undefined && (
+                        <Badge variant="outline" className="ml-auto text-xs">
+                          Step {nodeOrder[nodeId] + 1}
+                        </Badge>
+                      )}
                     </h3>
                     <div className="space-y-1">
                       {nodeVariables.map((variable, idx) => (
