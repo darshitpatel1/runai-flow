@@ -114,33 +114,39 @@ export function VariableSelector({ open, onClose, onSelectVariable, manualNodes 
         }
       }
       
-      // Check for test results
-      if (node.data?.testResult) {
-        console.log("Found test result in node:", node.id, node.data.label);
+      // Check for test results - look in both places
+      const testResult = node.data?.testResult || node.data?._lastTestResult;
+      if (testResult) {
+        console.log("Found test result in node:", node.id, node.data?.label || "Unknown");
         
-        // For each test result, generate variables for its properties
-        const paths = generateVariablePaths(node.data.testResult);
-        console.log("Generated paths:", paths);
-        
-        paths.forEach(path => {
-          const variableName = path.split('.').pop() || 'result';
+        try {
+          // For each test result, generate variables for its properties
+          const paths = generateVariablePaths(testResult);
+          console.log("Generated paths:", paths);
           
-          // Check if this test result path is already in the list
-          const exists = variableList.some(v => 
-            v.source === "testResult" && v.path === `${node.id}.result.${path}`
-          );
-          
-          if (!exists) {
-            variableList.push({
-              nodeId: node.id,
-              nodeName: node.data.label || node.type || "Node",
-              nodeType: node.type || "unknown",
-              variableName: variableName,
-              path: `${node.id}.result.${path}`,
-              source: "testResult"
-            });
-          }
-        });
+          paths.forEach(path => {
+            // Extract variable name - get the last part of the path
+            const variableName = path.split('.').pop() || 'result';
+            
+            // Check if this test result path is already in the list
+            const exists = variableList.some(v => 
+              v.source === "testResult" && v.path === `${node.id}.result.${path}`
+            );
+            
+            if (!exists) {
+              variableList.push({
+                nodeId: node.id,
+                nodeName: node.data?.label || node.type || "Node",
+                nodeType: node.type || "unknown",
+                variableName: variableName,
+                path: `${node.id}.result.${path}`,
+                source: "testResult"
+              });
+            }
+          });
+        } catch (error) {
+          console.error("Error processing test result:", error);
+        }
       }
     };
     
