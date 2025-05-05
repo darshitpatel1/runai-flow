@@ -15,6 +15,7 @@ export const IfElseNode = memo(({ data, selected }: IfElseNodeProps) => {
     bg-white dark:bg-slate-700 rounded-2xl shadow-lg p-3 
     border-2 ${selected ? 'border-amber-500 ring-2 ring-amber-500/20' : 'border-amber-500'} 
     ${data.selected ? 'node-highlight' : ''}
+    min-w-[280px] w-[280px]
   `;
   
   return (
@@ -35,17 +36,30 @@ export const IfElseNode = memo(({ data, selected }: IfElseNodeProps) => {
         </div>
       </div>
       
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2">
+          <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 rounded-full text-xs font-semibold flex items-center">
+            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+            </svg>
+            True
+          </span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="px-2 py-1 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 rounded-full text-xs font-semibold flex items-center">
+            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            False
+          </span>
+        </div>
+      </div>
+      
       {data.condition && (
-        <div className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg mb-2 font-mono">
-          {data.condition}
+        <div className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg mb-2 font-semibold">
+          If: {data.condition}
         </div>
       )}
-      
-      <div className="flex items-center space-x-2 text-xs">
-        <span className="px-2 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100 rounded-full">
-          True | False
-        </span>
-      </div>
       
       {/* Input Handle */}
       <Handle

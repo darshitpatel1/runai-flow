@@ -61,18 +61,22 @@ export function FlowBuilder({
   const [isTestRunning, setIsTestRunning] = useState(false);
   const { toast } = useToast();
   
-  // Load initial nodes and edges when they change
+  // Load initial nodes and edges only on initial component mount or when they change
   useEffect(() => {
     console.log("Loading initial nodes:", initialNodes);
     if (initialNodes && initialNodes.length > 0) {
-      setNodes(initialNodes);
+      // Create a deep copy to prevent reference issues
+      const nodesCopy = JSON.parse(JSON.stringify(initialNodes));
+      setNodes(nodesCopy);
     }
   }, [initialNodes, setNodes]);
   
   useEffect(() => {
     console.log("Loading initial edges:", initialEdges);
     if (initialEdges && initialEdges.length > 0) {
-      setEdges(initialEdges);
+      // Create a deep copy to prevent reference issues
+      const edgesCopy = JSON.parse(JSON.stringify(initialEdges));
+      setEdges(edgesCopy);
     }
   }, [initialEdges, setEdges]);
   
@@ -126,9 +130,59 @@ export function FlowBuilder({
         },
       };
       
-      setNodes((nds) => nds.concat(newNode));
+      // Add node first, then create connection
+      setNodes((nds) => {
+        const updatedNodes = nds.concat(newNode);
+        
+        // Find the nearest node above this node to auto-connect
+        // This prevents the blinking effect by executing all node operations in one go
+        setTimeout(() => {
+          // Find potential source nodes (any node above the new node)
+          if (nds.length > 0) {
+            const sourceNodes = nds.filter(node => {
+              // Node is above the new node (y position is smaller)
+              return node.position.y < position.y;
+            });
+            
+            if (sourceNodes.length > 0) {
+              // Find the closest node above the new node
+              const closestNode = sourceNodes.reduce((closest, current) => {
+                const closestDist = Math.hypot(
+                  closest.position.x - position.x,
+                  closest.position.y - position.y
+                );
+                const currentDist = Math.hypot(
+                  current.position.x - position.x,
+                  current.position.y - position.y
+                );
+                return currentDist < closestDist ? current : closest;
+              }, sourceNodes[0]);
+              
+              // Create connection from closest node to new node
+              // For if/else nodes, connect to appropriate handle
+              let sourceHandle = null;
+              if (closestNode.type === 'ifElse') {
+                // For simple auto-connection, use 'true' path from if/else
+                sourceHandle = 'true';
+              }
+              
+              const params = {
+                source: closestNode.id,
+                sourceHandle: sourceHandle,
+                target: newNodeId,
+                animated: true,
+                style: { stroke: '#4f46e5', strokeWidth: 2 }
+              };
+              
+              setEdges((eds) => addEdge(params, eds));
+            }
+          }
+        }, 50);
+        
+        return updatedNodes;
+      });
     },
-    [reactFlowInstance, setNodes]
+    [reactFlowInstance, setNodes, setEdges]
   );
   
   const onNodeClick = useCallback((event: React.MouseEvent, node: any) => {

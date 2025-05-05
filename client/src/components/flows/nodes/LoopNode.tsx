@@ -16,6 +16,7 @@ export const LoopNode = memo(({ data, selected }: LoopNodeProps) => {
     bg-white dark:bg-slate-700 rounded-2xl shadow-lg p-3 
     border-2 ${selected ? 'border-green-500 ring-2 ring-green-500/20' : 'border-green-500'} 
     ${data.selected ? 'node-highlight' : ''}
+    min-w-[280px] w-[280px]
   `;
   
   return (
@@ -36,17 +37,27 @@ export const LoopNode = memo(({ data, selected }: LoopNodeProps) => {
         </div>
       </div>
       
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 rounded-full text-xs font-semibold flex items-center">
+            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            For Each Item
+          </span>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="px-2 py-1 bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200 rounded-full text-xs">
+            {data.itemCount || 0} items
+          </span>
+        </div>
+      </div>
+      
       {data.arrayPath && (
-        <div className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg mb-2 font-mono">
-          {data.arrayPath}
+        <div className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg mb-2 font-semibold">
+          Array: {data.arrayPath}
         </div>
       )}
-      
-      <div className="flex items-center space-x-2 text-xs">
-        <span className="px-2 py-0.5 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 rounded-full">
-          Items: {data.itemCount || 0}
-        </span>
-      </div>
       
       {/* Input Handle */}
       <Handle

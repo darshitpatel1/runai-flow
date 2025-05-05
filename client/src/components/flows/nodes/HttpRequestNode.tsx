@@ -23,6 +23,7 @@ export const HttpRequestNode = memo(({ data, selected }: HttpRequestNodeProps) =
     bg-white dark:bg-slate-700 rounded-2xl shadow-lg p-3 
     border-2 ${selected ? 'border-primary ring-2 ring-primary/20' : 'border-primary'} 
     ${data.selected ? 'node-highlight' : ''}
+    min-w-[280px] w-[280px]
   `;
   
   return (
@@ -34,6 +35,11 @@ export const HttpRequestNode = memo(({ data, selected }: HttpRequestNodeProps) =
           </svg>
         </div>
         <h3 className="font-medium">{data.label}</h3>
+        {data.method && (
+          <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 rounded-full text-xs">
+            {data.method}
+          </span>
+        )}
         <div className="ml-auto">
           <button className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -43,17 +49,11 @@ export const HttpRequestNode = memo(({ data, selected }: HttpRequestNodeProps) =
         </div>
       </div>
       
-      {data.endpoint && (
-        <div className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg mb-2 font-mono">
-          {data.method || "GET"} {data.endpoint}
-        </div>
-      )}
-      
-      {/* Display truncated body for POST/PUT requests */}
-      {(data.method === 'POST' || data.method === 'PUT') && data.body && (
-        <div className="text-xs px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg mb-2 font-mono max-h-12 overflow-hidden text-ellipsis">
-          <div className="text-xs text-slate-500 mb-1">Body:</div>
-          {data.body.length > 50 ? data.body.substring(0, 50) + '...' : data.body}
+      {data.connector && (
+        <div className="flex items-center space-x-2 text-xs mb-2">
+          <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-800 dark:text-slate-200">
+            Connector: {data.connector}
+          </span>
         </div>
       )}
       
