@@ -293,7 +293,7 @@ export function VariableSelectDialog({
                   />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Use JavaScript expressions with handlebar syntax: {{expression}}
+                  Use JavaScript expressions with handlebar syntax: {"{{"} expression {"}}"}
                 </p>
               </div>
               

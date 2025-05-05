@@ -132,11 +132,14 @@ export default function IfElseNode({ id, data, isConnectable, selected }: NodePr
     }));
   };
 
-  const handleComparisonChange = (field: keyof IfElseNodeData["comparison"], value: string) => {
+  // We need to define a type to ensure TypeScript understands the field parameter
+  type ComparisonField = "left" | "operator" | "right";
+  
+  const handleComparisonChange = (field: ComparisonField, value: string) => {
     setNodeData((prev) => ({
       ...prev,
       comparison: {
-        ...(prev.comparison || { left: "", operator: "==", right: "" }),
+        ...(prev.comparison || { left: "", operator: "==" as const, right: "" }),
         [field]: value,
       },
     }));
