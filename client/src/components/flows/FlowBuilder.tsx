@@ -8,7 +8,8 @@ import ReactFlow, {
   useNodesState, 
   useEdgesState,
   Connection,
-  Edge
+  Edge,
+  EdgeTypes
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { collection, addDoc } from "firebase/firestore";
@@ -167,6 +168,7 @@ export function FlowBuilder({
               }
               
               const params = {
+                id: `e-${Date.now()}`,
                 source: closestNode.id,
                 sourceHandle: sourceHandle,
                 target: newNodeId,

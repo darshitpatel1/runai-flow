@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SaveIcon, PlayIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { LogMessage } from "@/components/flows/ConsoleOutput";
 
 export default function FlowBuilderPage() {
   const { id } = useParams();
@@ -151,7 +152,7 @@ export default function FlowBuilderPage() {
       const startTime = new Date();
       
       // Create example logs for the test run
-      const logs = [
+      const logs: LogMessage[] = [
         {
           timestamp: new Date(),
           type: "info",

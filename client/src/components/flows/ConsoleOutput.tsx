@@ -5,8 +5,16 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PlayIcon, XIcon, Loader2Icon } from "lucide-react";
 
+// Define log message structure
+export interface LogMessage {
+  timestamp: Date;
+  type: string; 
+  message: string;
+  nodeId?: string; // Make nodeId optional
+}
+
 interface ConsoleOutputProps {
-  logs: any[];
+  logs: LogMessage[];
   isRunning: boolean;
   onRunTest: () => void;
 }
