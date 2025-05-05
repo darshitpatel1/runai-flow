@@ -26,6 +26,9 @@ function Router() {
       <Route path="/connectors" component={Connectors} />
       <Route path="/flow-builder/:id?" component={FlowBuilder} />
       <Route path="/history" component={History} />
+      <Route path="/tables" component={TablesPage} />
+      <Route path="/tables/:id" component={TableDetailPage} />
+      <Route path="/tables/:id/edit" component={TableEditPage} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>

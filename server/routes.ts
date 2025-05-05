@@ -5,7 +5,10 @@ import { storage } from "./storage";
 import { 
   insertConnectorSchema, 
   insertFlowSchema,
-  insertExecutionSchema
+  insertExecutionSchema,
+  insertDataTableSchema,
+  insertTableRowSchema,
+  columnDefinitionSchema
 } from "@shared/schema";
 import { z } from "zod";
 
