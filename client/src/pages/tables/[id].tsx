@@ -57,7 +57,7 @@ export default function TableDetailPage() {
   
   // Get table rows
   const { data: tableRows, isLoading: isRowsLoading, error: rowsError } = useQuery({
-    queryKey: ['/api/tables', tableId, 'rows'],
+    queryKey: [`/api/tables/${tableId}/rows`],
     enabled: !!tableId && !!user,
   });
   

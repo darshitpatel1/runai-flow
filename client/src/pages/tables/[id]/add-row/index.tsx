@@ -109,7 +109,7 @@ export default function AddRowPage() {
         title: "Row added",
         description: "The row has been added successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/tables', tableId, 'rows'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/tables/${tableId}/rows`] });
       navigate(`/tables/${tableId}`);
     },
     onError: () => {
