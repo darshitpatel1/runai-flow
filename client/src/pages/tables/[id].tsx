@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Edit, MoreHorizontal, PlusIcon, Settings } from "lucide-react";
+import { ArrowLeft, Edit, MoreHorizontal, PlusIcon, Settings, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -58,6 +58,10 @@ export default function TableDetailPage() {
   const [editValue, setEditValue] = useState<string>('');
   const queryClient = useQueryClient();
   
+  // New row state
+  const [isAddingRow, setIsAddingRow] = useState(false);
+  const [newRowData, setNewRowData] = useState<Record<string, any>>({});
+  
   // Update cell mutation
   const updateCellMutation = useMutation({
     mutationFn: async ({ rowId, data }: { rowId: number, data: any }) => {
@@ -77,6 +81,55 @@ export default function TableDetailPage() {
       toast({
         title: "Error",
         description: "Failed to update cell",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Delete row mutation
+  const deleteRowMutation = useMutation({
+    mutationFn: async (rowId: number) => {
+      return await apiRequest(`/api/tables/${tableId}/rows/${rowId}`, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/tables/${tableId}/rows`] });
+      toast({
+        title: "Row deleted",
+        description: "The row has been deleted successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete row",
+        variant: "destructive",
+      });
+    }
+  });
+  
+  // Add row mutation
+  const addRowMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest(`/api/tables/${tableId}/rows`, {
+        method: 'POST',
+        data: { data },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/tables/${tableId}/rows`] });
+      toast({
+        title: "Row added",
+        description: "New row has been added successfully",
+      });
+      setIsAddingRow(false);
+      setNewRowData({});
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add new row",
         variant: "destructive",
       });
     }
@@ -338,7 +391,7 @@ export default function TableDetailPage() {
             </Button>
             
             <Button 
-              onClick={() => navigate(`/tables/${tableId}/add-row`)}
+              onClick={() => setIsAddingRow(true)}
             >
               <PlusIcon className="mr-2 h-4 w-4" />
               Add Row
@@ -381,6 +434,110 @@ export default function TableDetailPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
+                    {isAddingRow && (
+                      <TableRow className="bg-muted/30">
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              size="icon"
+                              variant="ghost" 
+                              className="h-7 w-7"
+                              onClick={() => {
+                                // Save the new row
+                                addRowMutation.mutate(newRowData);
+                              }}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="icon"
+                              variant="ghost" 
+                              className="h-7 w-7"
+                              onClick={() => {
+                                // Cancel adding row
+                                setIsAddingRow(false);
+                                setNewRowData({});
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                        {columns.map((column: ColumnDefinition) => (
+                          <TableCell key={column.id}>
+                            {column.type === 'text' && (
+                              <Input
+                                placeholder={column.name}
+                                className="w-full h-8 p-2 text-sm"
+                                value={newRowData[column.id] || ''}
+                                onChange={(e) => setNewRowData({
+                                  ...newRowData,
+                                  [column.id]: e.target.value
+                                })}
+                              />
+                            )}
+                            
+                            {column.type === 'number' && (
+                              <Input
+                                type="number"
+                                placeholder={column.name}
+                                className="w-full h-8 p-2 text-sm"
+                                value={newRowData[column.id] || ''}
+                                onChange={(e) => setNewRowData({
+                                  ...newRowData,
+                                  [column.id]: e.target.value === '' ? null : Number(e.target.value)
+                                })}
+                              />
+                            )}
+                            
+                            {column.type === 'boolean' && (
+                              <Checkbox
+                                checked={!!newRowData[column.id]}
+                                onCheckedChange={(checked) => setNewRowData({
+                                  ...newRowData,
+                                  [column.id]: !!checked
+                                })}
+                                className="mx-2"
+                              />
+                            )}
+                            
+                            {column.type === 'date' && (
+                              <Input
+                                type="date"
+                                className="w-full h-8 p-2 text-sm"
+                                value={newRowData[column.id] || ''}
+                                onChange={(e) => setNewRowData({
+                                  ...newRowData,
+                                  [column.id]: e.target.value
+                                })}
+                              />
+                            )}
+                            
+                            {column.type === 'select' && (
+                              <Select
+                                value={newRowData[column.id] || ''}
+                                onValueChange={(value) => setNewRowData({
+                                  ...newRowData,
+                                  [column.id]: value
+                                })}
+                              >
+                                <SelectTrigger className="w-full h-8 text-sm">
+                                  <SelectValue placeholder={`Select ${column.name}...`} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {(column.options || []).map((option) => (
+                                    <SelectItem key={option} value={option}>
+                                      {option}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    )}
+                    
                     {paginatedRows.length > 0 ? (
                       paginatedRows.map((row: TableRowType) => (
                         <TableRow key={row.id}>
@@ -397,6 +554,17 @@ export default function TableDetailPage() {
                                 <DropdownMenuItem onClick={() => navigate(`/tables/${tableId}/edit-row/${row.id}`)}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit Row
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => {
+                                    if (confirm("Are you sure you want to delete this row? This action cannot be undone.")) {
+                                      deleteRowMutation.mutate(row.id);
+                                    }
+                                  }}
+                                  className="text-red-600 hover:text-red-700 focus:text-red-700"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete Row
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
