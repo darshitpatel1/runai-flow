@@ -1154,7 +1154,7 @@ export function FlowBuilder({
           <ReactFlowProvider>
             <div style={{ width: '100%', height: '100%' }} className="transform-gpu">
               <ReactFlow 
-                className="transform-gpu"
+                className="transform-gpu overflow-hidden"
                 nodes={nodes}
                 edges={edges}
                 onNodesChange={onNodesChange}
@@ -1167,21 +1167,44 @@ export function FlowBuilder({
                 onEdgeClick={onEdgeClick}
                 onNodeDragStop={onNodeDragStop}
                 nodeTypes={nodeTypes}
+                
+                // Better snapping configuration
+                snapToGrid={true}
+                snapGrid={[gridSize, gridSize]}
+                
+                // Better edge routing
+                defaultEdgeOptions={{
+                  type: 'smoothstep',
+                  style: { 
+                    stroke: '#4f46e5', 
+                    strokeWidth: 2
+                  },
+                  animated: true
+                }}
+                
+                // Connection line options for better visibility
+                connectionLineStyle={{
+                  stroke: '#6366f1',
+                  strokeWidth: 3,
+                  strokeDasharray: '5,5'
+                }}
+                
+                // More intuitive connections
+                connectionMode="strict"
+                
+                // Key controls
+                selectNodesOnDrag={false}
+                multiSelectionKeyCode="Control"
+                
                 fitView
                 fitViewOptions={{ 
                   padding: 0.2, 
-                  minZoom: 0.5, 
+                  minZoom: 0.5,
                   maxZoom: 1.5
                 }}
-                snapToGrid={true}
-                snapGrid={[gridSize, gridSize]}
                 nodesDraggable={true}
                 elementsSelectable={true}
                 preventScrolling={false}
-                defaultEdgeOptions={{ 
-                  animated: true,
-                  style: { stroke: '#4f46e5', strokeWidth: 2 }
-                }}
                 style={{ width: '100%', height: '100%' }}
                 defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
                 proOptions={{ hideAttribution: true }}
