@@ -793,6 +793,207 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Table routes
+  app.get('/api/tables', requireAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const tables = await storage.getTables(userId);
+      res.json(tables);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.get('/api/tables/:id', requireAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const tableId = parseInt(req.params.id);
+      
+      if (isNaN(tableId)) {
+        return res.status(400).json({ error: 'Invalid table ID' });
+      }
+      
+      const table = await storage.getTable(userId, tableId);
+      
+      if (!table) {
+        return res.status(404).json({ error: 'Table not found' });
+      }
+      
+      res.json(table);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.post('/api/tables', requireAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      
+      // Validate request data with zod schema
+      const validatedData = insertDataTableSchema.parse({
+        ...req.body,
+        userId
+      });
+      
+      const table = await storage.createTable(validatedData);
+      res.status(201).json(table);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ errors: error.errors });
+      }
+      res.status(500).json({ error: 'Error creating table' });
+    }
+  });
+  
+  app.put('/api/tables/:id', requireAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const tableId = parseInt(req.params.id);
+      
+      if (isNaN(tableId)) {
+        return res.status(400).json({ error: 'Invalid table ID' });
+      }
+      
+      // Check if table exists and belongs to user
+      const table = await storage.getTable(userId, tableId);
+      if (!table) {
+        return res.status(404).json({ error: 'Table not found' });
+      }
+      
+      const updatedTable = await storage.updateTable(userId, tableId, req.body);
+      res.json(updatedTable);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ errors: error.errors });
+      }
+      res.status(500).json({ error: 'Error updating table' });
+    }
+  });
+  
+  app.delete('/api/tables/:id', requireAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const tableId = parseInt(req.params.id);
+      
+      if (isNaN(tableId)) {
+        return res.status(400).json({ error: 'Invalid table ID' });
+      }
+      
+      // Check if table exists and belongs to user
+      const table = await storage.getTable(userId, tableId);
+      if (!table) {
+        return res.status(404).json({ error: 'Table not found' });
+      }
+      
+      await storage.deleteTable(userId, tableId);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Table Rows routes
+  app.get('/api/tables/:id/rows', requireAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const tableId = parseInt(req.params.id);
+      
+      if (isNaN(tableId)) {
+        return res.status(400).json({ error: 'Invalid table ID' });
+      }
+      
+      // Check if table exists and belongs to user
+      const table = await storage.getTable(userId, tableId);
+      if (!table) {
+        return res.status(404).json({ error: 'Table not found' });
+      }
+      
+      // Get pagination parameters from query string
+      const limit = parseInt(req.query.limit as string) || 100;
+      const offset = parseInt(req.query.offset as string) || 0;
+      
+      const rows = await storage.getTableRows(tableId, limit, offset);
+      res.json(rows);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.post('/api/tables/:id/rows', requireAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const tableId = parseInt(req.params.id);
+      
+      if (isNaN(tableId)) {
+        return res.status(400).json({ error: 'Invalid table ID' });
+      }
+      
+      // Check if table exists and belongs to user
+      const table = await storage.getTable(userId, tableId);
+      if (!table) {
+        return res.status(404).json({ error: 'Table not found' });
+      }
+      
+      // Validate row data against table schema
+      // This would typically involve validating against the column definitions
+      
+      const row = await storage.createTableRow({
+        tableId,
+        data: req.body,
+      });
+      
+      res.status(201).json(row);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.put('/api/tables/:tableId/rows/:rowId', requireAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const tableId = parseInt(req.params.tableId);
+      const rowId = parseInt(req.params.rowId);
+      
+      if (isNaN(tableId) || isNaN(rowId)) {
+        return res.status(400).json({ error: 'Invalid ID format' });
+      }
+      
+      // Check if table exists and belongs to user
+      const table = await storage.getTable(userId, tableId);
+      if (!table) {
+        return res.status(404).json({ error: 'Table not found' });
+      }
+      
+      const updatedRow = await storage.updateTableRow(rowId, req.body);
+      res.json(updatedRow);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.delete('/api/tables/:tableId/rows/:rowId', requireAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const tableId = parseInt(req.params.tableId);
+      const rowId = parseInt(req.params.rowId);
+      
+      if (isNaN(tableId) || isNaN(rowId)) {
+        return res.status(400).json({ error: 'Invalid ID format' });
+      }
+      
+      // Check if table exists and belongs to user
+      const table = await storage.getTable(userId, tableId);
+      if (!table) {
+        return res.status(404).json({ error: 'Table not found' });
+      }
+      
+      await storage.deleteTableRow(rowId);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
   // Set up WebSocket server with more robust error handling
   const wss = new WebSocketServer({ 
     server: httpServer, 
