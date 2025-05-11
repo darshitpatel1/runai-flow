@@ -1,0 +1,85 @@
+   
+ok i want to add new feature on this code base so i am giving you this so you can understand what this code base does, and when i say to do something, you don't need to look for where to edit, you know directly which file 
+needs to be edited, that's it. so this is the whole code base structure and this product is a workato-style automation web app.
+ 1. Monorepo Root
+       • ​.env               ← your environment variables: SERVER_URL, UI_URL, OAuth client IDs/secrets, DB settings
+       • package.json        ← workspace scripts; root dependencies
+       • package-lock.json
+    2. packages/react-ui  (Frontend UI)
+       ├─ src/
+       │   ├─ App.tsx            ← Main router + pages: Dashboard, FlowsPage, FlowEditorPage, ConnectionsPage, Login/Register
+       │   ├─ api/
+       │   │   └─ api-client.ts  ← Axios wrapper with auth interceptor
+       │   ├─ components/
+       │   │   ├─ Layout.tsx     ← Sidebar & header
+       │   │   ├─ Dashboard.tsx  ← Overview of runs, flows, connections
+       │   │   ├─ ConnectionsPage.tsx ← List, Create, Edit, Delete connection (inline in App.tsx)
+       │   │   ├─ FlowsPage.tsx  ← List, Create, Edit, Delete flows (inline in App.tsx)
+       │   │   ├─ FlowBuilder.tsx← Drag-drop canvas, StepCard, “Add Step” sidebar, StepSettings, PieceSelector
+       │   │   ├─ PieceSelector.tsx ← select and add new pieces in flow (inline in app.tsx)
+       │   │   ├─ StepSettings.tsx ← step settings for pieces (inline in flowbuilder.tsx)
+       │   │   └─ (other UI bits: Login.tsx, Register.tsx for auth. (Moving flowbuilder.tsx to flowcanvas.tsx))
+       │   ├─ services/
+       │   │   ├─ flow-service.ts       ← CRUD & versioning for flows
+       │   │   ├─ connection-service.ts ← CRUD & OAuth endpoints for connections
+       │   │   ├─ piece-service.ts      ← List available connectors (pieces)
+       │   │   └─ run-service.ts        ← Stats + history + detail endpoints for runs
+       │   └─ index.css, tailwind config, etc.
+       └─ package.json, tsconfig, tailwind, etc.
+
+       → To add or tweak a Flow-builder feature, you’ll almost always edit:
+         • FlowBuilder.tsx (canvas, step CRUD, sidebar)
+         • StepSettings.tsx (props UI, connection dropdowns)
+         • App.tsx (FlowEditorPage wiring, Test/Save/Enable toolbar)
+         • services/flow-service.ts and run-service.ts for any API shape changes
+    3. packages/server/api  (Backend API)
+       ├─ src/app/
+       │   ├─ app.ts                  ← Fastify setup, CORS, Swagger, registers all routes under `/api`
+       │   ├─ auth/                   ← JWT auth, login/register controllers
+       │   │   └─ auth.controller.ts
+       │   ├─ connections/            ← CRUD + OAuth2 flow controller, `ConnectionEntity`
+       │   │   ├─ connection.controller.ts
+       │   │   └─ connection.entity.ts
+       │   ├─ flows/                  ← Flow CRUD, versioning, test endpoint, uses FlowExecutor
+       │   │   └─ flow.controller.ts
+       │   ├─ runs/                   ← Stats & history & detail endpoints, `RunEntity`
+       │   │   └─ run.controller.ts
+       │   ├─ pieces/                 ← Exposes catalog of connectors (Google/Slack pieces)
+       │   ├─ webhooks/               ← Webhook trigger endpoints
+       │   └─ database/               ← TypeORM `database-connection.ts` + entity schemas (.entity.ts)
+       ├─ main.ts                     ← Bootstraps DB, scheduler, worker, Fastify server
+       ├─ package.json, tsconfig.json
+       └─ database.sqlite (for sqlite)
+
+       other worker.service.ts under worker, schduler.service.ts under scheduler and queue.service.ts under queue not in use but we can when we need.
+
+       → To add or change an API:
+         • Modify the appropriate controller under src/app (e.g. flows, connections, runs)
+         • Update or add an Entity in database/ if you need new tables/columns
+         • Wire it into app.ts via `await registerXRoutes(instance)` under `/api` prefix
+    4. packages/pieces  (Connector Definitions)
+       ├─ framework/         ← Types & helpers for pieces (createPiece, PieceAuth)
+       ├─ community/         ← Your “out-of-the-box” connectors
+       │   ├─ google-sheets/ ← Props, OAuth config, `run` implementation
+       │   └─ slack/         ← Props, OAuth config, `run` implementation
+       └─ other publishing setup
+
+       → To add a new connector (piece):
+         • Create a new folder under community/ with your name
+         • Export `auth`, `actions`, `triggers`, implement `run` and set props
+         • Server auto-imports them in piece.controller.ts
+    5. packages/engine  (Execution Engine)
+       └─ index.ts  ← `class FlowExecutor` that takes a FlowVersion + triggerData, walks steps, calls piece.run
+
+       → To add branching, loops, variable-resolution, you’ll evolve `FlowExecutor.executeFlow`.
+
+    6. Packages/shared not in use 
+
+———
+
+Workflows:
+
+ • Adding a new Flow-builder feature: edit FlowBuilder.tsx + StepSettings + maybe App.tsx
+ • Tweaking run-time behavior: update engine (packages/engine) + maybe server flow.controller.ts test/save
+ • Adding a connector: edit packages/pieces/community and piece controller
+ • Changing data models: edit server/api/src/app/database/entities and migrations/connection tests
