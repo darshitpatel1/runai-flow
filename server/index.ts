@@ -1,8 +1,10 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-// Import Firebase admin for server-side Firestore access
-import './firebase-init';
+
+// We'll use a single Firebase initialization approach
+// Remove the import to avoid conflicts
+// import './firebase-init';
 
 const app = express();
 app.use(express.json());

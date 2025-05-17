@@ -1,10 +1,15 @@
-import { initializeApp } from "firebase-admin/app";
+import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 
-// Initialize Firebase Admin with application default credentials
+// Use a default project ID for development if environment variable is missing
+const projectId = process.env.VITE_FIREBASE_PROJECT_ID || "demo-project-id";
+
+console.log(`Initializing Firebase Admin with project ID: ${projectId}`);
+
+// Initialize Firebase Admin with application default credentials or a demo configuration
 const app = initializeApp({
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+  projectId
 });
 
 // Get Firestore instance

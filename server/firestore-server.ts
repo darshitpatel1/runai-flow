@@ -1,9 +1,6 @@
-import { adminDb, adminAuth } from './firebase-admin';
-import { COLLECTIONS } from "@shared/firestore-schema";
+// Simplified mock implementation for development
+// This provides in-memory storage for testing without Firebase dependencies
 
-// Mock implementation of firestoreStorage for development
-// This implementation stores data in memory for testing purposes
-// In production, this should be replaced with actual Firestore calls
 export const firestoreStorage = {
   // In-memory data store for testing
   _data: {
