@@ -1,8 +1,14 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request as ExpressRequest, Response } from "express";
+
+// Extend the Request type to include the userId property
+interface Request extends ExpressRequest {
+  userId?: string;
+  user?: any;
+}
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from 'ws';
 // Import real Firestore storage implementation
-import { firestoreStorage } from "./fb-admin";
+import { firestoreStorage } from "./firebase";
 import { 
   connectorSchema, 
   flowSchema,
@@ -388,7 +394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         flowId,
         userId,
         status: 'running',
-        input: req.body.input || {}
+        startedAt: new Date()
       });
       
       // In a real implementation, we would start an async process to execute the flow
@@ -427,8 +433,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Add log entry
           await firestoreStorage.addExecutionLog({
             executionId: execution.id,
+            nodeId: `node-${currentNode}`,
             level: 'info',
-            message: `Executing node ${currentNode} of ${nodeCount}`
+            message: `Executing node ${currentNode} of ${nodeCount}`,
+            timestamp: new Date()
           });
           
           // Continue processing nodes or complete
@@ -449,8 +457,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 // Add completion log
                 await firestoreStorage.addExecutionLog({
                   executionId: execution.id,
+                  nodeId: 'completion',
                   level: 'info',
-                  message: 'Flow execution completed successfully'
+                  message: 'Flow execution completed successfully',
+                  timestamp: new Date()
                 });
                 
                 // Send completion notification via WebSocket
