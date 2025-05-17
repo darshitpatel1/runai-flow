@@ -1,24 +1,23 @@
-// Simplified Firebase storage implementation with in-memory storage for development
-import { COLLECTIONS } from '@shared/firestore-schema';
-import type { User, Flow, DataTable, TableRow, Connector, Execution, ExecutionLog } from '@shared/firestore-schema';
+// Simple in-memory implementation of Firebase-like storage
+import { User, Flow, DataTable, TableRow, Connector, Execution, ExecutionLog } from '@shared/firestore-schema';
 
-// Simple in-memory database for development
-const memoryDb = {
+// Create in-memory database using Maps
+const db = {
   users: new Map<string, Omit<User, 'id'>>(),
   flows: new Map<string, Omit<Flow, 'id'>>(),
   tables: new Map<string, Omit<DataTable, 'id'>>(),
   tableRows: new Map<string, Omit<TableRow, 'id'>>(),
   connectors: new Map<string, Omit<Connector, 'id'>>(),
   executions: new Map<string, Omit<Execution, 'id'>>(),
-  executionLogs: new Map<string, Omit<ExecutionLog, 'id'>>(),
+  executionLogs: new Map<string, Omit<ExecutionLog, 'id'>>()
 };
 
-// Helper to generate IDs
+// Helper to generate unique IDs
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15);
 }
 
-// Helper to normalize documents by adding id
+// Helper to add ID to document
 function normalizeDoc<T>(id: string, data: T): T & { id: string } {
   return {
     id,
@@ -26,17 +25,11 @@ function normalizeDoc<T>(id: string, data: T): T & { id: string } {
   } as T & { id: string };
 }
 
-// Helper to convert array-like objects to arrays
-function toArray<T>(map: Map<string, T>): Array<T & { id: string }> {
-  return Array.from(map.entries()).map(([id, data]) => normalizeDoc(id, data));
-}
-
-// Firebase storage implementation
+// Full storage implementation
 export const firestoreStorage = {
   // User methods
   async getUserByFirebaseUid(firebaseUid: string) {
-    // Simple linear search in the in-memory map
-    for (const [id, user] of memoryDb.users.entries()) {
+    for (const [id, user] of Array.from(db.users.entries())) {
       if (user.firebaseUid === firebaseUid) {
         return normalizeDoc(id, user);
       }
@@ -57,12 +50,12 @@ export const firestoreStorage = {
       createdAt: new Date()
     };
 
-    memoryDb.users.set(id, user);
+    db.users.set(id, user);
     return normalizeDoc(id, user);
   },
 
   async updateUser(userId: string, userData: Partial<{ email: string; displayName: string; photoUrl: string }>) {
-    const existingUser = memoryDb.users.get(userId);
+    const existingUser = db.users.get(userId);
     if (!existingUser) return null;
 
     const updatedUser = {
@@ -71,14 +64,14 @@ export const firestoreStorage = {
       updatedAt: new Date()
     };
 
-    memoryDb.users.set(userId, updatedUser);
+    db.users.set(userId, updatedUser);
     return normalizeDoc(userId, updatedUser);
   },
 
   // Table methods
   async getTables(userId: string) {
     const tables = [];
-    for (const [id, table] of memoryDb.tables.entries()) {
+    for (const [id, table] of Array.from(db.tables.entries())) {
       if (table.userId === userId) {
         tables.push(normalizeDoc(id, table));
       }
@@ -87,7 +80,7 @@ export const firestoreStorage = {
   },
 
   async getTable(userId: string, tableId: string) {
-    const table = memoryDb.tables.get(tableId);
+    const table = db.tables.get(tableId);
     if (!table || table.userId !== userId) {
       return null;
     }
@@ -101,12 +94,12 @@ export const firestoreStorage = {
       createdAt: new Date()
     };
 
-    memoryDb.tables.set(id, table);
+    db.tables.set(id, table);
     return normalizeDoc(id, table);
   },
 
   async updateTable(userId: string, tableId: string, tableData: Partial<{ name: string; description: string; columns: any[] }>) {
-    const table = memoryDb.tables.get(tableId);
+    const table = db.tables.get(tableId);
     if (!table || table.userId !== userId) {
       return null;
     }
@@ -117,22 +110,22 @@ export const firestoreStorage = {
       updatedAt: new Date()
     };
 
-    memoryDb.tables.set(tableId, updatedTable);
+    db.tables.set(tableId, updatedTable);
     return normalizeDoc(tableId, updatedTable);
   },
 
   async deleteTable(userId: string, tableId: string) {
-    const table = memoryDb.tables.get(tableId);
+    const table = db.tables.get(tableId);
     if (!table || table.userId !== userId) {
       return false;
     }
 
-    memoryDb.tables.delete(tableId);
+    db.tables.delete(tableId);
 
     // Delete associated rows
-    for (const [rowId, row] of memoryDb.tableRows.entries()) {
+    for (const [rowId, row] of Array.from(db.tableRows.entries())) {
       if (row.tableId === tableId) {
-        memoryDb.tableRows.delete(rowId);
+        db.tableRows.delete(rowId);
       }
     }
 
@@ -141,7 +134,7 @@ export const firestoreStorage = {
 
   async getTableRows(tableId: string, limit: number = 100, offset: number = 0) {
     const rows = [];
-    for (const [id, row] of memoryDb.tableRows.entries()) {
+    for (const [id, row] of Array.from(db.tableRows.entries())) {
       if (row.tableId === tableId) {
         rows.push(normalizeDoc(id, row));
       }
@@ -169,12 +162,12 @@ export const firestoreStorage = {
       createdAt: new Date()
     };
 
-    memoryDb.tableRows.set(id, row);
+    db.tableRows.set(id, row);
     return normalizeDoc(id, row);
   },
 
   async updateTableRow(rowId: string, data: any) {
-    const row = memoryDb.tableRows.get(rowId);
+    const row = db.tableRows.get(rowId);
     if (!row) {
       return null;
     }
@@ -185,23 +178,23 @@ export const firestoreStorage = {
       updatedAt: new Date()
     };
 
-    memoryDb.tableRows.set(rowId, updatedRow);
+    db.tableRows.set(rowId, updatedRow);
     return normalizeDoc(rowId, updatedRow);
   },
 
   async deleteTableRow(rowId: string) {
-    if (!memoryDb.tableRows.has(rowId)) {
+    if (!db.tableRows.has(rowId)) {
       return false;
     }
 
-    memoryDb.tableRows.delete(rowId);
+    db.tableRows.delete(rowId);
     return true;
   },
 
   // Flow methods
   async getFlows(userId: string) {
     const flows = [];
-    for (const [id, flow] of memoryDb.flows.entries()) {
+    for (const [id, flow] of Array.from(db.flows.entries())) {
       if (flow.userId === userId) {
         flows.push(normalizeDoc(id, flow));
       }
@@ -210,7 +203,7 @@ export const firestoreStorage = {
   },
 
   async getFlow(userId: string, flowId: string) {
-    const flow = memoryDb.flows.get(flowId);
+    const flow = db.flows.get(flowId);
     if (!flow || flow.userId !== userId) {
       return null;
     }
@@ -224,12 +217,12 @@ export const firestoreStorage = {
       createdAt: new Date()
     };
 
-    memoryDb.flows.set(id, flow);
+    db.flows.set(id, flow);
     return normalizeDoc(id, flow);
   },
 
   async updateFlow(userId: string, flowId: string, flowData: Partial<{ name: string; description: string; nodes: any[]; edges: any[] }>) {
-    const flow = memoryDb.flows.get(flowId);
+    const flow = db.flows.get(flowId);
     if (!flow || flow.userId !== userId) {
       return null;
     }
@@ -240,24 +233,24 @@ export const firestoreStorage = {
       updatedAt: new Date()
     };
 
-    memoryDb.flows.set(flowId, updatedFlow);
+    db.flows.set(flowId, updatedFlow);
     return normalizeDoc(flowId, updatedFlow);
   },
 
   async deleteFlow(userId: string, flowId: string) {
-    const flow = memoryDb.flows.get(flowId);
+    const flow = db.flows.get(flowId);
     if (!flow || flow.userId !== userId) {
       return false;
     }
 
-    memoryDb.flows.delete(flowId);
+    db.flows.delete(flowId);
     return true;
   },
 
   // Connector methods
   async getConnectors(userId: string) {
     const connectors = [];
-    for (const [id, connector] of memoryDb.connectors.entries()) {
+    for (const [id, connector] of Array.from(db.connectors.entries())) {
       if (connector.userId === userId) {
         connectors.push(normalizeDoc(id, connector));
       }
@@ -266,7 +259,7 @@ export const firestoreStorage = {
   },
 
   async getConnector(userId: string, connectorId: string) {
-    const connector = memoryDb.connectors.get(connectorId);
+    const connector = db.connectors.get(connectorId);
     if (!connector || connector.userId !== userId) {
       return null;
     }
@@ -280,12 +273,12 @@ export const firestoreStorage = {
       createdAt: new Date()
     };
 
-    memoryDb.connectors.set(id, connector);
+    db.connectors.set(id, connector);
     return normalizeDoc(id, connector);
   },
 
   async updateConnector(userId: string, connectorId: string, connectorData: Partial<{ name: string; config: any }>) {
-    const connector = memoryDb.connectors.get(connectorId);
+    const connector = db.connectors.get(connectorId);
     if (!connector || connector.userId !== userId) {
       return null;
     }
@@ -296,34 +289,34 @@ export const firestoreStorage = {
       updatedAt: new Date()
     };
 
-    memoryDb.connectors.set(connectorId, updatedConnector);
+    db.connectors.set(connectorId, updatedConnector);
     return normalizeDoc(connectorId, updatedConnector);
   },
 
   async deleteConnector(userId: string, connectorId: string) {
-    const connector = memoryDb.connectors.get(connectorId);
+    const connector = db.connectors.get(connectorId);
     if (!connector || connector.userId !== userId) {
       return false;
     }
 
-    memoryDb.connectors.delete(connectorId);
+    db.connectors.delete(connectorId);
     return true;
   },
 
   // Execution methods
-  async createExecution(executionData: { userId: string; flowId: string; status: string; startedAt: Date; finishedAt?: Date; result?: any; error?: string }) {
+  async createExecution(executionData: { userId: string; flowId: string; status: "queued" | "running" | "success" | "error" | "cancelled"; startedAt: Date; finishedAt?: Date; result?: any; error?: string }) {
     const id = generateId();
     const execution = {
       ...executionData,
       createdAt: new Date()
     };
 
-    memoryDb.executions.set(id, execution);
+    db.executions.set(id, execution);
     return normalizeDoc(id, execution);
   },
 
-  async updateExecution(executionId: string, executionData: Partial<{ status: string; finishedAt: Date; result: any; error: string }>) {
-    const execution = memoryDb.executions.get(executionId);
+  async updateExecution(executionId: string, executionData: Partial<{ status: "queued" | "running" | "success" | "error" | "cancelled"; finishedAt: Date; result: any; error: string }>) {
+    const execution = db.executions.get(executionId);
     if (!execution) {
       return null;
     }
@@ -334,13 +327,13 @@ export const firestoreStorage = {
       updatedAt: new Date()
     };
 
-    memoryDb.executions.set(executionId, updatedExecution);
+    db.executions.set(executionId, updatedExecution);
     return normalizeDoc(executionId, updatedExecution);
   },
 
   async getExecutions(userId: string, queryParams: { limit?: number; offset?: number; flowId?: string; status?: string; startDate?: Date; endDate?: Date } = {}) {
     const executions = [];
-    for (const [id, execution] of memoryDb.executions.entries()) {
+    for (const [id, execution] of Array.from(db.executions.entries())) {
       if (execution.userId !== userId) continue;
 
       let match = true;
@@ -375,14 +368,14 @@ export const firestoreStorage = {
   },
 
   async getExecution(executionId: string) {
-    const execution = memoryDb.executions.get(executionId);
+    const execution = db.executions.get(executionId);
     if (!execution) {
       return null;
     }
     return normalizeDoc(executionId, execution);
   },
 
-  async addExecutionLog(logData: { executionId: string; nodeId: string; level: string; message: string; timestamp?: Date; data?: any }) {
+  async addExecutionLog(logData: { executionId: string; nodeId: string; level: "debug" | "info" | "warning" | "error"; message: string; timestamp?: Date; data?: any }) {
     const id = generateId();
     const log = {
       ...logData,
@@ -390,13 +383,13 @@ export const firestoreStorage = {
       createdAt: new Date()
     };
 
-    memoryDb.executionLogs.set(id, log);
+    db.executionLogs.set(id, log);
     return normalizeDoc(id, log);
   },
 
   async getExecutionLogs(executionId: string) {
     const logs = [];
-    for (const [id, log] of memoryDb.executionLogs.entries()) {
+    for (const [id, log] of Array.from(db.executionLogs.entries())) {
       if (log.executionId === executionId) {
         logs.push(normalizeDoc(id, log));
       }
