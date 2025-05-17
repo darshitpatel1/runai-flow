@@ -1119,7 +1119,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Handle authentication
         if (data.type === 'auth') {
           const { token, userId } = data;
-          if (token && userId) {
+          
+          if (!token || !userId) {
+            try {
+              ws.send(JSON.stringify({
+                type: 'auth_error',
+                message: 'Authentication failed: missing token or userId'
+              }));
+            } catch (e) {
+              console.error('Error sending auth error message:', e);
+            }
+            return;
+          }
+          
+          try {
+            // Verify the token format and structure
+            const parts = token.split('.');
+            if (parts.length !== 3) {
+              ws.send(JSON.stringify({
+                type: 'auth_error',
+                message: 'Invalid token format'
+              }));
+              return;
+            }
+            
+            // Firebase tokens use URL-safe base64
+            let base64Payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+            while (base64Payload.length % 4) {
+              base64Payload += '=';
+            }
+            
+            const payload = JSON.parse(Buffer.from(base64Payload, 'base64').toString());
+            const firebaseUid = payload.user_id || payload.sub || payload.uid;
+            
+            if (!firebaseUid || firebaseUid !== userId) {
+              ws.send(JSON.stringify({
+                type: 'auth_error',
+                message: 'Invalid user ID in token'
+              }));
+              return;
+            }
+            
+            console.log(`User ${userId} authenticated on WebSocket`);
+            
             // Store connection by user ID
             if (!connections.has(userId)) {
               connections.set(userId, []);
@@ -1131,7 +1173,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Check if connection already exists for this user
               if (!userConnections.includes(ws)) {
                 userConnections.push(ws);
-                console.log(`User ${userId} authenticated on WebSocket`);
               }
               
               // Send confirmation
@@ -1141,17 +1182,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   message: 'Authentication successful'
                 }));
               } catch (e) {
-                console.error('Error sending auth success message:', e.message);
+                console.error('Error sending auth success message:', e);
               }
             }
-          } else {
+          } catch (error) {
+            console.error("Error parsing token payload:", error);
             try {
               ws.send(JSON.stringify({
                 type: 'auth_error',
-                message: 'Authentication failed: missing token or userId'
+                message: 'Invalid token content'
               }));
             } catch (e) {
-              console.error('Error sending auth error message:', e.message);
+              console.error('Error sending auth error message:', e);
             }
           }
         }
