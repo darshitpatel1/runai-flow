@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from 'ws';
 // Import real Firestore storage implementation
-import { firestoreStorage } from "./real-firestore";
+import { firestoreStorage } from "./fb-admin";
 import { 
   connectorSchema, 
   flowSchema,
