@@ -45,7 +45,7 @@ function sendExecutionUpdate(userId: string, executionData: any) {
       try {
         ws.send(message);
         successCount++;
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error sending execution update to a client: ${error.message}`);
         // Connection is likely broken - terminate it
         try {
@@ -57,7 +57,7 @@ function sendExecutionUpdate(userId: string, executionData: any) {
     }
     
     console.log(`Successfully sent execution update to ${successCount}/${activeConnections.length} connection(s) for user ${userId}`);
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Error preparing execution update: ${error.message}`);
   }
 }
@@ -128,27 +128,30 @@ const requireAuth = async (req: Request, res: Response, next: Function) => {
         }
       }
       
-      // Attach user to request object for later use
+      // Attach the user object to the request for use in the route handlers
       (req as any).user = user;
       next();
-    } catch (error) {
-      console.error('Error decoding JWT token:', error);
-      return res.status(401).json({ error: 'Invalid token' });
+    } catch (error: any) {
+      console.error('Error decoding token:', error);
+      return res.status(401).json({ error: 'Invalid token content' });
     }
   } catch (error: any) {
-    console.error('Authentication error:', error);
-    return res.status(401).json({ error: error.message });
+    console.error('Error authenticating user:', error);
+    return res.status(401).json({ error: 'Authentication failed' });
   }
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Create HTTP server instance
   const httpServer = createServer(app);
   
-  // Auth routes
+  // API routes for authorization/authentication
   app.post('/api/auth/register', async (req, res) => {
     try {
+      // Extract data from request
       const { firebaseUid, email, displayName, photoUrl } = req.body;
       
+      // Verify required fields
       if (!firebaseUid || !email) {
         return res.status(400).json({ error: 'Firebase UID and email are required' });
       }
@@ -159,383 +162,315 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ error: 'User already exists' });
       }
       
+      // Create user in database
       const user = await storage.createUser({
         firebaseUid,
         email,
-        displayName,
-        photoUrl
+        displayName: displayName || '',
+        photoUrl: photoUrl || ''
       });
       
-      res.status(201).json(user);
+      return res.status(201).json(user);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Error registering user:', error);
+      return res.status(500).json({ error: 'Server error creating user' });
     }
   });
   
-  // User routes
-  app.get('/api/user', requireAuth, async (req, res) => {
-    res.json((req as any).user);
-  });
-  
-  app.patch('/api/user', requireAuth, async (req, res) => {
+  // Get user profile
+  app.get('/api/user/profile', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
-      const { displayName, photoUrl } = req.body;
+      // User object is attached by the requireAuth middleware
+      const user = (req as any).user;
       
-      const updatedUser = await storage.updateUser(userId, {
-        displayName,
-        photoUrl
-      });
+      if (!user) {
+        return res.status(401).json({ error: 'User not found' });
+      }
       
-      res.json(updatedUser);
+      return res.json(user);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Error fetching user profile:', error);
+      return res.status(500).json({ error: 'Server error fetching profile' });
     }
   });
   
-  // Connector routes
+  // API routes for connectors
   app.get('/api/connectors', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
-      const connectors = await storage.getConnectors(userId);
-      res.json(connectors);
+      const user = (req as any).user;
+      const connectors = await storage.getConnectors(user.id);
+      return res.json(connectors);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Error fetching connectors:', error);
+      return res.status(500).json({ error: 'Server error fetching connectors' });
     }
   });
   
   app.get('/api/connectors/:id', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
+      const user = (req as any).user;
       const connectorId = parseInt(req.params.id);
       
       if (isNaN(connectorId)) {
         return res.status(400).json({ error: 'Invalid connector ID' });
       }
       
-      const connector = await storage.getConnector(userId, connectorId);
+      const connector = await storage.getConnector(user.id, connectorId);
       
       if (!connector) {
         return res.status(404).json({ error: 'Connector not found' });
       }
       
-      res.json(connector);
+      return res.json(connector);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Error fetching connector:', error);
+      return res.status(500).json({ error: 'Server error fetching connector' });
     }
   });
   
   app.post('/api/connectors', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
+      const user = (req as any).user;
+      const connectorData = req.body;
       
-      // Validate request data
+      // Validate connector data
       const validatedData = insertConnectorSchema.parse({
-        ...req.body,
-        userId
+        ...connectorData,
+        userId: user.id
       });
       
-      const connector = await storage.createConnector(validatedData);
-      res.status(201).json(connector);
-    } catch (error) {
+      const connector = await storage.createConnector({
+        name: validatedData.name,
+        baseUrl: validatedData.baseUrl,
+        userId: user.id,
+        authType: validatedData.authType || 'none',
+        authConfig: validatedData.authConfig || {},
+        headers: validatedData.headers || {}
+      });
+      
+      return res.status(201).json(connector);
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ errors: error.errors });
+        return res.status(400).json({ error: 'Invalid connector data', details: error.errors });
       }
-      res.status(500).json({ error: 'Error creating connector' });
+      
+      console.error('Error creating connector:', error);
+      return res.status(500).json({ error: 'Server error creating connector' });
     }
   });
   
   app.put('/api/connectors/:id', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
+      const user = (req as any).user;
       const connectorId = parseInt(req.params.id);
       
       if (isNaN(connectorId)) {
         return res.status(400).json({ error: 'Invalid connector ID' });
       }
       
-      // Check if connector exists and belongs to user
-      const connector = await storage.getConnector(userId, connectorId);
-      if (!connector) {
+      const connectorData = req.body;
+      
+      // Check if connector exists
+      const existingConnector = await storage.getConnector(user.id, connectorId);
+      if (!existingConnector) {
         return res.status(404).json({ error: 'Connector not found' });
       }
       
-      const updatedConnector = await storage.updateConnector(userId, connectorId, req.body);
-      res.json(updatedConnector);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ errors: error.errors });
-      }
-      res.status(500).json({ error: 'Error updating connector' });
+      // Update the connector
+      const updatedConnector = await storage.updateConnector(user.id, connectorId, connectorData);
+      
+      return res.json(updatedConnector);
+    } catch (error: any) {
+      console.error('Error updating connector:', error);
+      return res.status(500).json({ error: 'Server error updating connector' });
     }
   });
   
   app.delete('/api/connectors/:id', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
+      const user = (req as any).user;
       const connectorId = parseInt(req.params.id);
       
       if (isNaN(connectorId)) {
         return res.status(400).json({ error: 'Invalid connector ID' });
       }
       
-      // Check if connector exists and belongs to user
-      const connector = await storage.getConnector(userId, connectorId);
-      if (!connector) {
+      // Check if connector exists
+      const existingConnector = await storage.getConnector(user.id, connectorId);
+      if (!existingConnector) {
         return res.status(404).json({ error: 'Connector not found' });
       }
       
-      await storage.deleteConnector(userId, connectorId);
-      res.status(204).send();
+      // Delete the connector
+      await storage.deleteConnector(user.id, connectorId);
+      
+      return res.status(204).send();
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Error deleting connector:', error);
+      return res.status(500).json({ error: 'Server error deleting connector' });
     }
   });
   
-  // Flow routes
+  // API routes for flows
   app.get('/api/flows', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
-      const flows = await storage.getFlows(userId);
-      res.json(flows);
+      const user = (req as any).user;
+      const flows = await storage.getFlows(user.id);
+      return res.json(flows);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Error fetching flows:', error);
+      return res.status(500).json({ error: 'Server error fetching flows' });
     }
   });
   
   app.get('/api/flows/:id', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
+      const user = (req as any).user;
       const flowId = parseInt(req.params.id);
       
       if (isNaN(flowId)) {
         return res.status(400).json({ error: 'Invalid flow ID' });
       }
       
-      const flow = await storage.getFlow(userId, flowId);
+      const flow = await storage.getFlow(user.id, flowId);
       
       if (!flow) {
         return res.status(404).json({ error: 'Flow not found' });
       }
       
-      res.json(flow);
+      return res.json(flow);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Error fetching flow:', error);
+      return res.status(500).json({ error: 'Server error fetching flow' });
     }
   });
   
   app.post('/api/flows', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
+      const user = (req as any).user;
+      const flowData = req.body;
       
-      // Validate request data
+      // Validate flow data
       const validatedData = insertFlowSchema.parse({
-        ...req.body,
-        userId
+        ...flowData,
+        userId: user.id
       });
       
-      const flow = await storage.createFlow(validatedData);
-      res.status(201).json(flow);
-    } catch (error) {
+      const flow = await storage.createFlow({
+        name: validatedData.name,
+        description: validatedData.description || "",
+        userId: user.id,
+        nodes: validatedData.nodes || [],
+        edges: validatedData.edges || [],
+        active: validatedData.active || false
+      });
+      
+      return res.status(201).json(flow);
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ errors: error.errors });
+        return res.status(400).json({ error: 'Invalid flow data', details: error.errors });
       }
-      res.status(500).json({ error: 'Error creating flow' });
+      
+      console.error('Error creating flow:', error);
+      return res.status(500).json({ error: 'Server error creating flow' });
     }
   });
   
   app.put('/api/flows/:id', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
+      const user = (req as any).user;
       const flowId = parseInt(req.params.id);
       
       if (isNaN(flowId)) {
         return res.status(400).json({ error: 'Invalid flow ID' });
       }
       
-      // Check if flow exists and belongs to user
-      const flow = await storage.getFlow(userId, flowId);
-      if (!flow) {
+      const flowData = req.body;
+      
+      // Check if flow exists
+      const existingFlow = await storage.getFlow(user.id, flowId);
+      if (!existingFlow) {
         return res.status(404).json({ error: 'Flow not found' });
       }
       
-      const updatedFlow = await storage.updateFlow(userId, flowId, req.body);
-      res.json(updatedFlow);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ errors: error.errors });
-      }
-      res.status(500).json({ error: 'Error updating flow' });
+      // Update the flow
+      const updatedFlow = await storage.updateFlow(user.id, flowId, flowData);
+      
+      return res.json(updatedFlow);
+    } catch (error: any) {
+      console.error('Error updating flow:', error);
+      return res.status(500).json({ error: 'Server error updating flow' });
     }
   });
   
   app.delete('/api/flows/:id', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
+      const user = (req as any).user;
       const flowId = parseInt(req.params.id);
       
       if (isNaN(flowId)) {
         return res.status(400).json({ error: 'Invalid flow ID' });
       }
       
-      // Check if flow exists and belongs to user
-      const flow = await storage.getFlow(userId, flowId);
-      if (!flow) {
+      // Check if flow exists
+      const existingFlow = await storage.getFlow(user.id, flowId);
+      if (!existingFlow) {
         return res.status(404).json({ error: 'Flow not found' });
       }
       
-      await storage.deleteFlow(userId, flowId);
-      res.status(204).send();
+      // Delete the flow
+      await storage.deleteFlow(user.id, flowId);
+      
+      return res.status(204).send();
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Error deleting flow:', error);
+      return res.status(500).json({ error: 'Server error deleting flow' });
     }
   });
   
-  // Flow Execution routes
+  // Flow execution endpoints
   app.post('/api/flows/:id/execute', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
+      const user = (req as any).user;
       const flowId = parseInt(req.params.id);
       
       if (isNaN(flowId)) {
         return res.status(400).json({ error: 'Invalid flow ID' });
       }
       
-      // Check if flow exists and belongs to user
-      const flow = await storage.getFlow(userId, flowId);
+      // Check if flow exists
+      const flow = await storage.getFlow(user.id, flowId);
       if (!flow) {
         return res.status(404).json({ error: 'Flow not found' });
       }
       
       // Create a new execution record
       const execution = await storage.createExecution({
-        flowId,
-        userId,
+        flowId: flow.id,
+        userId: user.id,
         status: 'running',
-        input: req.body.input || {}
+        startedAt: new Date(),
+        data: req.body.data || {}
       });
       
-      // In a real implementation, we would start an async process to execute the flow
-      // For now, we'll simulate success with progress updates via WebSocket
+      // Start the execution in a background process
+      setTimeout(() => {
+        executeFlow(flow, execution, user.id, req.body.data || {}).catch(err => {
+          console.error(`Error executing flow ${flowId}:`, err);
+        });
+      }, 0);
       
-      // Immediately send a "started" notification via WebSocket
-      sendExecutionUpdate(userId.toString(), {
-        executionId: execution.id,
-        flowId,
-        status: 'running',
-        timestamp: new Date(),
-        message: 'Flow execution started',
-        progress: 0
-      });
-      
-      // Simulate node-by-node execution with progress updates
-      const nodeCount = (flow.nodes && Array.isArray(flow.nodes) ? flow.nodes.length : 0) || 5; // Fallback to 5 if no nodes defined
-      let currentNode = 0;
-      
-      const processNodes = () => {
-        setTimeout(async () => {
-          currentNode++;
-          const progress = Math.floor((currentNode / nodeCount) * 100);
-          
-          // Send progress update via WebSocket
-          sendExecutionUpdate(userId.toString(), {
-            executionId: execution.id,
-            flowId,
-            status: 'running',
-            timestamp: new Date(),
-            message: `Executing node ${currentNode} of ${nodeCount}`,
-            progress: progress,
-            currentNode
-          });
-          
-          // Add log entry
-          await storage.addExecutionLog({
-            executionId: execution.id,
-            level: 'info',
-            message: `Executing node ${currentNode} of ${nodeCount}`
-          });
-          
-          // Continue processing nodes or complete
-          if (currentNode < nodeCount) {
-            processNodes();
-          } else {
-            // Final completion update
-            setTimeout(async () => {
-              try {
-                // Update execution with success
-                await storage.updateExecution(execution.id, {
-                  status: 'success',
-                  finishedAt: new Date(),
-                  duration: (nodeCount + 1) * 300, // Simulate duration based on node count
-                  output: { success: true, message: 'Flow executed successfully' }
-                });
-                
-                // Add completion log
-                await storage.addExecutionLog({
-                  executionId: execution.id,
-                  level: 'info',
-                  message: 'Flow execution completed successfully'
-                });
-                
-                // Send completion notification via WebSocket
-                sendExecutionUpdate(userId.toString(), {
-                  executionId: execution.id,
-                  flowId,
-                  status: 'completed',
-                  timestamp: new Date(),
-                  message: 'Flow execution completed successfully',
-                  progress: 100
-                });
-              } catch (error) {
-                console.error('Error updating execution:', error);
-              }
-            }, 300);
-          }
-        }, 300); // 300ms delay between nodes
-      };
-      
-      // Start processing after a small delay
-      setTimeout(processNodes, 200);
-      
-      res.status(202).json(execution);
+      return res.status(202).json(execution);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Error executing flow:', error);
+      return res.status(500).json({ error: 'Server error executing flow' });
     }
   });
   
-  app.get('/api/executions', requireAuth, async (req, res) => {
-    try {
-      const userId = (req as any).user.id;
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
-      
-      // Extract filters
-      const filters: any = {};
-      
-      if (req.query.flowId) {
-        const flowId = parseInt(req.query.flowId as string);
-        if (!isNaN(flowId)) {
-          filters.flowId = flowId;
-        }
-      }
-      
-      if (req.query.status) {
-        filters.status = req.query.status;
-      }
-      
-      if (req.query.startDate) {
-        filters.startDate = new Date(req.query.startDate as string);
-      }
-      
-      const executions = await storage.getExecutions(userId, limit, offset, filters);
-      res.json(executions);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-  
+  // Get execution details
   app.get('/api/executions/:id', requireAuth, async (req, res) => {
     try {
+      const user = (req as any).user;
       const executionId = parseInt(req.params.id);
       
       if (isNaN(executionId)) {
@@ -548,553 +483,361 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Execution not found' });
       }
       
-      // Check if the execution belongs to the user
-      if (execution.userId !== (req as any).user.id) {
-        return res.status(403).json({ error: 'Unauthorized' });
+      // Check if user owns this execution
+      if (execution.userId !== user.id) {
+        return res.status(403).json({ error: 'Not authorized to access this execution' });
       }
       
-      res.json(execution);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-  
-  // Endpoint to test connector connectivity
-  app.post('/api/test-connector', async (req, res) => {
-    try {
-      const { connector } = req.body;
+      // Get execution logs
+      const logs = await storage.getExecutionLogs(executionId);
       
-      if (!connector || !connector.baseUrl) {
-        return res.status(400).json({ message: 'Invalid connector data' });
-      }
-      
-      // Prepare URL - make sure it has protocol
-      let url = connector.baseUrl;
-      if (!url.startsWith('http')) {
-        url = `https://${url}`;
-      }
-      
-      // Check connector type and handle accordingly
-      if (connector.authType === 'oauth2') {
-        // For OAuth2, we need to return the authorization URL for redirection
-        if (connector.auth.oauth2Type === 'authorization_code') {
-          if (!connector.auth.authorizationUrl) {
-            return res.status(400).json({ 
-              message: 'Missing authorization URL',
-              authRequired: true,
-              authType: 'oauth2' 
-            });
-          }
-          
-          // Build the authorization URL with necessary parameters
-          const authUrl = new URL(connector.auth.authorizationUrl);
-          
-          // Add required OAuth2 parameters, checking if they already exist
-          if (!authUrl.searchParams.has('client_id')) {
-            authUrl.searchParams.append('client_id', connector.auth.clientId);
-          }
-          
-          if (!authUrl.searchParams.has('response_type')) {
-            authUrl.searchParams.append('response_type', 'code');
-          }
-          
-          if (!authUrl.searchParams.has('redirect_uri')) {
-            authUrl.searchParams.append('redirect_uri', connector.auth.redirectUri);
-          }
-          
-          if (connector.auth.scope && !authUrl.searchParams.has('scope')) {
-            authUrl.searchParams.append('scope', connector.auth.scope);
-          }
-          
-          // Generate and store a state parameter to prevent CSRF
-          const state = Math.random().toString(36).substring(2, 15);
-          authUrl.searchParams.append('state', state);
-          
-          // Return the authorization URL
-          return res.status(200).json({
-            message: 'Authorization required',
-            authRequired: true,
-            authType: 'oauth2',
-            authUrl: authUrl.toString(),
-            connectorId: connector.id,
-            state
-          });
-        } else {
-          // Client credentials flow - no user interaction needed
-          return res.status(200).json({
-            message: 'Client Credentials flow would be executed on the server',
-            authRequired: false,
-            tokenUrl: connector.auth.tokenUrl,
-            authType: 'oauth2'
-          });
-        }
-      } else if (connector.authType === 'basic') {
-        // Basic Auth - validate that credentials exist
-        if (!connector.auth || !connector.auth.username || !connector.auth.password) {
-          return res.status(400).json({
-            message: 'Missing username or password for Basic Authentication',
-            authType: 'basic',
-            success: false
-          });
-        }
-        
-        // In a real implementation, we would make a test request to the API
-        // With Basic Auth credentials to verify connectivity
-        
-        // For now, we'll simulate a successful connection
-        return res.status(200).json({
-          message: 'Basic Auth credentials verified',
-          authType: 'basic',
-          success: true,
-          // Return some connection details to display to the user
-          connectionDetails: {
-            baseUrl: connector.baseUrl,
-            authenticatedAs: connector.auth.username
-          }
-        });
-      } else if (connector.authType === 'oauth2' && connector.auth?.oauth2Type === 'client_credentials') {
-        // Client Credentials flow - validate required fields
-        if (!connector.auth.clientId || !connector.auth.clientSecret || !connector.auth.tokenUrl) {
-          return res.status(400).json({
-            message: 'Missing required Client Credentials parameters (Client ID, Client Secret or Token URL)',
-            authType: 'oauth2',
-            success: false
-          });
-        }
-        
-        try {
-          // Actual implementation for client credentials flow:
-          // 1. Make a token request to the token URL with client credentials
-          // 2. Validate the token response
-          // 3. Return connection details with token information
-          
-          const tokenUrl = connector.auth.tokenUrl;
-          const clientId = connector.auth.clientId;
-          const clientSecret = connector.auth.clientSecret;
-          const scopes = connector.auth.scope || '';
-          
-          // Prepare request body
-          const params = new URLSearchParams();
-          params.append('grant_type', 'client_credentials');
-          params.append('client_id', clientId);
-          params.append('client_secret', clientSecret);
-          
-          if (scopes) {
-            params.append('scope', scopes);
-          }
-          
-          // Make request to token endpoint
-          const tokenResponse = await fetch(tokenUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'Accept': 'application/json'
-            },
-            body: params
-          });
-          
-          if (!tokenResponse.ok) {
-            const errorData = await tokenResponse.text();
-            console.error('Token request failed:', tokenResponse.status, errorData);
-            return res.status(400).json({
-              message: `Failed to get access token: ${tokenResponse.status} ${tokenResponse.statusText}`,
-              authType: 'oauth2',
-              success: false
-            });
-          }
-          
-          const tokenData = await tokenResponse.json();
-          
-          if (!tokenData.access_token) {
-            return res.status(400).json({
-              message: 'Invalid token response: missing access_token',
-              authType: 'oauth2',
-              success: false
-            });
-          }
-          
-          // SUCCESS: Return token details (but never the actual token for security)
-          return res.status(200).json({
-            message: 'Client Credentials authentication successful',
-            authType: 'oauth2',
-            authMethod: 'client_credentials',
-            success: true,
-            connectionDetails: {
-              tokenUrl: connector.auth.tokenUrl,
-              clientId: connector.auth.clientId,
-              expiresIn: tokenData.expires_in ? `${tokenData.expires_in} seconds` : 'Unknown',
-              tokenType: tokenData.token_type || 'Bearer',
-              scope: tokenData.scope || scopes || 'Default'
-            }
-          });
-        } catch (error: any) {
-          console.error('Error during client credentials flow:', error);
-          return res.status(500).json({
-            message: `Client credentials flow error: ${error.message}`,
-            authType: 'oauth2',
-            success: false
-          });
-        }
-      } else {
-        // For no auth, just try a simple connection test
-        return res.status(200).json({
-          message: 'Connection test successful',
-          authType: 'none',
-          success: true,
-          connectionDetails: {
-            baseUrl: connector.baseUrl
-          }
-        });
-      }
-    } catch (error: any) {
-      console.error('Error testing connector:', error);
-      return res.status(500).json({ message: error.message || 'Failed to test connection' });
-    }
-  });
-  
-  // OAuth2 callback endpoint
-  app.get('/api/oauth/callback', async (req, res) => {
-    try {
-      const { code, state, connectorId, region } = req.query;
-      
-      // We're going to be more lenient here - as long as we have a code, we consider it successful
-      // The connectorId might be passed through state in some OAuth providers
-      if (!code) {
-        return res.status(400).send('Missing authorization code parameter');
-      }
-      
-      // Log the received parameters for debugging
-      console.log('OAuth callback received:', { 
-        code: typeof code === 'string' ? code.substring(0, 5) + '...' : 'undefined', 
-        state, 
-        region,
-        fullUrl: req.originalUrl 
+      return res.json({
+        ...execution,
+        logs
       });
-      
-      // In a real implementation, we would:
-      // 1. Validate the state parameter to prevent CSRF attacks
-      // 2. Exchange the code for an access token using the token endpoint
-      // 3. Store the tokens securely for future API calls
-      // 4. Redirect back to the connector page
-      
-      // Send a page that will communicate the authorization success to the opener
-      res.send(`
-        <html>
-          <head>
-            <title>OAuth Authorization Complete</title>
-            <style>
-              body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              h2 { color: #4f46e5; }
-              .success { color: #10b981; font-weight: bold; }
-              .info { color: #6b7280; margin-top: 20px; }
-            </style>
-            <script>
-              // We don't need the connectorId here, as we'll let the opener handle
-              // determining which connector was being authorized
-              window.opener.postMessage({ 
-                type: 'oauth-callback', 
-                success: true,
-                code: '${code}',
-                state: '${state || ""}',
-                message: 'Authorization successful. You can now close this window.'
-              }, '*');
-              
-              // Close the window after a short delay
-              setTimeout(function() {
-                window.close();
-              }, 3000);
-            </script>
-          </head>
-          <body>
-            <div class="container">
-              <h2>Authorization Successful</h2>
-              <p class="success">You have successfully authorized the application.</p>
-              <p class="info">This window will automatically close in a few seconds. If it doesn't, you can close it manually.</p>
-              <p>Authorization code received: ${typeof code === 'string' ? code.substring(0, 5) + '...' : 'undefined'}</p>
-            </div>
-          </body>
-        </html>
-      `);
     } catch (error: any) {
-      console.error('OAuth callback error:', error);
-      res.status(500).send(`
-        <html>
-          <head>
-            <title>OAuth Error</title>
-            <style>
-              body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              h2 { color: #ef4444; }
-              .error { color: #7f1d1d; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <h2>OAuth Authorization Error</h2>
-              <p class="error">There was an error processing your authorization: ${error.message}</p>
-              <p>You can close this window and try again.</p>
-            </div>
-          </body>
-        </html>
-      `);
+      console.error('Error fetching execution:', error);
+      return res.status(500).json({ error: 'Server error fetching execution' });
     }
   });
   
-  // Table routes
+  // Get recent executions
+  app.get('/api/executions', requireAuth, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const offset = parseInt(req.query.offset as string) || 0;
+      
+      // Get optional filters
+      const filters: any = {};
+      
+      if (req.query.flowId) {
+        filters.flowId = parseInt(req.query.flowId as string);
+      }
+      
+      if (req.query.status) {
+        filters.status = req.query.status as string;
+      }
+      
+      const executions = await storage.getExecutions(user.id, limit, offset, filters);
+      
+      return res.json(executions);
+    } catch (error: any) {
+      console.error('Error fetching executions:', error);
+      return res.status(500).json({ error: 'Server error fetching executions' });
+    }
+  });
+  
+  // API routes for data tables
   app.get('/api/tables', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
-      const tables = await storage.getTables(userId);
-      res.json(tables);
+      const user = (req as any).user;
+      const tables = await storage.getTables(user.id);
+      return res.json(tables);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Error fetching tables:', error);
+      return res.status(500).json({ error: 'Server error fetching tables' });
     }
   });
   
   app.get('/api/tables/:id', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
+      const user = (req as any).user;
       const tableId = parseInt(req.params.id);
       
       if (isNaN(tableId)) {
         return res.status(400).json({ error: 'Invalid table ID' });
       }
       
-      const table = await storage.getTable(userId, tableId);
+      const table = await storage.getTable(user.id, tableId);
       
       if (!table) {
         return res.status(404).json({ error: 'Table not found' });
       }
       
-      res.json(table);
+      // Get the table rows with pagination
+      const limit = parseInt(req.query.limit as string) || 100;
+      const offset = parseInt(req.query.offset as string) || 0;
+      
+      const rows = await storage.getTableRows(tableId, limit, offset);
+      
+      return res.json({
+        ...table,
+        rows
+      });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Error fetching table:', error);
+      return res.status(500).json({ error: 'Server error fetching table' });
     }
   });
   
   app.post('/api/tables', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
+      const user = (req as any).user;
+      const tableData = req.body;
       
-      // Validate request data with zod schema
+      // Validate table schema
       const validatedData = insertDataTableSchema.parse({
-        ...req.body,
-        userId
+        ...tableData,
+        userId: user.id
       });
       
-      const table = await storage.createTable(validatedData);
-      res.status(201).json(table);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ errors: error.errors });
+      // Validate column definitions
+      if (Array.isArray(tableData.columns)) {
+        for (const column of tableData.columns) {
+          const validationResult = columnDefinitionSchema.safeParse(column);
+          if (!validationResult.success) {
+            return res.status(400).json({
+              error: 'Invalid column definition',
+              details: validationResult.error.errors
+            });
+          }
+          
+          // Ensure each column has an id
+          if (!column.id) {
+            column.id = column.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+          }
+        }
       }
-      res.status(500).json({ error: 'Error creating table' });
+      
+      const table = await storage.createTable({
+        name: validatedData.name,
+        description: validatedData.description || "",
+        userId: user.id,
+        columns: tableData.columns || []
+      });
+      
+      return res.status(201).json(table);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid table data', details: error.errors });
+      }
+      
+      console.error('Error creating table:', error);
+      return res.status(500).json({ error: 'Server error creating table' });
     }
   });
   
   app.put('/api/tables/:id', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
+      const user = (req as any).user;
       const tableId = parseInt(req.params.id);
       
       if (isNaN(tableId)) {
         return res.status(400).json({ error: 'Invalid table ID' });
       }
       
-      // Check if table exists and belongs to user
-      const table = await storage.getTable(userId, tableId);
-      if (!table) {
+      const tableData = req.body;
+      
+      // Check if table exists
+      const existingTable = await storage.getTable(user.id, tableId);
+      if (!existingTable) {
         return res.status(404).json({ error: 'Table not found' });
       }
       
-      const updatedTable = await storage.updateTable(userId, tableId, req.body);
-      res.json(updatedTable);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ errors: error.errors });
+      // Validate column definitions if provided
+      if (tableData.columns && Array.isArray(tableData.columns)) {
+        for (const column of tableData.columns) {
+          const validationResult = columnDefinitionSchema.safeParse(column);
+          if (!validationResult.success) {
+            return res.status(400).json({
+              error: 'Invalid column definition',
+              details: validationResult.error.errors
+            });
+          }
+          
+          // Ensure each column has an id
+          if (!column.id) {
+            column.id = column.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+          }
+        }
       }
-      res.status(500).json({ error: 'Error updating table' });
+      
+      // Update the table
+      const updatedTable = await storage.updateTable(user.id, tableId, tableData);
+      
+      return res.json(updatedTable);
+    } catch (error: any) {
+      console.error('Error updating table:', error);
+      return res.status(500).json({ error: 'Server error updating table' });
     }
   });
   
   app.delete('/api/tables/:id', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
+      const user = (req as any).user;
       const tableId = parseInt(req.params.id);
       
       if (isNaN(tableId)) {
         return res.status(400).json({ error: 'Invalid table ID' });
       }
       
-      // Check if table exists and belongs to user
-      const table = await storage.getTable(userId, tableId);
-      if (!table) {
+      // Check if table exists
+      const existingTable = await storage.getTable(user.id, tableId);
+      if (!existingTable) {
         return res.status(404).json({ error: 'Table not found' });
       }
       
-      await storage.deleteTable(userId, tableId);
-      res.status(204).send();
+      // Delete the table
+      await storage.deleteTable(user.id, tableId);
+      
+      return res.status(204).send();
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Error deleting table:', error);
+      return res.status(500).json({ error: 'Server error deleting table' });
     }
   });
   
-  // Table Rows routes
-  app.get('/api/tables/:id/rows', requireAuth, async (req, res) => {
+  // API routes for table rows
+  app.post('/api/tables/:tableId/rows', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
-      const tableId = parseInt(req.params.id);
+      const user = (req as any).user;
+      const tableId = parseInt(req.params.tableId);
       
       if (isNaN(tableId)) {
         return res.status(400).json({ error: 'Invalid table ID' });
       }
       
-      // Check if table exists and belongs to user
-      const table = await storage.getTable(userId, tableId);
+      // Check if table exists and user owns it
+      const table = await storage.getTable(user.id, tableId);
       if (!table) {
         return res.status(404).json({ error: 'Table not found' });
       }
       
-      // Get pagination parameters from query string
-      const limit = parseInt(req.query.limit as string) || 100;
-      const offset = parseInt(req.query.offset as string) || 0;
+      // Create row
+      const rowData = {
+        ...req.body,
+        tableId
+      };
       
-      const rows = await storage.getTableRows(tableId, limit, offset);
-      res.json(rows);
+      const newRow = await storage.createTableRow(rowData);
+      
+      return res.status(201).json(newRow);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-  
-  app.post('/api/tables/:id/rows', requireAuth, async (req, res) => {
-    try {
-      const userId = (req as any).user.id;
-      const tableId = parseInt(req.params.id);
-      
-      if (isNaN(tableId)) {
-        return res.status(400).json({ error: 'Invalid table ID' });
-      }
-      
-      // Check if table exists and belongs to user
-      const table = await storage.getTable(userId, tableId);
-      if (!table) {
-        return res.status(404).json({ error: 'Table not found' });
-      }
-      
-      // Validate row data against table schema
-      // This would typically involve validating against the column definitions
-      
-      const row = await storage.createTableRow({
-        tableId,
-        data: req.body,
-      });
-      
-      res.status(201).json(row);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Error creating table row:', error);
+      return res.status(500).json({ error: 'Server error creating table row' });
     }
   });
   
   app.put('/api/tables/:tableId/rows/:rowId', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
+      const user = (req as any).user;
       const tableId = parseInt(req.params.tableId);
       const rowId = parseInt(req.params.rowId);
       
       if (isNaN(tableId) || isNaN(rowId)) {
-        return res.status(400).json({ error: 'Invalid ID format' });
+        return res.status(400).json({ error: 'Invalid table ID or row ID' });
       }
       
-      // Check if table exists and belongs to user
-      const table = await storage.getTable(userId, tableId);
+      // Check if table exists and user owns it
+      const table = await storage.getTable(user.id, tableId);
       if (!table) {
         return res.status(404).json({ error: 'Table not found' });
       }
       
+      // Update row
       const updatedRow = await storage.updateTableRow(rowId, req.body);
-      res.json(updatedRow);
+      
+      return res.json(updatedRow);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Error updating table row:', error);
+      return res.status(500).json({ error: 'Server error updating table row' });
     }
   });
   
   app.delete('/api/tables/:tableId/rows/:rowId', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
+      const user = (req as any).user;
       const tableId = parseInt(req.params.tableId);
       const rowId = parseInt(req.params.rowId);
       
       if (isNaN(tableId) || isNaN(rowId)) {
-        return res.status(400).json({ error: 'Invalid ID format' });
+        return res.status(400).json({ error: 'Invalid table ID or row ID' });
       }
       
-      // Check if table exists and belongs to user
-      const table = await storage.getTable(userId, tableId);
+      // Check if table exists and user owns it
+      const table = await storage.getTable(user.id, tableId);
       if (!table) {
         return res.status(404).json({ error: 'Table not found' });
       }
       
+      // Delete row
       await storage.deleteTableRow(rowId);
-      res.status(204).send();
+      
+      return res.status(204).send();
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('Error deleting table row:', error);
+      return res.status(500).json({ error: 'Server error deleting table row' });
     }
   });
   
-  // Set up WebSocket server with more robust error handling
-  const wss = new WebSocketServer({ 
-    server: httpServer, 
-    path: '/ws',
-    // More robust error handling
-    clientTracking: true,
-    perMessageDeflate: {
-      zlibDeflateOptions: {
-        chunkSize: 1024,
-        memLevel: 7,
-        level: 3
-      },
-      zlibInflateOptions: {
-        chunkSize: 10 * 1024
+  // API endpoint to test a connector
+  app.post('/api/connectors/test', requireAuth, async (req, res) => {
+    try {
+      const { url, method, headers, body } = req.body;
+      
+      if (!url) {
+        return res.status(400).json({ error: 'URL is required' });
       }
+      
+      // Make the request
+      const response = await fetch(url, {
+        method: method || 'GET',
+        headers: headers || {},
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      
+      // Get response data
+      let responseData;
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
+        responseData = await response.json();
+      } else {
+        responseData = await response.text();
+      }
+      
+      return res.json({
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        data: responseData
+      });
+    } catch (error: any) {
+      console.error('Error testing connector:', error);
+      return res.status(500).json({ error: 'Error testing connector', message: error.message });
     }
   });
   
-  // Keep track of connection errors server-wide
-  wss.on('error', (error) => {
-    console.error('WebSocket server error:', error.message);
-  });
+  // WebSocket Server for real-time updates
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   
-  // Set up heartbeat to detect disconnected clients
   function heartbeat() {
-    // @ts-ignore - add isAlive property to track client state
+    // @ts-ignore - custom property to track connection liveliness
     this.isAlive = true;
   }
   
-  const interval = setInterval(function ping() {
-    wss.clients.forEach(function each(ws) {
-      // @ts-ignore - check if client is still connected
+  // Set up heartbeat interval
+  const interval = setInterval(() => {
+    wss.clients.forEach(ws => {
+      // @ts-ignore
       if (ws.isAlive === false) {
-        console.log('Terminating dead WebSocket connection');
         return ws.terminate();
       }
       
-      // @ts-ignore - reset alive status
+      // @ts-ignore
       ws.isAlive = false;
-      try {
-        ws.ping();
-      } catch (e) {
-        console.error('Error sending ping:', e.message);
-        ws.terminate();
-      }
+      ws.ping();
     });
   }, 30000);
   
-  wss.on('close', function close() {
+  // Clean up interval on server close
+  wss.on('close', () => {
     clearInterval(interval);
   });
   
-  wss.on('connection', (ws, req) => {
+  // Handle new WebSocket connections
+  wss.on('connection', ws => {
     console.log('WebSocket client connected');
     
     // Initialize client as alive and set up heartbeat
@@ -1133,7 +876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           try {
-            // Verify the token format and structure
+            // Verify the token format
             const parts = token.split('.');
             if (parts.length !== 3) {
               ws.send(JSON.stringify({
@@ -1143,7 +886,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return;
             }
             
-            // Firebase tokens use URL-safe base64
+            // Process the token - in a production system, we would verify the signature
+            // Here we just decode the payload
             let base64Payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
             while (base64Payload.length % 4) {
               base64Payload += '=';
@@ -1186,11 +930,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
           } catch (error) {
-            console.error("Error parsing token payload:", error);
+            console.error("Error processing authentication:", error);
             try {
               ws.send(JSON.stringify({
                 type: 'auth_error',
-                message: 'Invalid token content'
+                message: 'Authentication failed: server error'
               }));
             } catch (e) {
               console.error('Error sending auth error message:', e);
@@ -1198,21 +942,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       } catch (error) {
-        console.error('Error processing WebSocket message:', error.message);
+        console.error('Error processing WebSocket message:', error);
         try {
           ws.send(JSON.stringify({
             type: 'error',
-            message: 'Failed to process message'
+            message: 'Invalid message format'
           }));
         } catch (e) {
-          console.error('Error sending error message:', e.message);
+          console.error('Error sending error message:', e);
         }
       }
     });
     
     // Handle connection errors
     ws.on('error', (error) => {
-      console.error('WebSocket connection error:', error.message);
+      console.error('WebSocket connection error:', error);
     });
     
     // Handle connection close
@@ -1236,4 +980,656 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   return httpServer;
+}
+
+// Execute a flow with the given execution record
+async function executeFlow(flow: any, execution: any, userId: number, triggerData: any) {
+  try {
+    // Log execution start
+    await storage.addExecutionLog({
+      executionId: execution.id,
+      message: `Starting flow execution`,
+      type: 'info',
+      timestamp: new Date()
+    });
+    
+    // Get all nodes and edges from the flow
+    const nodes = flow.nodes;
+    const edges = flow.edges;
+    
+    // Execute the flow
+    const result = await runFlowNodes(flow.id, execution.id, nodes, edges, userId, triggerData);
+    
+    // Update execution record with completion
+    await storage.updateExecution(execution.id, {
+      status: 'completed',
+      result,
+      finishedAt: new Date()
+    });
+    
+    // Log execution completion
+    await storage.addExecutionLog({
+      executionId: execution.id,
+      message: `Flow execution completed successfully`,
+      type: 'success',
+      timestamp: new Date()
+    });
+    
+    // Send update to connected clients
+    const updatedExecution = await storage.getExecution(execution.id);
+    sendExecutionUpdate(userId.toString(), {
+      execution: updatedExecution,
+      status: 'completed',
+      message: 'Flow executed successfully'
+    });
+    
+  } catch (error: any) {
+    console.error(`Error executing flow ${flow.id}:`, error);
+    
+    // Log error
+    await storage.addExecutionLog({
+      executionId: execution.id,
+      message: `Flow execution failed: ${error.message}`,
+      type: 'error',
+      timestamp: new Date()
+    });
+    
+    // Update execution with error
+    await storage.updateExecution(execution.id, {
+      status: 'failed',
+      error: {
+        message: error.message,
+        stack: error.stack
+      },
+      finishedAt: new Date()
+    });
+    
+    // Send update to connected clients
+    const updatedExecution = await storage.getExecution(execution.id);
+    sendExecutionUpdate(userId.toString(), {
+      execution: updatedExecution,
+      status: 'failed',
+      message: error.message
+    });
+  }
+}
+
+// Run all nodes in a flow
+async function runFlowNodes(flowId: number, executionId: number, nodes: any[], edges: any[], userId: number, triggerData: any) {
+  const nodeOutputs: { [key: string]: any } = {};
+  const startNodes = nodes.filter(node => !edges.some(edge => edge.target === node.id));
+  
+  // Add trigger data to outputs
+  nodeOutputs['trigger'] = triggerData;
+  
+  // Execute start nodes first
+  for (const node of startNodes) {
+    await executeNode(node, nodeOutputs, nodeOutputs, flowId, executionId, userId);
+  }
+  
+  // Process the rest of the nodes in order of dependencies
+  const processedNodes = new Set(startNodes.map(n => n.id));
+  let remainingNodes = nodes.filter(node => !processedNodes.has(node.id));
+  
+  // Process nodes whose dependencies have all been resolved
+  while (remainingNodes.length > 0) {
+    const nodesToProcess = remainingNodes.filter(node => {
+      const incomingEdges = edges.filter(edge => edge.target === node.id);
+      return incomingEdges.every(edge => processedNodes.has(edge.source));
+    });
+    
+    if (nodesToProcess.length === 0) {
+      // Unable to resolve dependencies for remaining nodes
+      const unprocessedNodes = remainingNodes.map(n => n.id).join(', ');
+      throw new Error(`Unable to resolve dependencies for nodes: ${unprocessedNodes}`);
+    }
+    
+    for (const node of nodesToProcess) {
+      // Get inputs by following incoming edges
+      const nodeInputs: { [key: string]: any } = {};
+      
+      // Add all node outputs so far
+      Object.assign(nodeInputs, nodeOutputs);
+      
+      await executeNode(node, nodeInputs, nodeOutputs, flowId, executionId, userId);
+      processedNodes.add(node.id);
+    }
+    
+    remainingNodes = remainingNodes.filter(node => !processedNodes.has(node.id));
+  }
+  
+  return nodeOutputs;
+}
+
+// Execute a single node in the flow
+async function executeNode(
+  node: any, 
+  inputs: { [key: string]: any }, 
+  outputs: { [key: string]: any },
+  flowId: number,
+  executionId: number,
+  userId: number
+) {
+  console.log(`Executing node ${node.id} (${node.type})`);
+  
+  // Log execution
+  await storage.addExecutionLog({
+    executionId,
+    nodeId: node.id,
+    message: `Executing node: ${node.data?.label || node.type}`,
+    type: 'info',
+    timestamp: new Date()
+  });
+  
+  // Skip execution if skipExecution is true in node data
+  if (node.data?.skipExecution) {
+    console.log(`Skipping execution of node ${node.id} as configured`);
+    await storage.addExecutionLog({
+      executionId,
+      nodeId: node.id,
+      message: `Skipping node execution as configured`,
+      type: 'info',
+      timestamp: new Date()
+    });
+    
+    // Still need to provide an output for downstream nodes
+    outputs[node.id] = { skipped: true };
+    return;
+  }
+  
+  try {
+    let result;
+    
+    // Process nodes based on type
+    switch (node.type) {
+      case 'http':
+        result = await executeHttpNode(node, inputs, userId);
+        break;
+        
+      case 'javascript':
+        result = await executeJavascriptNode(node, inputs);
+        break;
+        
+      case 'table':
+        result = await executeTableNode(node, inputs, userId);
+        break;
+        
+      case 'loop':
+        result = await executeLoopNode(node, inputs, flowId, executionId, userId, outputs);
+        break;
+        
+      case 'condition':
+        result = await executeConditionNode(node, inputs);
+        break;
+        
+      default:
+        result = { error: `Unsupported node type: ${node.type}` };
+        break;
+    }
+    
+    // Store the node result in the outputs map
+    outputs[node.id] = result || {};
+    
+    // Log node completion
+    await storage.addExecutionLog({
+      executionId,
+      nodeId: node.id,
+      message: `Node executed successfully: ${node.data?.label || node.type}`,
+      type: 'success',
+      timestamp: new Date()
+    });
+    
+    return result;
+  } catch (error: any) {
+    // Log node error
+    await storage.addExecutionLog({
+      executionId,
+      nodeId: node.id,
+      message: `Node execution failed: ${error.message}`,
+      type: 'error',
+      timestamp: new Date()
+    });
+    
+    console.error(`Error executing node ${node.id}:`, error);
+    
+    // Store the error in outputs to allow flows to continue with partial processing
+    outputs[node.id] = { error: error.message };
+    
+    // Re-throw the error to halt flow execution
+    throw new Error(`Error in node ${node.data?.label || node.type} (${node.id}): ${error.message}`);
+  }
+}
+
+// Execute a HTTP node
+async function executeHttpNode(node: any, inputs: { [key: string]: any }, userId: number) {
+  const { url, method, headers: rawHeaders, body: rawBody, connectorId } = node.data || {};
+  
+  // Resolve variables in node configuration
+  const resolvedUrl = resolveVariables(url, inputs);
+  let resolvedHeaders = {};
+  let resolvedBody;
+  
+  if (rawHeaders) {
+    if (typeof rawHeaders === 'string') {
+      try {
+        resolvedHeaders = JSON.parse(resolveVariables(rawHeaders, inputs));
+      } catch (e) {
+        resolvedHeaders = {}; // Default to empty headers if invalid JSON
+      }
+    } else if (typeof rawHeaders === 'object') {
+      resolvedHeaders = Object.entries(rawHeaders).reduce((acc, [key, value]) => {
+        acc[key] = resolveVariables(value as string, inputs);
+        return acc;
+      }, {} as Record<string, string>);
+    }
+  }
+  
+  if (rawBody) {
+    if (typeof rawBody === 'string') {
+      resolvedBody = resolveVariables(rawBody, inputs);
+      
+      // Try to parse as JSON if it looks like JSON
+      if (resolvedBody.trim().startsWith('{') || resolvedBody.trim().startsWith('[')) {
+        try {
+          resolvedBody = JSON.parse(resolvedBody);
+        } catch (e) {
+          // Keep as string if JSON parsing fails
+        }
+      }
+    } else if (typeof rawBody === 'object') {
+      // Recursively resolve variables in the JSON object
+      resolvedBody = JSON.parse(
+        JSON.stringify(rawBody, (key, value) => {
+          if (typeof value === 'string') {
+            return resolveVariables(value, inputs);
+          }
+          return value;
+        })
+      );
+    }
+  }
+  
+  // If a connector is specified, get the connector details
+  if (connectorId) {
+    const connector = await storage.getConnector(userId, parseInt(connectorId));
+    if (connector) {
+      // Apply connector configuration
+      const baseUrl = connector.baseUrl || '';
+      
+      // URL is either absolute or relative to the connector's base URL
+      const finalUrl = resolvedUrl.startsWith('http') 
+        ? resolvedUrl 
+        : `${baseUrl.replace(/\/$/, '')}/${resolvedUrl.replace(/^\//, '')}`;
+      
+      // Merge connector headers with request headers
+      if (connector.headers) {
+        resolvedHeaders = {
+          ...connector.headers,
+          ...resolvedHeaders
+        };
+      }
+      
+      // Handle authentication if specified
+      if (connector.authType === 'basic' && connector.authConfig) {
+        const { username, password } = connector.authConfig;
+        const base64Auth = Buffer.from(`${username}:${password}`).toString('base64');
+        resolvedHeaders['Authorization'] = `Basic ${base64Auth}`;
+      } else if (connector.authType === 'bearer' && connector.authConfig) {
+        const { token } = connector.authConfig;
+        resolvedHeaders['Authorization'] = `Bearer ${token}`;
+      } else if (connector.authType === 'apiKey' && connector.authConfig) {
+        const { key, value, in: location } = connector.authConfig;
+        
+        if (location === 'header') {
+          resolvedHeaders[key] = value;
+        } else if (location === 'query') {
+          // Add API key to URL as a query parameter
+          const separator = finalUrl.includes('?') ? '&' : '?';
+          finalUrl = `${finalUrl}${separator}${key}=${encodeURIComponent(value)}`;
+        }
+      }
+      
+      // Make the API request
+      const response = await fetch(finalUrl, {
+        method: method || 'GET',
+        headers: resolvedHeaders as HeadersInit,
+        body: resolvedBody ? JSON.stringify(resolvedBody) : undefined
+      });
+      
+      // Get response data
+      let responseData;
+      const contentType = response.headers.get('content-type');
+      
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          responseData = await response.json();
+        } else {
+          responseData = await response.text();
+        }
+      } catch (error) {
+        // If we can't parse the response, just use the status code
+        responseData = { status: response.status, statusText: response.statusText };
+      }
+      
+      return {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        data: responseData,
+        response: responseData, // For backward compatibility
+      };
+    } else {
+      throw new Error(`Connector with ID ${connectorId} not found`);
+    }
+  } else {
+    // Make the request without a connector
+    const response = await fetch(resolvedUrl, {
+      method: method || 'GET',
+      headers: resolvedHeaders as HeadersInit,
+      body: resolvedBody ? JSON.stringify(resolvedBody) : undefined
+    });
+    
+    // Get response data
+    let responseData;
+    const contentType = response.headers.get('content-type');
+    
+    try {
+      if (contentType && contentType.includes('application/json')) {
+        responseData = await response.json();
+      } else {
+        responseData = await response.text();
+      }
+    } catch (error) {
+      // If we can't parse the response, just use the status code
+      responseData = { status: response.status, statusText: response.statusText };
+    }
+    
+    return {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries()),
+      data: responseData,
+      response: responseData, // For backward compatibility
+    };
+  }
+}
+
+// Execute a JavaScript node
+async function executeJavascriptNode(node: any, inputs: { [key: string]: any }) {
+  const { code } = node.data || {};
+  
+  if (!code) {
+    return { error: 'No code provided for JavaScript node' };
+  }
+  
+  try {
+    // Wrap code in an async function and return the result
+    const wrappedCode = `
+      return (async function() {
+        try {
+          // User-provided code
+          ${code}
+        } catch (error) {
+          return { error: error.message };
+        }
+      })();
+    `;
+    
+    // Create function with inputs available
+    const fn = new Function('inputs', wrappedCode);
+    
+    // Execute the function with the inputs
+    const result = await fn(inputs);
+    
+    // Return the result
+    return { result };
+  } catch (error: any) {
+    throw new Error(`Error executing JavaScript: ${error.message}`);
+  }
+}
+
+// Execute a table node
+async function executeTableNode(node: any, inputs: { [key: string]: any }, userId: number) {
+  const { operation, tableId, data: rawData } = node.data || {};
+  
+  if (!tableId) {
+    throw new Error('No table ID provided for table node');
+  }
+  
+  // Resolve variables in the data
+  const resolvedData = rawData 
+    ? JSON.parse(
+        JSON.stringify(rawData, (key, value) => {
+          if (typeof value === 'string') {
+            return resolveVariables(value, inputs);
+          }
+          return value;
+        })
+      )
+    : undefined;
+  
+  // Get the table
+  const table = await storage.getTable(userId, parseInt(tableId));
+  
+  if (!table) {
+    throw new Error(`Table with ID ${tableId} not found`);
+  }
+  
+  // Perform the operation
+  switch (operation) {
+    case 'read':
+      const rows = await storage.getTableRows(parseInt(tableId));
+      return { rows };
+      
+    case 'insert':
+      if (!resolvedData) {
+        throw new Error('No data provided for table insert operation');
+      }
+      
+      const newRow = await storage.createTableRow({
+        tableId: parseInt(tableId),
+        data: resolvedData
+      });
+      
+      return { row: newRow };
+      
+    case 'update':
+      if (!resolvedData || !resolvedData.id) {
+        throw new Error('No row ID provided for table update operation');
+      }
+      
+      const updatedRow = await storage.updateTableRow(
+        parseInt(resolvedData.id), 
+        resolvedData
+      );
+      
+      return { row: updatedRow };
+      
+    case 'delete':
+      if (!resolvedData || !resolvedData.id) {
+        throw new Error('No row ID provided for table delete operation');
+      }
+      
+      await storage.deleteTableRow(parseInt(resolvedData.id));
+      
+      return { success: true };
+      
+    default:
+      throw new Error(`Unsupported table operation: ${operation}`);
+  }
+}
+
+// Execute a loop node
+async function executeLoopNode(
+  node: any, 
+  inputs: { [key: string]: any },
+  flowId: number,
+  executionId: number,
+  userId: number,
+  outputs: { [key: string]: any }
+) {
+  const { type, source, maxIterations } = node.data || {};
+  const MAX_ALLOWED_ITERATIONS = 100; // Safety limit
+  
+  // Check loop type
+  if (type === 'foreach') {
+    // Get the array to iterate over from the specified source
+    const arrayPath = resolveVariables(source, inputs);
+    let arrayData;
+    
+    try {
+      arrayData = eval(`inputs.${arrayPath}`);
+    } catch (e) {
+      throw new Error(`Error accessing array at ${arrayPath}: ${e.message}`);
+    }
+    
+    if (!Array.isArray(arrayData)) {
+      throw new Error(`Source ${arrayPath} is not an array`);
+    }
+    
+    // Implement foreach logic here
+    const results = [];
+    
+    // Limit to prevent infinite loops
+    const limit = Math.min(
+      arrayData.length,
+      maxIterations ? parseInt(maxIterations) : MAX_ALLOWED_ITERATIONS
+    );
+    
+    // Log iteration count
+    await storage.addExecutionLog({
+      executionId,
+      nodeId: node.id,
+      message: `Starting forEach loop with ${limit} iterations`,
+      type: 'info',
+      timestamp: new Date()
+    });
+    
+    // Execute for each item in the array
+    for (let i = 0; i < limit; i++) {
+      // Set loop variables for child nodes
+      const loopContextId = `${node.id}_iteration_${i}`;
+      outputs[loopContextId] = {
+        item: arrayData[i],
+        index: i,
+        number: i + 1, // 1-based index for user convenience
+      };
+      
+      await storage.addExecutionLog({
+        executionId,
+        nodeId: node.id,
+        message: `Loop iteration ${i + 1}/${limit}`,
+        type: 'info',
+        timestamp: new Date()
+      });
+      
+      results.push(arrayData[i]);
+    }
+    
+    return { iterations: limit, results };
+  } else if (type === 'while') {
+    // Implement while loop logic here
+    const conditionPath = resolveVariables(source, inputs);
+    let iterations = 0;
+    const results = [];
+    
+    // Limit to prevent infinite loops
+    const limit = Math.min(
+      maxIterations ? parseInt(maxIterations) : 10,
+      MAX_ALLOWED_ITERATIONS
+    );
+    
+    await storage.addExecutionLog({
+      executionId,
+      nodeId: node.id,
+      message: `Starting while loop with condition: ${conditionPath}`,
+      type: 'info',
+      timestamp: new Date()
+    });
+    
+    let conditionResult;
+    do {
+      try {
+        conditionResult = eval(`inputs.${conditionPath}`);
+      } catch (e) {
+        throw new Error(`Error evaluating condition ${conditionPath}: ${e.message}`);
+      }
+      
+      if (conditionResult) {
+        iterations++;
+        
+        // Set loop variables for child nodes
+        const loopContextId = `${node.id}_iteration_${iterations}`;
+        outputs[loopContextId] = {
+          index: iterations - 1,
+          number: iterations,
+        };
+        
+        await storage.addExecutionLog({
+          executionId,
+          nodeId: node.id,
+          message: `Loop iteration ${iterations}/${limit}`,
+          type: 'info',
+          timestamp: new Date()
+        });
+        
+        results.push({ iteration: iterations });
+      }
+    } while (conditionResult && iterations < limit);
+    
+    return { iterations, results };
+  } else {
+    throw new Error(`Unsupported loop type: ${type}`);
+  }
+}
+
+// Execute a condition node
+async function executeConditionNode(node: any, inputs: { [key: string]: any }) {
+  const { condition } = node.data || {};
+  
+  if (!condition) {
+    throw new Error('No condition provided for condition node');
+  }
+  
+  // Resolve variables in the condition
+  const resolvedCondition = resolveVariables(condition, inputs);
+  
+  // Evaluate the condition using Function constructor for safety
+  try {
+    const fn = new Function('inputs', `return Boolean(${resolvedCondition});`);
+    const result = fn(inputs);
+    
+    return { result, condition: resolvedCondition };
+  } catch (error: any) {
+    throw new Error(`Error evaluating condition: ${error.message}`);
+  }
+}
+
+// Helper function to resolve variables in strings
+function resolveVariables(template: string, context: { [key: string]: any }): string {
+  if (!template || typeof template !== 'string') {
+    return template;
+  }
+  
+  return template.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
+    try {
+      // Trim the path to handle whitespace
+      const trimmedPath = path.trim();
+      
+      // Use eval to access nested properties dynamically (carefully!)
+      const value = eval(`context.${trimmedPath}`);
+      
+      // Handle different value types
+      if (value === null || value === undefined) {
+        return '';
+      } else if (typeof value === 'object') {
+        return JSON.stringify(value);
+      } else {
+        return String(value);
+      }
+    } catch (e) {
+      // Path not found in context, return the original template
+      return match;
+    }
+  });
 }
