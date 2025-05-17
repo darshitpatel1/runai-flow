@@ -79,7 +79,7 @@ export function useWebSocket(options: WebSocketOptions = {}) {
   }, [reconnectAttempts, reconnectInterval]);
   
   // Create WebSocket connection
-  const connect = useCallback(async () => {
+  const connect = useCallback(() => {
     // Don't try to reconnect too quickly to avoid console spam
     const now = Date.now();
     if (now - lastConnectAttempt.current < 5000) {
@@ -101,11 +101,8 @@ export function useWebSocket(options: WebSocketOptions = {}) {
       // Get a valid WebSocket URL
       const wsUrl = getWebSocketUrl();
       
-      // Create the new WebSocket connection with query param for token
-      // This helps avoid CORS issues with the WebSocket connection
-      const token = user ? await user.getIdToken() : '';
-      const wsUrlWithToken = `${wsUrl}?token=${encodeURIComponent(token)}`;
-      const socket = new WebSocket(wsUrlWithToken);
+      // Create the new WebSocket connection
+      const socket = new WebSocket(wsUrl);
       socketRef.current = socket;
       
       // Set up event handlers
@@ -116,15 +113,11 @@ export function useWebSocket(options: WebSocketOptions = {}) {
         
         // Authenticate the connection by sending user info
         if (user) {
-          user.getIdToken().then(token => {
-            socket.send(JSON.stringify({
-              type: 'auth',
-              token, // Use the proper Firebase ID token
-              userId: user.uid
-            }));
-          }).catch(error => {
-            console.error('Error getting auth token:', error);
-          });
+          socket.send(JSON.stringify({
+            type: 'auth',
+            token: user.uid, // Using Firebase UID as token
+            userId: user.uid
+          }));
         }
         
         if (onOpen) onOpen();
