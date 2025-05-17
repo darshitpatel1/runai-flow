@@ -1,4 +1,18 @@
-import { db } from "@/lib/firebase"; 
+import { getFirestore } from "firebase/firestore";
+import { initializeApp } from "firebase/app";
+
+// Configure Firebase
+const firebaseConfig = {
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
+  authDomain: `${process.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com`,
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: `${process.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
+  appId: process.env.VITE_FIREBASE_APP_ID,
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 import { 
   collection, 
   doc, 
