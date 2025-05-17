@@ -1,8 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from 'ws';
-// Import storage implementation
-import { firestoreStorage } from "./firestore-server-new";
+// Import Firestore storage implementation
+import { firestoreStorage } from "./firestore-storage";
 import { 
   connectorSchema, 
   flowSchema,
