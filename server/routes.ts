@@ -1,14 +1,15 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from 'ws';
-import { firestoreStorage } from "./firestore-service";
+import { firestoreStorage } from "./firestore-server";
 import { 
   connectorSchema, 
   flowSchema,
   executionSchema,
   dataTableSchema,
   tableRowSchema,
-  columnDefinitionSchema
+  columnDefinitionSchema,
+  COLLECTIONS
 } from "@shared/firestore-schema";
 import { z } from "zod";
 
@@ -154,8 +155,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await firestoreStorage.createUser({
         firebaseUid,
         email,
-        displayName,
-        photoUrl
+        displayName: displayName || '',
+        photoUrl: photoUrl || ''
       });
       
       res.status(201).json(user);

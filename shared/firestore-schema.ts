@@ -14,7 +14,7 @@ export const COLLECTIONS = {
 // Users schema
 export const userSchema = z.object({
   id: z.string(), // Firestore document ID (same as Firebase auth UID)
-  username: z.string().optional(),
+  firebaseUid: z.string(),
   email: z.string().email(),
   displayName: z.string().optional(),
   photoUrl: z.string().optional(),

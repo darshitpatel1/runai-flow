@@ -1,5 +1,24 @@
-import { adminDb } from './firebase-admin';
-import { Timestamp } from 'firebase-admin/firestore';
+import { db } from "@/lib/firebase";
+import { 
+  collection, 
+  doc, 
+  getDocs, 
+  getDoc, 
+  setDoc,
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  where, 
+  orderBy, 
+  limit, 
+  startAfter,
+  Timestamp,
+  DocumentData,
+  DocumentReference,
+  DocumentSnapshot,
+  QueryDocumentSnapshot
+} from "firebase/firestore";
 import { COLLECTIONS } from "@shared/firestore-schema";
 
 // Helper function to convert Firestore timestamps to Date objects
@@ -31,7 +50,7 @@ const convertTimestamps = (data: any): any => {
 
 // Helper to normalize document data with its ID
 const normalizeDoc = (doc: DocumentSnapshot) => {
-  if (!doc.exists) {
+  if (!doc.exists()) {
     return null;
   }
   
@@ -52,11 +71,11 @@ const normalizeQueryDoc = (doc: QueryDocumentSnapshot) => {
 };
 
 // Firestore storage implementation
-export const firestoreStorage = {
+export const firestoreClient = {
   // User operations
   async getUserByFirebaseUid(firebaseUid: string) {
     try {
-      const usersRef = collection(adminDb, COLLECTIONS.USERS);
+      const usersRef = collection(db, COLLECTIONS.USERS);
       const q = query(usersRef, where("firebaseUid", "==", firebaseUid));
       const querySnapshot = await getDocs(q);
       
@@ -73,7 +92,7 @@ export const firestoreStorage = {
   
   async createUser(userData: { firebaseUid: string; email: string; displayName?: string; photoUrl?: string }) {
     try {
-      const usersRef = collection(adminDb, COLLECTIONS.USERS);
+      const usersRef = collection(db, COLLECTIONS.USERS);
       
       // Create the user document
       const userDoc = {
@@ -97,7 +116,7 @@ export const firestoreStorage = {
   
   async updateUser(userId: string, userData: Partial<{ email: string; displayName: string; photoUrl: string }>) {
     try {
-      const userDocRef = doc(adminDb, COLLECTIONS.USERS, userId);
+      const userDocRef = doc(db, COLLECTIONS.USERS, userId);
       
       // Update with the new data
       await updateDoc(userDocRef, {
@@ -117,7 +136,7 @@ export const firestoreStorage = {
   // Connector operations
   async getConnectors(userId: string) {
     try {
-      const connectorsRef = collection(adminDb, COLLECTIONS.CONNECTORS);
+      const connectorsRef = collection(db, COLLECTIONS.CONNECTORS);
       const q = query(
         connectorsRef, 
         where("userId", "==", userId),
@@ -134,10 +153,10 @@ export const firestoreStorage = {
   
   async getConnector(userId: string, connectorId: string) {
     try {
-      const connectorDocRef = doc(adminDb, COLLECTIONS.CONNECTORS, connectorId);
+      const connectorDocRef = doc(db, COLLECTIONS.CONNECTORS, connectorId);
       const connectorDoc = await getDoc(connectorDocRef);
       
-      if (!connectorDoc.exists) {
+      if (!connectorDoc.exists()) {
         return null;
       }
       
@@ -164,7 +183,7 @@ export const firestoreStorage = {
     headers?: any;
   }) {
     try {
-      const connectorsRef = collection(adminDb, COLLECTIONS.CONNECTORS);
+      const connectorsRef = collection(db, COLLECTIONS.CONNECTORS);
       
       // Add timestamps
       const connectorWithTimestamps = {
@@ -192,12 +211,12 @@ export const firestoreStorage = {
     headers: any;
   }>) {
     try {
-      const connectorDocRef = doc(adminDb, COLLECTIONS.CONNECTORS, connectorId);
+      const connectorDocRef = doc(db, COLLECTIONS.CONNECTORS, connectorId);
       
       // First, verify the connector belongs to the user
       const connectorDoc = await getDoc(connectorDocRef);
       
-      if (!connectorDoc.exists) {
+      if (!connectorDoc.exists()) {
         throw new Error("Connector not found");
       }
       
@@ -224,12 +243,12 @@ export const firestoreStorage = {
   
   async deleteConnector(userId: string, connectorId: string) {
     try {
-      const connectorDocRef = doc(adminDb, COLLECTIONS.CONNECTORS, connectorId);
+      const connectorDocRef = doc(db, COLLECTIONS.CONNECTORS, connectorId);
       
       // First, verify the connector belongs to the user
       const connectorDoc = await getDoc(connectorDocRef);
       
-      if (!connectorDoc.exists) {
+      if (!connectorDoc.exists()) {
         throw new Error("Connector not found");
       }
       
@@ -252,7 +271,7 @@ export const firestoreStorage = {
   // Flow operations
   async getFlows(userId: string) {
     try {
-      const flowsRef = collection(adminDb, COLLECTIONS.FLOWS);
+      const flowsRef = collection(db, COLLECTIONS.FLOWS);
       const q = query(
         flowsRef, 
         where("userId", "==", userId),
@@ -269,10 +288,10 @@ export const firestoreStorage = {
   
   async getFlow(userId: string, flowId: string) {
     try {
-      const flowDocRef = doc(adminDb, COLLECTIONS.FLOWS, flowId);
+      const flowDocRef = doc(db, COLLECTIONS.FLOWS, flowId);
       const flowDoc = await getDoc(flowDocRef);
       
-      if (!flowDoc.exists) {
+      if (!flowDoc.exists()) {
         return null;
       }
       
@@ -299,7 +318,7 @@ export const firestoreStorage = {
     active?: boolean;
   }) {
     try {
-      const flowsRef = collection(adminDb, COLLECTIONS.FLOWS);
+      const flowsRef = collection(db, COLLECTIONS.FLOWS);
       
       // Add timestamps
       const flowWithTimestamps = {
@@ -328,12 +347,12 @@ export const firestoreStorage = {
     active: boolean;
   }>) {
     try {
-      const flowDocRef = doc(adminDb, COLLECTIONS.FLOWS, flowId);
+      const flowDocRef = doc(db, COLLECTIONS.FLOWS, flowId);
       
       // First, verify the flow belongs to the user
       const flowDoc = await getDoc(flowDocRef);
       
-      if (!flowDoc.exists) {
+      if (!flowDoc.exists()) {
         throw new Error("Flow not found");
       }
       
@@ -360,12 +379,12 @@ export const firestoreStorage = {
   
   async deleteFlow(userId: string, flowId: string) {
     try {
-      const flowDocRef = doc(adminDb, COLLECTIONS.FLOWS, flowId);
+      const flowDocRef = doc(db, COLLECTIONS.FLOWS, flowId);
       
       // First, verify the flow belongs to the user
       const flowDoc = await getDoc(flowDocRef);
       
-      if (!flowDoc.exists) {
+      if (!flowDoc.exists()) {
         throw new Error("Flow not found");
       }
       
@@ -393,7 +412,7 @@ export const firestoreStorage = {
     input?: any;
   }) {
     try {
-      const executionsRef = collection(adminDb, COLLECTIONS.EXECUTIONS);
+      const executionsRef = collection(db, COLLECTIONS.EXECUTIONS);
       
       // Add timestamps and defaults
       const executionWithTimestamps = {
@@ -422,7 +441,7 @@ export const firestoreStorage = {
     output: any;
   }>) {
     try {
-      const executionDocRef = doc(adminDb, COLLECTIONS.EXECUTIONS, executionId);
+      const executionDocRef = doc(db, COLLECTIONS.EXECUTIONS, executionId);
       
       // Update with the new data
       await updateDoc(executionDocRef, executionData);
@@ -448,7 +467,7 @@ export const firestoreStorage = {
   } = {}) {
     try {
       const { limit: recordLimit = 10, offset = 0, filters = {} } = queryParams;
-      const executionsRef = collection(adminDb, COLLECTIONS.EXECUTIONS);
+      const executionsRef = collection(db, COLLECTIONS.EXECUTIONS);
       
       // Build the query with filters
       let q = query(
@@ -497,7 +516,7 @@ export const firestoreStorage = {
   
   async getExecution(executionId: string) {
     try {
-      const executionDocRef = doc(adminDb, COLLECTIONS.EXECUTIONS, executionId);
+      const executionDocRef = doc(db, COLLECTIONS.EXECUTIONS, executionId);
       const executionDoc = await getDoc(executionDocRef);
       
       return normalizeDoc(executionDoc);
@@ -516,7 +535,7 @@ export const firestoreStorage = {
     data?: any;
   }) {
     try {
-      const logsRef = collection(adminDb, COLLECTIONS.EXECUTION_LOGS);
+      const logsRef = collection(db, COLLECTIONS.EXECUTION_LOGS);
       
       // Add timestamp
       const logWithTimestamp = {
@@ -537,7 +556,7 @@ export const firestoreStorage = {
   
   async getExecutionLogs(executionId: string) {
     try {
-      const logsRef = collection(adminDb, COLLECTIONS.EXECUTION_LOGS);
+      const logsRef = collection(db, COLLECTIONS.EXECUTION_LOGS);
       const q = query(
         logsRef,
         where("executionId", "==", executionId),
@@ -555,7 +574,7 @@ export const firestoreStorage = {
   // Data Tables operations
   async getTables(userId: string) {
     try {
-      const tablesRef = collection(adminDb, COLLECTIONS.DATA_TABLES);
+      const tablesRef = collection(db, COLLECTIONS.DATA_TABLES);
       const q = query(
         tablesRef,
         where("userId", "==", userId),
@@ -572,10 +591,10 @@ export const firestoreStorage = {
   
   async getTable(userId: string, tableId: string) {
     try {
-      const tableDocRef = doc(adminDb, COLLECTIONS.DATA_TABLES, tableId);
+      const tableDocRef = doc(db, COLLECTIONS.DATA_TABLES, tableId);
       const tableDoc = await getDoc(tableDocRef);
       
-      if (!tableDoc.exists) {
+      if (!tableDoc.exists()) {
         return null;
       }
       
@@ -600,7 +619,7 @@ export const firestoreStorage = {
     columns: any;
   }) {
     try {
-      const tablesRef = collection(adminDb, COLLECTIONS.DATA_TABLES);
+      const tablesRef = collection(db, COLLECTIONS.DATA_TABLES);
       
       // Add timestamps
       const tableWithTimestamps = {
@@ -626,12 +645,12 @@ export const firestoreStorage = {
     columns: any;
   }>) {
     try {
-      const tableDocRef = doc(adminDb, COLLECTIONS.DATA_TABLES, tableId);
+      const tableDocRef = doc(db, COLLECTIONS.DATA_TABLES, tableId);
       
       // First, verify the table belongs to the user
       const tableDoc = await getDoc(tableDocRef);
       
-      if (!tableDoc.exists) {
+      if (!tableDoc.exists()) {
         throw new Error("Table not found");
       }
       
@@ -658,12 +677,12 @@ export const firestoreStorage = {
   
   async deleteTable(userId: string, tableId: string) {
     try {
-      const tableDocRef = doc(adminDb, COLLECTIONS.DATA_TABLES, tableId);
+      const tableDocRef = doc(db, COLLECTIONS.DATA_TABLES, tableId);
       
       // First, verify the table belongs to the user
       const tableDoc = await getDoc(tableDocRef);
       
-      if (!tableDoc.exists) {
+      if (!tableDoc.exists()) {
         throw new Error("Table not found");
       }
       
@@ -674,13 +693,13 @@ export const firestoreStorage = {
       }
       
       // Delete the table rows first
-      const rowsRef = collection(adminDb, COLLECTIONS.TABLE_ROWS);
+      const rowsRef = collection(db, COLLECTIONS.TABLE_ROWS);
       const q = query(rowsRef, where("tableId", "==", tableId));
       const rowsSnapshot = await getDocs(q);
       
       // Delete all rows
       for (const rowDoc of rowsSnapshot.docs) {
-        await deleteDoc(doc(adminDb, COLLECTIONS.TABLE_ROWS, rowDoc.id));
+        await deleteDoc(doc(db, COLLECTIONS.TABLE_ROWS, rowDoc.id));
       }
       
       // Then delete the table
@@ -700,7 +719,7 @@ export const firestoreStorage = {
   } = {}) {
     try {
       const { limit: recordLimit = 100, offset = 0 } = queryParams;
-      const rowsRef = collection(adminDb, COLLECTIONS.TABLE_ROWS);
+      const rowsRef = collection(db, COLLECTIONS.TABLE_ROWS);
       
       // Build the query
       let q = query(
@@ -739,7 +758,7 @@ export const firestoreStorage = {
     data: any;
   }) {
     try {
-      const rowsRef = collection(adminDb, COLLECTIONS.TABLE_ROWS);
+      const rowsRef = collection(db, COLLECTIONS.TABLE_ROWS);
       
       // Add timestamps
       const rowWithTimestamps = {
@@ -761,7 +780,7 @@ export const firestoreStorage = {
   
   async updateTableRow(rowId: string, data: any) {
     try {
-      const rowDocRef = doc(adminDb, COLLECTIONS.TABLE_ROWS, rowId);
+      const rowDocRef = doc(db, COLLECTIONS.TABLE_ROWS, rowId);
       
       // Update with the new data
       await updateDoc(rowDocRef, {
@@ -780,7 +799,7 @@ export const firestoreStorage = {
   
   async deleteTableRow(rowId: string) {
     try {
-      const rowDocRef = doc(adminDb, COLLECTIONS.TABLE_ROWS, rowId);
+      const rowDocRef = doc(db, COLLECTIONS.TABLE_ROWS, rowId);
       
       // Delete the row
       await deleteDoc(rowDocRef);
