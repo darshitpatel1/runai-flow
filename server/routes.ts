@@ -79,11 +79,11 @@ const requireAuth = async (req: Request, res: Response, next: Function) => {
   }
 
   try {
-    // For a real Firebase implementation, we'd use admin.auth().verifyIdToken(token)
-    // But for simplicity, we'll extract the Firebase UID from the token payload
+    // For now we'll decode the token manually for development
+    // In production with proper Firebase Admin creds, we'd use:
+    // const decodedToken = await adminAuth.verifyIdToken(token);
     
     // Firebase tokens are JWTs, so we can decode them
-    // without verification for this development implementation
     // The format is: header.payload.signature
     const parts = token.split('.');
     if (parts.length !== 3) {
@@ -101,6 +101,9 @@ const requireAuth = async (req: Request, res: Response, next: Function) => {
         return res.status(401).json({ error: 'Could not extract user ID from token' });
       }
       
+      // Assign the Firebase UID to the request for use in routes
+      req.userId = firebaseUid;
+      
       // Look up the user by Firebase UID
       const user = await firestoreStorage.getUserByFirebaseUid(firebaseUid);
       
@@ -115,9 +118,15 @@ const requireAuth = async (req: Request, res: Response, next: Function) => {
             displayName: payload.name || '',
             photoUrl: payload.picture || ''
           });
-          (req as any).user = newUser;
-          next();
-          return;
+          
+          if (newUser) {
+            // Attach the user to the request
+            (req as any).user = newUser;
+            next();
+            return;
+          } else {
+            return res.status(500).json({ error: 'Failed to create user' });
+          }
         } else {
           return res.status(401).json({ error: 'User not found and could not auto-create user' });
         }
