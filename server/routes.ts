@@ -767,7 +767,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     // Authentication handling
     let authenticated = false;
-    let userId: string | null = null;
+    let userId = '';
     
     ws.on('message', async (message) => {
       try {
@@ -801,22 +801,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Mark as authenticated and store user ID
             authenticated = true;
-            // Ensure we have a valid user ID (string in Firestore)
+            
+            // Store the user ID (string in Firestore)
             if (user && user.id) {
-              userId = user.id;
+              userId = String(user.id);
               
               // Register this connection for the user
-              const userIdString = userId.toString();
-              if (!connections.has(userIdString)) {
-                connections.set(userIdString, []);
+              if (!connections.has(userId)) {
+                connections.set(userId, []);
               }
-              connections.get(userIdString)?.push(ws);
+              const userConnections = connections.get(userId);
+              if (userConnections) {
+                userConnections.push(ws);
+              }
             }
             
-            console.log(`User ${userId} authenticated on WebSocket`);
+            console.log(`User ${userId || 'unknown'} authenticated on WebSocket`);
             
             // Send success response
-            ws.send(JSON.stringify({ type: 'auth_success', userId }));
+            ws.send(JSON.stringify({ type: 'auth_success', userId: userId || '' }));
           } catch (error: any) {
             console.error('Authentication error:', error);
             ws.send(JSON.stringify({ type: 'error', message: 'Authentication failed' }));
