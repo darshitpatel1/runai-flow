@@ -8,7 +8,7 @@ interface Request extends ExpressRequest {
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from 'ws';
 // Import Firebase storage implementation
-import { firestoreStorage } from "./simple-firebase";
+import { firestoreStorage } from "./firebase-service";
 import { 
   connectorSchema, 
   flowSchema,
@@ -450,8 +450,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 await firestoreStorage.updateExecution(execution.id, {
                   status: 'success',
                   finishedAt: new Date(),
-                  duration: (nodeCount + 1) * 300, // Simulate duration based on node count
-                  output: { success: true, message: 'Flow executed successfully' }
+                  result: { success: true, message: 'Flow executed successfully' }
                 });
                 
                 // Add completion log
@@ -508,7 +507,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const executions = await firestoreStorage.getExecutions(userId, {
         limit,
         offset,
-        filters
+        flowId: req.query.flowId as string,
+        status: req.query.status as string
       });
       
       res.json(executions);
