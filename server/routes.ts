@@ -18,7 +18,8 @@ const connections = new Map<string, WebSocket[]>();
 
 // Helper function to send execution updates to connected users with improved error handling
 function sendExecutionUpdate(userId: string, executionData: any) {
-  const userConnections = connections.get(userId.toString());
+  // In Firestore, userId is already a string, no need for toString()
+  const userConnections = connections.get(userId);
   
   if (!userConnections || userConnections.length === 0) {
     console.log(`No active connections for user ${userId}`);
@@ -384,7 +385,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For now, we'll simulate success with progress updates via WebSocket
       
       // Immediately send a "started" notification via WebSocket
-      sendExecutionUpdate(userId.toString(), {
+      sendExecutionUpdate(userId, {
         executionId: execution.id,
         flowId,
         status: 'running',
@@ -403,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const progress = Math.floor((currentNode / nodeCount) * 100);
           
           // Send progress update via WebSocket
-          sendExecutionUpdate(userId.toString(), {
+          sendExecutionUpdate(userId, {
             executionId: execution.id,
             flowId,
             status: 'running',
@@ -443,7 +444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 });
                 
                 // Send completion notification via WebSocket
-                sendExecutionUpdate(userId.toString(), {
+                sendExecutionUpdate(userId, {
                   executionId: execution.id,
                   flowId,
                   status: 'completed',
@@ -810,10 +811,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (!connections.has(userId)) {
                 connections.set(userId, []);
               }
-              const userConnections = connections.get(userId);
-              if (userConnections) {
-                userConnections.push(ws);
-              }
+              // Since we just set it if it didn't exist, we can safely add the websocket
+              connections.get(userId)!.push(ws);
             }
             
             console.log(`User ${userId || 'unknown'} authenticated on WebSocket`);
