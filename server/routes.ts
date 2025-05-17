@@ -547,11 +547,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Create HTTP server but don't listen yet - we'll let index.ts handle that
-  const httpServer = require('http').createServer(app);
+  // Create the HTTP server (but don't listen yet)
+  const server = new Server(app);
   
   // Set up WebSocket server
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  const wss = new WebSocketServer({ server, path: '/ws' });
   
   // Handle WebSocket connections
   wss.on('connection', (ws) => {
@@ -564,12 +564,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }, 30000);
     
-    // Set alive status to check later
-    let isAlive = true;
-    
     // Reset alive status on pong
     ws.on('pong', () => {
-      isAlive = true;
+      // Mark connection as alive
     });
     
     // Handle client messages
@@ -577,8 +574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const message = JSON.parse(data.toString());
         
-        // A simplified auth model - we'll always authenticate as our test user
-        // This greatly simplifies the frontend/backend integration
+        // For simplicity, we'll authenticate all connections automatically with our test user
         if (message.type === 'auth') {
           try {
             // Get our test user
@@ -595,7 +591,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!connections.has(user.id)) {
               connections.set(user.id, []);
             }
-            connections.get(user.id)?.push(ws);
+            const userConnections = connections.get(user.id);
+            if (userConnections) {
+              userConnections.push(ws);
+            }
             
             // Send authentication success message
             ws.send(JSON.stringify({
@@ -699,7 +698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       clearInterval(pingInterval);
       
       // Remove connection from all user connections
-      for (const [userId, userConnections] of connections.entries()) {
+      for (const [userId, userConnections] of Array.from(connections.entries())) {
         const index = userConnections.indexOf(ws);
         if (index !== -1) {
           userConnections.splice(index, 1);
@@ -717,5 +716,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
-  return httpServer;
+  return server;
 }
