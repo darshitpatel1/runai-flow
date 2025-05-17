@@ -1,8 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from 'ws';
-// Import Firebase Admin storage implementation
-import { firestoreStorage } from "./firestore-admin-storage";
+// Import mock Firestore storage implementation for development
+import { firestoreStorage } from "./mock-firestore";
 import { 
   connectorSchema, 
   flowSchema,
