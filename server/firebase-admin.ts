@@ -1,10 +1,10 @@
-import { initializeApp, cert, ServiceAccount } from 'firebase-admin/app';
+import * as admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 
-// Initialize Firebase Admin with application default credentials
-// In production, you would set up service account credentials
-const app = initializeApp({
+// Initialize Firebase Admin SDK
+// In a production environment, you would use service account credentials
+const app = admin.initializeApp({
   projectId: process.env.VITE_FIREBASE_PROJECT_ID,
 });
 
