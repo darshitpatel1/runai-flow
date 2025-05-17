@@ -842,7 +842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`WebSocket client disconnected. Code: ${code}, Reason: ${reason.toString()}`);
       
       // Remove from connections map
-      if (userId) {
+      if (userId && authenticated) {
         const userConnections = connections.get(userId);
         if (userConnections) {
           const index = userConnections.indexOf(ws);
