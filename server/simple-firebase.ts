@@ -1,18 +1,17 @@
-// Clean Firebase Admin SDK implementation
+// Simplified Firebase Admin SDK implementation
 import * as admin from 'firebase-admin';
 import { COLLECTIONS } from '@shared/firestore-schema';
 
-// Initialize Firebase Admin SDK only once
-if (!admin.apps.length) {
-  try {
-    // Create a credential with project ID from environment variables
+// Initialize Firebase Admin SDK only once (with error handling)
+try {
+  if (!admin.apps.length) {
     admin.initializeApp({
       projectId: process.env.VITE_FIREBASE_PROJECT_ID
     });
-    console.log('Firebase Admin SDK initialized successfully');
-  } catch (error) {
-    console.error('Error initializing Firebase Admin:', error);
+    console.log('Firebase Admin SDK initialized with project ID:', process.env.VITE_FIREBASE_PROJECT_ID);
   }
+} catch (error) {
+  console.error('Error initializing Firebase Admin:', error);
 }
 
 // Export Firestore database reference
@@ -39,18 +38,21 @@ function normalizeDoc(doc: any) {
   };
 }
 
-// Firestore storage implementation
+// Simplified storage implementation with basic CRUD operations for each collection
 export const firestoreStorage = {
   // User methods
   async getUserByFirebaseUid(firebaseUid: string) {
+    console.log(`Looking up user with Firebase UID: ${firebaseUid}`);
     try {
       const usersRef = db.collection(COLLECTIONS.USERS);
       const snapshot = await usersRef.where('firebaseUid', '==', firebaseUid).get();
       
       if (snapshot.empty) {
+        console.log('No matching user found');
         return null;
       }
       
+      console.log('User found');
       return normalizeDoc(snapshot.docs[0]);
     } catch (error) {
       console.error('Error getting user by Firebase UID:', error);
@@ -59,9 +61,8 @@ export const firestoreStorage = {
   },
   
   async createUser(userData: { firebaseUid: string; email: string; displayName?: string; photoUrl?: string }) {
+    console.log('Creating user with data:', userData);
     try {
-      console.log('Creating user with data:', userData);
-      
       // Check if user already exists
       const existingUser = await this.getUserByFirebaseUid(userData.firebaseUid);
       if (existingUser) {
@@ -75,6 +76,7 @@ export const firestoreStorage = {
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
       
+      console.log('User created with ID:', docRef.id);
       const doc = await docRef.get();
       return normalizeDoc(doc);
     } catch (error) {
