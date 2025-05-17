@@ -7,8 +7,8 @@ interface Request extends ExpressRequest {
 }
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from 'ws';
-// Import real Firestore storage implementation
-import { firestoreStorage } from "./firebase";
+// Import Firebase storage implementation
+import { firestoreStorage } from "./db";
 import { 
   connectorSchema, 
   flowSchema,
