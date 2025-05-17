@@ -113,18 +113,11 @@ export function useWebSocket(options: WebSocketOptions = {}) {
         
         // Authenticate the connection by sending user info
         if (user) {
-          // Get a proper Firebase token for authentication
-          user.getIdToken().then(token => {
-            if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-              socketRef.current.send(JSON.stringify({
-                type: 'auth',
-                token: token, // Using actual Firebase token
-                userId: user.uid
-              }));
-            }
-          }).catch(err => {
-            console.error('Error getting Firebase token for WebSocket:', err);
-          });
+          socket.send(JSON.stringify({
+            type: 'auth',
+            token: user.uid, // Using Firebase UID as token
+            userId: user.uid
+          }));
         }
         
         if (onOpen) onOpen();

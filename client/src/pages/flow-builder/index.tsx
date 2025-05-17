@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "wouter";
+import { doc, collection, getDoc, addDoc, updateDoc, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { FlowBuilder } from "@/components/flows/FlowBuilder";
@@ -9,7 +11,6 @@ import { SaveIcon, PlayIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { LogMessage } from "@/components/flows/ConsoleOutput";
 import { ExecutionProgress } from "@/components/flows/ExecutionProgress";
-import { apiRequest } from "@/lib/queryClient";
 
 export default function FlowBuilderPage() {
   const { id } = useParams();
@@ -24,8 +25,6 @@ export default function FlowBuilderPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [testingExecutionId, setTestingExecutionId] = useState<string | null>(null);
-  const [logs, setLogs] = useState<LogMessage[]>([]);
   const [connectors, setConnectors] = useState<any[]>([]);
   
   // Fetch flow data if id exists, or initialize new flow
@@ -34,50 +33,48 @@ export default function FlowBuilderPage() {
       if (!user) return;
       
       try {
-        // Fetch connectors from API
-        const connectorsData = await apiRequest('/api/connectors');
-        setConnectors(connectorsData || []);
+        // Fetch connectors for dropdown selections
+        const connectorsRef = collection(db, "users", user.uid, "connectors");
+        const connectorsSnapshot = await getDocs(connectorsRef);
+        const connectorsData = connectorsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setConnectors(connectorsData);
         
         // If editing existing flow
         if (id) {
-          try {
-            const flowData = await apiRequest(`/api/flows/${id}`);
+          const flowRef = doc(db, "users", user.uid, "flows", id);
+          const flowDoc = await getDoc(flowRef);
+          
+          if (flowDoc.exists()) {
+            const flowData = flowDoc.data();
+            setFlow({ id: flowDoc.id, ...flowData });
+            setFlowName(flowData.name || "Untitled Flow");
+            setFlowDescription(flowData.description || "");
             
-            if (flowData) {
-              setFlow(flowData);
-              setFlowName(flowData.name || "Untitled Flow");
-              setFlowDescription(flowData.description || "");
-              
-              // Load saved nodes and edges from API
-              const savedNodes = Array.isArray(flowData.nodes) ? flowData.nodes : [];
-              const savedEdges = Array.isArray(flowData.edges) ? flowData.edges : [];
-              
-              console.log("Loading initial nodes:", savedNodes);
-              console.log("Loading initial edges:", savedEdges);
-              
-              // Update state
-              setNodes(savedNodes);
-              setEdges(savedEdges);
-            } else {
-              toast({
-                title: "Flow not found",
-                description: "The requested flow does not exist",
-                variant: "destructive",
-              });
-            }
-          } catch (error: any) {
-            // If we get a 404, the flow doesn't exist
-            console.error("Error fetching flow:", error);
+            // Load saved nodes and edges
+            // Use the parsed data from firestore document
+            const savedNodes = Array.isArray(flowData.nodes) ? flowData.nodes : [];
+            const savedEdges = Array.isArray(flowData.edges) ? flowData.edges : [];
+            
+            console.log("Loading saved nodes:", savedNodes);
+            console.log("Loading saved edges:", savedEdges);
+            
+            // Update state
+            setNodes(savedNodes);
+            setEdges(savedEdges);
+          } else {
             toast({
-              title: "Error loading flow",
-              description: "Could not load the flow. It may not exist or you don't have permission to access it.",
+              title: "Flow not found",
+              description: "The requested flow does not exist",
               variant: "destructive",
             });
           }
         }
       } catch (error: any) {
         toast({
-          title: "Error loading data",
+          title: "Error loading flow",
           description: error.message,
           variant: "destructive",
         });
@@ -100,32 +97,34 @@ export default function FlowBuilderPage() {
         description: flowDescription,
         nodes,
         edges,
+        updatedAt: new Date()
       };
       
       if (id && flow) {
-        // Update existing flow via API
-        await apiRequest(`/api/flows/${id}`, {
-          method: 'PUT',
-          data: flowData
+        // Update existing flow
+        const flowRef = doc(db, "users", user.uid, "flows", id);
+        await updateDoc(flowRef, flowData);
+        
+        toast({
+          title: "Flow updated",
+          description: "Flow has been saved successfully",
         });
       } else {
-        // Create new flow via API
-        const newFlow = await apiRequest('/api/flows', {
-          method: 'POST',
-          data: flowData
+        // Create new flow
+        const flowsRef = collection(db, "users", user.uid, "flows");
+        const newFlow = await addDoc(flowsRef, {
+          ...flowData,
+          createdAt: new Date(),
+          active: false
         });
         
-        if (newFlow && newFlow.id) {
-          // Update URL with new flow ID without refreshing page
-          window.history.replaceState(null, '', `/flow-builder/${newFlow.id}`);
-          setFlow(newFlow);
-        }
+        setFlow({ id: newFlow.id, ...flowData, createdAt: new Date() });
+        
+        toast({
+          title: "Flow created",
+          description: "New flow has been created successfully",
+        });
       }
-      
-      toast({
-        title: "Flow saved",
-        description: "Your flow has been saved successfully",
-      });
     } catch (error: any) {
       toast({
         title: "Error saving flow",
@@ -138,115 +137,115 @@ export default function FlowBuilderPage() {
   };
   
   const handleTestFlow = async () => {
-    if (!id || !flow) {
+    if (!user || !flow?.id) {
       toast({
-        title: "Save flow first",
-        description: "Please save your flow before testing",
+        title: "Cannot test flow",
+        description: "Please save the flow first",
         variant: "destructive",
       });
       return;
     }
     
     setTesting(true);
-    setLogs([{
-      timestamp: new Date(),
-      type: 'info',
-      message: 'Starting flow execution...'
-    }]);
     
     try {
-      // Start flow execution via API
-      const executionData = await apiRequest(`/api/flows/${id}/execute`, {
+      // Use the API endpoint to execute the flow
+      // This will trigger real-time updates through WebSockets
+      const response = await fetch(`/api/flows/${id}/execute`, {
         method: 'POST',
-        data: {} // Empty data for now, but could be test input data
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.uid}`
+        },
+        body: JSON.stringify({
+          input: {
+            // Any input parameters for the flow
+            timestamp: new Date().toISOString(),
+            testMode: true
+          }
+        })
       });
       
-      if (executionData && executionData.id) {
-        setTestingExecutionId(executionData.id);
-        
-        setLogs(prev => [
-          ...prev,
-          {
-            timestamp: new Date(),
-            type: 'info',
-            message: `Flow execution started with ID: ${executionData.id}`
-          }
-        ]);
-      } else {
-        throw new Error('Failed to start flow execution');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to execute flow');
       }
+      
+      const execution = await response.json();
+      
+      // Store execution ID in the flow for the ExecutionProgress component
+      setFlow((prevFlow: any) => ({
+        ...prevFlow,
+        executionId: execution.id
+      }));
+      
+      toast({
+        title: "Flow execution started",
+        description: "The flow is running. Watch the progress in real-time.",
+      });
     } catch (error: any) {
       toast({
-        title: "Error testing flow",
+        title: "Error executing flow",
         description: error.message,
         variant: "destructive",
       });
-      
-      setLogs(prev => [
-        ...prev,
-        {
-          timestamp: new Date(),
-          type: 'error',
-          message: `Error starting flow execution: ${error.message}`
-        }
-      ]);
-      
       setTesting(false);
     }
   };
   
-  const handleExecutionComplete = () => {
-    setTesting(false);
-    setTestingExecutionId(null);
-  };
-  
-  const handleLogsUpdate = (newLogs: LogMessage[]) => {
-    setLogs(newLogs);
-  };
-  
   return (
     <AppLayout>
-      <div className="flex flex-col h-full">
-        {/* Toolbar */}
-        <div className="border-b bg-background p-4 flex items-center justify-between flex-wrap gap-4">
-          <div className="flex gap-4 items-center flex-grow">
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* Top Header */}
+        <header className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-black flex-shrink-0">
+          <div>
             <Input
-              className="max-w-[240px]"
-              placeholder="Flow name"
+              className="text-xl font-semibold bg-transparent border-0 p-0 h-auto focus-visible:ring-0"
               value={flowName}
-              onChange={e => setFlowName(e.target.value)}
+              onChange={(e) => setFlowName(e.target.value)}
+              onBlur={handleSaveFlow}
             />
-            <Input
-              className="max-w-[300px]"
-              placeholder="Flow description (optional)"
-              value={flowDescription}
-              onChange={e => setFlowDescription(e.target.value)}
-            />
+            <p className="text-xs text-slate-500 dark:text-slate-400">{flowDescription || "No description"}</p>
           </div>
           
-          <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={handleTestFlow}
-              disabled={testing || saving || loading}
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="outline"
+              className="flex items-center gap-2 dark:bg-black dark:border-slate-700"
+              onClick={handleSaveFlow}
+              disabled={saving}
             >
-              <PlayIcon className="w-4 h-4 mr-2" />
-              {testing ? 'Running...' : 'Test'}
+              {saving ? (
+                <>Saving...</>
+              ) : (
+                <>
+                  <SaveIcon className="h-4 w-4" />
+                  Save
+                </>
+              )}
             </Button>
             
-            <Button 
-              onClick={handleSaveFlow}
-              disabled={saving || loading}
+            <Button
+              className="flex items-center gap-2"
+              onClick={handleTestFlow}
+              disabled={testing}
             >
-              <SaveIcon className="w-4 h-4 mr-2" />
-              {saving ? 'Saving...' : 'Save'}
+              {testing ? (
+                <>Testing...</>
+              ) : (
+                <>
+                  <PlayIcon className="h-4 w-4" />
+                  Test Flow
+                </>
+              )}
             </Button>
           </div>
-        </div>
+        </header>
         
-        {/* Main content */}
-        <div className="flex-grow grid grid-rows-[1fr_auto] overflow-hidden">
-          <div className="overflow-hidden">
+        {/* Flow Builder Component */}
+        <div className="flex-1 flex overflow-hidden" style={{ height: 'calc(100% - 4rem)' }}>
+          {/* Main Flow Builder */}
+          <div className="flex-1 relative">
             <FlowBuilder
               initialNodes={nodes}
               initialEdges={edges}
@@ -255,15 +254,16 @@ export default function FlowBuilderPage() {
               connectors={connectors}
               flowId={id}
             />
-          </div>
-          
-          {/* Console output */}
-          <div className="h-60 border-t bg-card">
-            <ExecutionProgress
-              flowId={id || ""}
-              executionId={testingExecutionId || undefined}
-              onLogsUpdate={handleLogsUpdate}
-            />
+            
+            {/* Execution Progress Panel */}
+            {id && (
+              <div className="absolute top-4 right-16 w-72">
+                <ExecutionProgress 
+                  flowId={id} 
+                  executionId={flow?.executionId}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
