@@ -1,15 +1,15 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from 'ws';
-import { storage } from "./storage";
+import { firestoreStorage } from "./firestore";
 import { 
-  insertConnectorSchema, 
-  insertFlowSchema,
-  insertExecutionSchema,
-  insertDataTableSchema,
-  insertTableRowSchema,
+  connectorSchema, 
+  flowSchema,
+  executionSchema,
+  dataTableSchema,
+  tableRowSchema,
   columnDefinitionSchema
-} from "@shared/schema";
+} from "@shared/firestore-schema";
 import { z } from "zod";
 
 // Store active WebSocket connections by user ID
@@ -45,7 +45,7 @@ function sendExecutionUpdate(userId: string, executionData: any) {
       try {
         ws.send(message);
         successCount++;
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error sending execution update to a client: ${error.message}`);
         // Connection is likely broken - terminate it
         try {
@@ -57,7 +57,7 @@ function sendExecutionUpdate(userId: string, executionData: any) {
     }
     
     console.log(`Successfully sent execution update to ${successCount}/${activeConnections.length} connection(s) for user ${userId}`);
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Error preparing execution update: ${error.message}`);
   }
 }
@@ -99,14 +99,14 @@ const requireAuth = async (req: Request, res: Response, next: Function) => {
       }
       
       // Look up the user by Firebase UID
-      const user = await storage.getUserByFirebaseUid(firebaseUid);
+      const user = await firestoreStorage.getUserByFirebaseUid(firebaseUid);
       
       if (!user) {
         // For development purposes, if the user doesn't exist, we'll create them
         // This helps with testing and development when the frontend and backend states get out of sync
         console.log(`User with Firebase UID ${firebaseUid} not found in database, creating...`);
         if (payload.email) {
-          const newUser = await storage.createUser({
+          const newUser = await firestoreStorage.createUser({
             firebaseUid,
             email: payload.email,
             displayName: payload.name || '',
@@ -146,12 +146,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user already exists
-      const existingUser = await storage.getUserByFirebaseUid(firebaseUid);
+      const existingUser = await firestoreStorage.getUserByFirebaseUid(firebaseUid);
       if (existingUser) {
         return res.status(409).json({ error: 'User already exists' });
       }
       
-      const user = await storage.createUser({
+      const user = await firestoreStorage.createUser({
         firebaseUid,
         email,
         displayName,
@@ -174,7 +174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = (req as any).user.id;
       const { displayName, photoUrl } = req.body;
       
-      const updatedUser = await storage.updateUser(userId, {
+      const updatedUser = await firestoreStorage.updateUser(userId, {
         displayName,
         photoUrl
       });
@@ -189,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/connectors', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
-      const connectors = await storage.getConnectors(userId);
+      const connectors = await firestoreStorage.getConnectors(userId);
       res.json(connectors);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -199,13 +199,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/connectors/:id', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
-      const connectorId = parseInt(req.params.id);
+      const connectorId = req.params.id;
       
-      if (isNaN(connectorId)) {
-        return res.status(400).json({ error: 'Invalid connector ID' });
-      }
-      
-      const connector = await storage.getConnector(userId, connectorId);
+      const connector = await firestoreStorage.getConnector(userId, connectorId);
       
       if (!connector) {
         return res.status(404).json({ error: 'Connector not found' });
@@ -221,63 +217,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req as any).user.id;
       
-      // Validate request data
-      const validatedData = insertConnectorSchema.parse({
+      // Create connector data with userId
+      const connectorData = {
         ...req.body,
         userId
-      });
+      };
       
-      const connector = await storage.createConnector(validatedData);
+      const connector = await firestoreStorage.createConnector(connectorData);
       res.status(201).json(connector);
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ errors: error.errors });
       }
-      res.status(500).json({ error: 'Error creating connector' });
+      res.status(500).json({ error: error.message || 'Error creating connector' });
     }
   });
   
   app.put('/api/connectors/:id', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
-      const connectorId = parseInt(req.params.id);
-      
-      if (isNaN(connectorId)) {
-        return res.status(400).json({ error: 'Invalid connector ID' });
-      }
+      const connectorId = req.params.id;
       
       // Check if connector exists and belongs to user
-      const connector = await storage.getConnector(userId, connectorId);
+      const connector = await firestoreStorage.getConnector(userId, connectorId);
       if (!connector) {
         return res.status(404).json({ error: 'Connector not found' });
       }
       
-      const updatedConnector = await storage.updateConnector(userId, connectorId, req.body);
+      const updatedConnector = await firestoreStorage.updateConnector(userId, connectorId, req.body);
       res.json(updatedConnector);
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ errors: error.errors });
       }
-      res.status(500).json({ error: 'Error updating connector' });
+      res.status(500).json({ error: error.message || 'Error updating connector' });
     }
   });
   
   app.delete('/api/connectors/:id', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
-      const connectorId = parseInt(req.params.id);
-      
-      if (isNaN(connectorId)) {
-        return res.status(400).json({ error: 'Invalid connector ID' });
-      }
+      const connectorId = req.params.id;
       
       // Check if connector exists and belongs to user
-      const connector = await storage.getConnector(userId, connectorId);
+      const connector = await firestoreStorage.getConnector(userId, connectorId);
       if (!connector) {
         return res.status(404).json({ error: 'Connector not found' });
       }
       
-      await storage.deleteConnector(userId, connectorId);
+      await firestoreStorage.deleteConnector(userId, connectorId);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -288,7 +276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/flows', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
-      const flows = await storage.getFlows(userId);
+      const flows = await firestoreStorage.getFlows(userId);
       res.json(flows);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -298,13 +286,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/flows/:id', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
-      const flowId = parseInt(req.params.id);
+      const flowId = req.params.id;
       
-      if (isNaN(flowId)) {
-        return res.status(400).json({ error: 'Invalid flow ID' });
-      }
-      
-      const flow = await storage.getFlow(userId, flowId);
+      const flow = await firestoreStorage.getFlow(userId, flowId);
       
       if (!flow) {
         return res.status(404).json({ error: 'Flow not found' });
@@ -320,63 +304,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req as any).user.id;
       
-      // Validate request data
-      const validatedData = insertFlowSchema.parse({
+      // Create flow data with userId
+      const flowData = {
         ...req.body,
         userId
-      });
+      };
       
-      const flow = await storage.createFlow(validatedData);
+      const flow = await firestoreStorage.createFlow(flowData);
       res.status(201).json(flow);
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ errors: error.errors });
       }
-      res.status(500).json({ error: 'Error creating flow' });
+      res.status(500).json({ error: error.message || 'Error creating flow' });
     }
   });
   
   app.put('/api/flows/:id', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
-      const flowId = parseInt(req.params.id);
-      
-      if (isNaN(flowId)) {
-        return res.status(400).json({ error: 'Invalid flow ID' });
-      }
+      const flowId = req.params.id;
       
       // Check if flow exists and belongs to user
-      const flow = await storage.getFlow(userId, flowId);
+      const flow = await firestoreStorage.getFlow(userId, flowId);
       if (!flow) {
         return res.status(404).json({ error: 'Flow not found' });
       }
       
-      const updatedFlow = await storage.updateFlow(userId, flowId, req.body);
+      const updatedFlow = await firestoreStorage.updateFlow(userId, flowId, req.body);
       res.json(updatedFlow);
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ errors: error.errors });
       }
-      res.status(500).json({ error: 'Error updating flow' });
+      res.status(500).json({ error: error.message || 'Error updating flow' });
     }
   });
   
   app.delete('/api/flows/:id', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
-      const flowId = parseInt(req.params.id);
-      
-      if (isNaN(flowId)) {
-        return res.status(400).json({ error: 'Invalid flow ID' });
-      }
+      const flowId = req.params.id;
       
       // Check if flow exists and belongs to user
-      const flow = await storage.getFlow(userId, flowId);
+      const flow = await firestoreStorage.getFlow(userId, flowId);
       if (!flow) {
         return res.status(404).json({ error: 'Flow not found' });
       }
       
-      await storage.deleteFlow(userId, flowId);
+      await firestoreStorage.deleteFlow(userId, flowId);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -387,20 +363,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/flows/:id/execute', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
-      const flowId = parseInt(req.params.id);
-      
-      if (isNaN(flowId)) {
-        return res.status(400).json({ error: 'Invalid flow ID' });
-      }
+      const flowId = req.params.id;
       
       // Check if flow exists and belongs to user
-      const flow = await storage.getFlow(userId, flowId);
+      const flow = await firestoreStorage.getFlow(userId, flowId);
       if (!flow) {
         return res.status(404).json({ error: 'Flow not found' });
       }
       
       // Create a new execution record
-      const execution = await storage.createExecution({
+      const execution = await firestoreStorage.createExecution({
         flowId,
         userId,
         status: 'running',
@@ -441,7 +413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           // Add log entry
-          await storage.addExecutionLog({
+          await firestoreStorage.addExecutionLog({
             executionId: execution.id,
             level: 'info',
             message: `Executing node ${currentNode} of ${nodeCount}`
@@ -455,7 +427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             setTimeout(async () => {
               try {
                 // Update execution with success
-                await storage.updateExecution(execution.id, {
+                await firestoreStorage.updateExecution(execution.id, {
                   status: 'success',
                   finishedAt: new Date(),
                   duration: (nodeCount + 1) * 300, // Simulate duration based on node count
@@ -463,7 +435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 });
                 
                 // Add completion log
-                await storage.addExecutionLog({
+                await firestoreStorage.addExecutionLog({
                   executionId: execution.id,
                   level: 'info',
                   message: 'Flow execution completed successfully'
@@ -501,25 +473,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
       const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
       
-      // Extract filters
       const filters: any = {};
       
       if (req.query.flowId) {
-        const flowId = parseInt(req.query.flowId as string);
-        if (!isNaN(flowId)) {
-          filters.flowId = flowId;
-        }
+        filters.flowId = req.query.flowId as string;
       }
       
       if (req.query.status) {
-        filters.status = req.query.status;
+        filters.status = req.query.status as string;
       }
       
-      if (req.query.startDate) {
-        filters.startDate = new Date(req.query.startDate as string);
-      }
+      const executions = await firestoreStorage.getExecutions(userId, {
+        limit,
+        offset,
+        filters
+      });
       
-      const executions = await storage.getExecutions(userId, limit, offset, filters);
       res.json(executions);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -528,21 +497,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get('/api/executions/:id', requireAuth, async (req, res) => {
     try {
-      const executionId = parseInt(req.params.id);
+      const executionId = req.params.id;
       
-      if (isNaN(executionId)) {
-        return res.status(400).json({ error: 'Invalid execution ID' });
-      }
-      
-      const execution = await storage.getExecution(executionId);
+      const execution = await firestoreStorage.getExecution(executionId);
       
       if (!execution) {
         return res.status(404).json({ error: 'Execution not found' });
       }
       
-      // Check if the execution belongs to the user
-      if (execution.userId !== (req as any).user.id) {
-        return res.status(403).json({ error: 'Unauthorized' });
+      // Check if execution belongs to user
+      const userId = (req as any).user.id;
+      if (execution.userId !== userId) {
+        return res.status(403).json({ error: 'Unauthorized access to execution' });
       }
       
       res.json(execution);
@@ -551,293 +517,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Endpoint to test connector connectivity
-  app.post('/api/test-connector', async (req, res) => {
+  app.get('/api/executions/:id/logs', requireAuth, async (req, res) => {
     try {
-      const { connector } = req.body;
+      const executionId = req.params.id;
       
-      if (!connector || !connector.baseUrl) {
-        return res.status(400).json({ message: 'Invalid connector data' });
+      const execution = await firestoreStorage.getExecution(executionId);
+      
+      if (!execution) {
+        return res.status(404).json({ error: 'Execution not found' });
       }
       
-      // Prepare URL - make sure it has protocol
-      let url = connector.baseUrl;
-      if (!url.startsWith('http')) {
-        url = `https://${url}`;
+      // Check if execution belongs to user
+      const userId = (req as any).user.id;
+      if (execution.userId !== userId) {
+        return res.status(403).json({ error: 'Unauthorized access to execution logs' });
       }
       
-      // Check connector type and handle accordingly
-      if (connector.authType === 'oauth2') {
-        // For OAuth2, we need to return the authorization URL for redirection
-        if (connector.auth.oauth2Type === 'authorization_code') {
-          if (!connector.auth.authorizationUrl) {
-            return res.status(400).json({ 
-              message: 'Missing authorization URL',
-              authRequired: true,
-              authType: 'oauth2' 
-            });
-          }
-          
-          // Build the authorization URL with necessary parameters
-          const authUrl = new URL(connector.auth.authorizationUrl);
-          
-          // Add required OAuth2 parameters, checking if they already exist
-          if (!authUrl.searchParams.has('client_id')) {
-            authUrl.searchParams.append('client_id', connector.auth.clientId);
-          }
-          
-          if (!authUrl.searchParams.has('response_type')) {
-            authUrl.searchParams.append('response_type', 'code');
-          }
-          
-          if (!authUrl.searchParams.has('redirect_uri')) {
-            authUrl.searchParams.append('redirect_uri', connector.auth.redirectUri);
-          }
-          
-          if (connector.auth.scope && !authUrl.searchParams.has('scope')) {
-            authUrl.searchParams.append('scope', connector.auth.scope);
-          }
-          
-          // Generate and store a state parameter to prevent CSRF
-          const state = Math.random().toString(36).substring(2, 15);
-          authUrl.searchParams.append('state', state);
-          
-          // Return the authorization URL
-          return res.status(200).json({
-            message: 'Authorization required',
-            authRequired: true,
-            authType: 'oauth2',
-            authUrl: authUrl.toString(),
-            connectorId: connector.id,
-            state
-          });
-        } else {
-          // Client credentials flow - no user interaction needed
-          return res.status(200).json({
-            message: 'Client Credentials flow would be executed on the server',
-            authRequired: false,
-            tokenUrl: connector.auth.tokenUrl,
-            authType: 'oauth2'
-          });
-        }
-      } else if (connector.authType === 'basic') {
-        // Basic Auth - validate that credentials exist
-        if (!connector.auth || !connector.auth.username || !connector.auth.password) {
-          return res.status(400).json({
-            message: 'Missing username or password for Basic Authentication',
-            authType: 'basic',
-            success: false
-          });
-        }
-        
-        // In a real implementation, we would make a test request to the API
-        // With Basic Auth credentials to verify connectivity
-        
-        // For now, we'll simulate a successful connection
-        return res.status(200).json({
-          message: 'Basic Auth credentials verified',
-          authType: 'basic',
-          success: true,
-          // Return some connection details to display to the user
-          connectionDetails: {
-            baseUrl: connector.baseUrl,
-            authenticatedAs: connector.auth.username
-          }
-        });
-      } else if (connector.authType === 'oauth2' && connector.auth?.oauth2Type === 'client_credentials') {
-        // Client Credentials flow - validate required fields
-        if (!connector.auth.clientId || !connector.auth.clientSecret || !connector.auth.tokenUrl) {
-          return res.status(400).json({
-            message: 'Missing required Client Credentials parameters (Client ID, Client Secret or Token URL)',
-            authType: 'oauth2',
-            success: false
-          });
-        }
-        
-        try {
-          // Actual implementation for client credentials flow:
-          // 1. Make a token request to the token URL with client credentials
-          // 2. Validate the token response
-          // 3. Return connection details with token information
-          
-          const tokenUrl = connector.auth.tokenUrl;
-          const clientId = connector.auth.clientId;
-          const clientSecret = connector.auth.clientSecret;
-          const scopes = connector.auth.scope || '';
-          
-          // Prepare request body
-          const params = new URLSearchParams();
-          params.append('grant_type', 'client_credentials');
-          params.append('client_id', clientId);
-          params.append('client_secret', clientSecret);
-          
-          if (scopes) {
-            params.append('scope', scopes);
-          }
-          
-          // Make request to token endpoint
-          const tokenResponse = await fetch(tokenUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'Accept': 'application/json'
-            },
-            body: params
-          });
-          
-          if (!tokenResponse.ok) {
-            const errorData = await tokenResponse.text();
-            console.error('Token request failed:', tokenResponse.status, errorData);
-            return res.status(400).json({
-              message: `Failed to get access token: ${tokenResponse.status} ${tokenResponse.statusText}`,
-              authType: 'oauth2',
-              success: false
-            });
-          }
-          
-          const tokenData = await tokenResponse.json();
-          
-          if (!tokenData.access_token) {
-            return res.status(400).json({
-              message: 'Invalid token response: missing access_token',
-              authType: 'oauth2',
-              success: false
-            });
-          }
-          
-          // SUCCESS: Return token details (but never the actual token for security)
-          return res.status(200).json({
-            message: 'Client Credentials authentication successful',
-            authType: 'oauth2',
-            authMethod: 'client_credentials',
-            success: true,
-            connectionDetails: {
-              tokenUrl: connector.auth.tokenUrl,
-              clientId: connector.auth.clientId,
-              expiresIn: tokenData.expires_in ? `${tokenData.expires_in} seconds` : 'Unknown',
-              tokenType: tokenData.token_type || 'Bearer',
-              scope: tokenData.scope || scopes || 'Default'
-            }
-          });
-        } catch (error: any) {
-          console.error('Error during client credentials flow:', error);
-          return res.status(500).json({
-            message: `Client credentials flow error: ${error.message}`,
-            authType: 'oauth2',
-            success: false
-          });
-        }
-      } else {
-        // For no auth, just try a simple connection test
-        return res.status(200).json({
-          message: 'Connection test successful',
-          authType: 'none',
-          success: true,
-          connectionDetails: {
-            baseUrl: connector.baseUrl
-          }
-        });
-      }
+      const logs = await firestoreStorage.getExecutionLogs(executionId);
+      res.json(logs);
     } catch (error: any) {
-      console.error('Error testing connector:', error);
-      return res.status(500).json({ message: error.message || 'Failed to test connection' });
+      res.status(500).json({ error: error.message });
     }
   });
   
-  // OAuth2 callback endpoint
-  app.get('/api/oauth/callback', async (req, res) => {
-    try {
-      const { code, state, connectorId, region } = req.query;
-      
-      // We're going to be more lenient here - as long as we have a code, we consider it successful
-      // The connectorId might be passed through state in some OAuth providers
-      if (!code) {
-        return res.status(400).send('Missing authorization code parameter');
-      }
-      
-      // Log the received parameters for debugging
-      console.log('OAuth callback received:', { 
-        code: typeof code === 'string' ? code.substring(0, 5) + '...' : 'undefined', 
-        state, 
-        region,
-        fullUrl: req.originalUrl 
-      });
-      
-      // In a real implementation, we would:
-      // 1. Validate the state parameter to prevent CSRF attacks
-      // 2. Exchange the code for an access token using the token endpoint
-      // 3. Store the tokens securely for future API calls
-      // 4. Redirect back to the connector page
-      
-      // Send a page that will communicate the authorization success to the opener
-      res.send(`
-        <html>
-          <head>
-            <title>OAuth Authorization Complete</title>
-            <style>
-              body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              h2 { color: #4f46e5; }
-              .success { color: #10b981; font-weight: bold; }
-              .info { color: #6b7280; margin-top: 20px; }
-            </style>
-            <script>
-              // We don't need the connectorId here, as we'll let the opener handle
-              // determining which connector was being authorized
-              window.opener.postMessage({ 
-                type: 'oauth-callback', 
-                success: true,
-                code: '${code}',
-                state: '${state || ""}',
-                message: 'Authorization successful. You can now close this window.'
-              }, '*');
-              
-              // Close the window after a short delay
-              setTimeout(function() {
-                window.close();
-              }, 3000);
-            </script>
-          </head>
-          <body>
-            <div class="container">
-              <h2>Authorization Successful</h2>
-              <p class="success">You have successfully authorized the application.</p>
-              <p class="info">This window will automatically close in a few seconds. If it doesn't, you can close it manually.</p>
-              <p>Authorization code received: ${typeof code === 'string' ? code.substring(0, 5) + '...' : 'undefined'}</p>
-            </div>
-          </body>
-        </html>
-      `);
-    } catch (error: any) {
-      console.error('OAuth callback error:', error);
-      res.status(500).send(`
-        <html>
-          <head>
-            <title>OAuth Error</title>
-            <style>
-              body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              h2 { color: #ef4444; }
-              .error { color: #7f1d1d; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <h2>OAuth Authorization Error</h2>
-              <p class="error">There was an error processing your authorization: ${error.message}</p>
-              <p>You can close this window and try again.</p>
-            </div>
-          </body>
-        </html>
-      `);
-    }
-  });
-  
-  // Table routes
+  // Data Tables routes
   app.get('/api/tables', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
-      const tables = await storage.getTables(userId);
+      const tables = await firestoreStorage.getTables(userId);
       res.json(tables);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -847,13 +554,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/tables/:id', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
-      const tableId = parseInt(req.params.id);
+      const tableId = req.params.id;
       
-      if (isNaN(tableId)) {
-        return res.status(400).json({ error: 'Invalid table ID' });
-      }
-      
-      const table = await storage.getTable(userId, tableId);
+      const table = await firestoreStorage.getTable(userId, tableId);
       
       if (!table) {
         return res.status(404).json({ error: 'Table not found' });
@@ -869,63 +572,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req as any).user.id;
       
-      // Validate request data with zod schema
-      const validatedData = insertDataTableSchema.parse({
-        ...req.body,
-        userId
-      });
+      // Validate columns
+      const columns = req.body.columns || [];
+      if (!Array.isArray(columns)) {
+        return res.status(400).json({ error: 'Columns must be an array' });
+      }
       
-      const table = await storage.createTable(validatedData);
+      for (const column of columns) {
+        try {
+          columnDefinitionSchema.parse(column);
+        } catch (error) {
+          return res.status(400).json({ error: `Invalid column definition: ${error}` });
+        }
+      }
+      
+      // Create table data with userId
+      const tableData = {
+        name: req.body.name,
+        description: req.body.description,
+        columns,
+        userId
+      };
+      
+      const table = await firestoreStorage.createTable(tableData);
       res.status(201).json(table);
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ errors: error.errors });
       }
-      res.status(500).json({ error: 'Error creating table' });
+      res.status(500).json({ error: error.message || 'Error creating table' });
     }
   });
   
   app.put('/api/tables/:id', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
-      const tableId = parseInt(req.params.id);
-      
-      if (isNaN(tableId)) {
-        return res.status(400).json({ error: 'Invalid table ID' });
-      }
+      const tableId = req.params.id;
       
       // Check if table exists and belongs to user
-      const table = await storage.getTable(userId, tableId);
+      const table = await firestoreStorage.getTable(userId, tableId);
       if (!table) {
         return res.status(404).json({ error: 'Table not found' });
       }
       
-      const updatedTable = await storage.updateTable(userId, tableId, req.body);
+      // Validate columns if provided
+      if (req.body.columns) {
+        if (!Array.isArray(req.body.columns)) {
+          return res.status(400).json({ error: 'Columns must be an array' });
+        }
+        
+        for (const column of req.body.columns) {
+          try {
+            columnDefinitionSchema.parse(column);
+          } catch (error) {
+            return res.status(400).json({ error: `Invalid column definition: ${error}` });
+          }
+        }
+      }
+      
+      const updatedTable = await firestoreStorage.updateTable(userId, tableId, req.body);
       res.json(updatedTable);
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ errors: error.errors });
       }
-      res.status(500).json({ error: 'Error updating table' });
+      res.status(500).json({ error: error.message || 'Error updating table' });
     }
   });
   
   app.delete('/api/tables/:id', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
-      const tableId = parseInt(req.params.id);
-      
-      if (isNaN(tableId)) {
-        return res.status(400).json({ error: 'Invalid table ID' });
-      }
+      const tableId = req.params.id;
       
       // Check if table exists and belongs to user
-      const table = await storage.getTable(userId, tableId);
+      const table = await firestoreStorage.getTable(userId, tableId);
       if (!table) {
         return res.status(404).json({ error: 'Table not found' });
       }
       
-      await storage.deleteTable(userId, tableId);
+      await firestoreStorage.deleteTable(userId, tableId);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -933,255 +659,203 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Table Rows routes
-  app.get('/api/tables/:id/rows', requireAuth, async (req, res) => {
+  app.get('/api/tables/:tableId/rows', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
-      const tableId = parseInt(req.params.id);
-      
-      if (isNaN(tableId)) {
-        return res.status(400).json({ error: 'Invalid table ID' });
-      }
+      const tableId = req.params.tableId;
       
       // Check if table exists and belongs to user
-      const table = await storage.getTable(userId, tableId);
+      const table = await firestoreStorage.getTable(userId, tableId);
       if (!table) {
         return res.status(404).json({ error: 'Table not found' });
       }
       
-      // Get pagination parameters from query string
-      const limit = parseInt(req.query.limit as string) || 100;
-      const offset = parseInt(req.query.offset as string) || 0;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
       
-      const rows = await storage.getTableRows(tableId, limit, offset);
+      const rows = await firestoreStorage.getTableRows(tableId, { limit, offset });
       res.json(rows);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
   
-  app.post('/api/tables/:id/rows', requireAuth, async (req, res) => {
+  app.post('/api/tables/:tableId/rows', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
-      const tableId = parseInt(req.params.id);
-      
-      if (isNaN(tableId)) {
-        return res.status(400).json({ error: 'Invalid table ID' });
-      }
+      const tableId = req.params.tableId;
       
       // Check if table exists and belongs to user
-      const table = await storage.getTable(userId, tableId);
+      const table = await firestoreStorage.getTable(userId, tableId);
       if (!table) {
         return res.status(404).json({ error: 'Table not found' });
       }
       
-      // Validate row data against table schema
-      // This would typically involve validating against the column definitions
-      
-      const row = await storage.createTableRow({
+      const rowData = {
         tableId,
-        data: req.body,
-      });
+        data: req.body.data || {}
+      };
       
+      const row = await firestoreStorage.createTableRow(rowData);
       res.status(201).json(row);
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ errors: error.errors });
+      }
+      res.status(500).json({ error: error.message || 'Error creating row' });
     }
   });
   
-  app.put('/api/tables/:tableId/rows/:rowId', requireAuth, async (req, res) => {
+  app.put('/api/rows/:id', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
-      const tableId = parseInt(req.params.tableId);
-      const rowId = parseInt(req.params.rowId);
+      const rowId = req.params.id;
+      const data = req.body.data;
       
-      if (isNaN(tableId) || isNaN(rowId)) {
-        return res.status(400).json({ error: 'Invalid ID format' });
+      if (!data) {
+        return res.status(400).json({ error: 'Row data is required' });
       }
       
-      // Check if table exists and belongs to user
-      const table = await storage.getTable(userId, tableId);
-      if (!table) {
-        return res.status(404).json({ error: 'Table not found' });
-      }
-      
-      const updatedRow = await storage.updateTableRow(rowId, req.body);
+      const updatedRow = await firestoreStorage.updateTableRow(rowId, data);
       res.json(updatedRow);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
   
-  app.delete('/api/tables/:tableId/rows/:rowId', requireAuth, async (req, res) => {
+  app.delete('/api/rows/:id', requireAuth, async (req, res) => {
     try {
-      const userId = (req as any).user.id;
-      const tableId = parseInt(req.params.tableId);
-      const rowId = parseInt(req.params.rowId);
+      const rowId = req.params.id;
       
-      if (isNaN(tableId) || isNaN(rowId)) {
-        return res.status(400).json({ error: 'Invalid ID format' });
-      }
-      
-      // Check if table exists and belongs to user
-      const table = await storage.getTable(userId, tableId);
-      if (!table) {
-        return res.status(404).json({ error: 'Table not found' });
-      }
-      
-      await storage.deleteTableRow(rowId);
+      await firestoreStorage.deleteTableRow(rowId);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
   
-  // Set up WebSocket server with more robust error handling
-  const wss = new WebSocketServer({ 
-    server: httpServer, 
-    path: '/ws',
-    // More robust error handling
-    clientTracking: true,
-    perMessageDeflate: {
-      zlibDeflateOptions: {
-        chunkSize: 1024,
-        memLevel: 7,
-        level: 3
-      },
-      zlibInflateOptions: {
-        chunkSize: 10 * 1024
+  // WebSocket for real-time updates
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  wss.on('connection', (ws) => {
+    console.log('WebSocket client connected');
+    
+    // Set a ping interval to check connection
+    const pingInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.ping();
       }
-    }
-  });
-  
-  // Keep track of connection errors server-wide
-  wss.on('error', (error) => {
-    console.error('WebSocket server error:', error.message);
-  });
-  
-  // Set up heartbeat to detect disconnected clients
-  function heartbeat() {
-    // @ts-ignore - add isAlive property to track client state
-    this.isAlive = true;
-  }
-  
-  const interval = setInterval(function ping() {
-    wss.clients.forEach(function each(ws) {
-      // @ts-ignore - check if client is still connected
-      if (ws.isAlive === false) {
-        console.log('Terminating dead WebSocket connection');
+    }, 30000);
+    
+    // Ping-pong mechanism to check connection health
+    let isAlive = true;
+    ws.on('pong', () => {
+      isAlive = true;
+    });
+    
+    // Define a heartbeat check interval
+    const heartbeatInterval = setInterval(() => {
+      if (isAlive === false) {
+        console.log('WebSocket connection is unresponsive, terminating');
+        clearInterval(pingInterval);
+        clearInterval(heartbeatInterval);
         return ws.terminate();
       }
       
-      // @ts-ignore - reset alive status
-      ws.isAlive = false;
-      try {
-        ws.ping();
-      } catch (e) {
-        console.error('Error sending ping:', e.message);
-        ws.terminate();
-      }
-    });
-  }, 30000);
-  
-  wss.on('close', function close() {
-    clearInterval(interval);
-  });
-  
-  wss.on('connection', (ws, req) => {
-    console.log('WebSocket client connected');
+      isAlive = false;
+    }, 40000);
     
-    // Initialize client as alive and set up heartbeat
-    // @ts-ignore
-    ws.isAlive = true;
-    ws.on('pong', heartbeat);
+    // Authentication handling
+    let authenticated = false;
+    let userId: string | null = null;
     
-    // Handle incoming messages
-    ws.on('message', (message) => {
+    ws.on('message', async (message) => {
       try {
-        // Prevent large messages from causing issues
-        if ((message as any).length > 100000) {
-          ws.send(JSON.stringify({
-            type: 'error',
-            message: 'Message too large'
-          }));
-          return;
-        }
+        const msg = JSON.parse(message.toString());
         
-        const data = JSON.parse(message.toString());
-        
-        // Handle authentication
-        if (data.type === 'auth') {
-          const { token, userId } = data;
-          if (token && userId) {
-            // Store connection by user ID
+        // Handle authentication message
+        if (msg.type === 'auth' && msg.token) {
+          try {
+            // Basic JWT decoding (in production, use proper verification)
+            const parts = msg.token.split('.');
+            if (parts.length !== 3) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Invalid token format' }));
+              return;
+            }
+            
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+            const firebaseUid = payload.user_id || payload.sub || payload.uid;
+            
+            if (!firebaseUid) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Invalid token' }));
+              return;
+            }
+            
+            // Look up user in database
+            const user = await firestoreStorage.getUserByFirebaseUid(firebaseUid);
+            
+            if (!user) {
+              ws.send(JSON.stringify({ type: 'error', message: 'User not found' }));
+              return;
+            }
+            
+            // Mark as authenticated and store user ID
+            authenticated = true;
+            userId = user.id;
+            
+            // Register this connection for the user
             if (!connections.has(userId)) {
               connections.set(userId, []);
             }
+            connections.get(userId)?.push(ws);
             
-            // Add this connection to the user's connections
-            const userConnections = connections.get(userId);
-            if (userConnections) {
-              // Check if connection already exists for this user
-              if (!userConnections.includes(ws)) {
-                userConnections.push(ws);
-                console.log(`User ${userId} authenticated on WebSocket`);
-              }
-              
-              // Send confirmation
-              try {
-                ws.send(JSON.stringify({
-                  type: 'auth_success',
-                  message: 'Authentication successful'
-                }));
-              } catch (e) {
-                console.error('Error sending auth success message:', e.message);
-              }
-            }
-          } else {
-            try {
-              ws.send(JSON.stringify({
-                type: 'auth_error',
-                message: 'Authentication failed: missing token or userId'
-              }));
-            } catch (e) {
-              console.error('Error sending auth error message:', e.message);
-            }
+            console.log(`User ${userId} authenticated on WebSocket`);
+            
+            // Send success response
+            ws.send(JSON.stringify({ type: 'auth_success', userId }));
+          } catch (error: any) {
+            console.error('Authentication error:', error);
+            ws.send(JSON.stringify({ type: 'error', message: 'Authentication failed' }));
           }
         }
-      } catch (error) {
-        console.error('Error processing WebSocket message:', error.message);
-        try {
-          ws.send(JSON.stringify({
-            type: 'error',
-            message: 'Failed to process message'
-          }));
-        } catch (e) {
-          console.error('Error sending error message:', e.message);
+        // Other message handlers can be added here
+        else if (!authenticated) {
+          ws.send(JSON.stringify({ type: 'error', message: 'Not authenticated' }));
         }
+        // Handle other message types here (when authenticated)
+      } catch (e) {
+        console.error('Error parsing message:', e);
+        ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
       }
     });
     
-    // Handle connection errors
-    ws.on('error', (error) => {
-      console.error('WebSocket connection error:', error.message);
-    });
-    
-    // Handle connection close
+    // Cleanup when connection closes
     ws.on('close', (code, reason) => {
-      console.log(`WebSocket client disconnected. Code: ${code}, Reason: ${reason || 'No reason provided'}`);
+      clearInterval(pingInterval);
+      clearInterval(heartbeatInterval);
+      console.log(`WebSocket client disconnected. Code: ${code}, Reason: ${reason.toString()}`);
       
-      // Remove connection from all user connections
-      for (const [userId, userConnections] of connections.entries()) {
-        const index = userConnections.indexOf(ws);
-        if (index !== -1) {
-          userConnections.splice(index, 1);
-          console.log(`Removed connection for user ${userId}`);
-          
-          // Clean up empty user connections
-          if (userConnections.length === 0) {
-            connections.delete(userId);
+      // Remove from connections map
+      if (userId) {
+        const userConnections = connections.get(userId);
+        if (userConnections) {
+          const index = userConnections.indexOf(ws);
+          if (index !== -1) {
+            userConnections.splice(index, 1);
+            
+            // If no more connections for this user, remove entry
+            if (userConnections.length === 0) {
+              connections.delete(userId);
+            }
+            
+            console.log(`Removed connection for user ${userId}`);
           }
         }
       }
+    });
+    
+    // Error handling
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
     });
   });
   
