@@ -1,6 +1,13 @@
 // Simplified mock implementation for development
 // This provides in-memory storage for testing without Firebase dependencies
 
+import { v4 as uuidv4 } from 'uuid';
+import { COLLECTIONS } from "@shared/firestore-schema";
+
+// Helper for generating IDs
+const generateId = () => uuidv4();
+
+// Create a single implementation of firestoreStorage for server
 export const firestoreStorage = {
   // In-memory data store for testing
   _data: {
