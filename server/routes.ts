@@ -89,9 +89,17 @@ const requireAuth = async (req: Request, res: Response, next: Function) => {
     
     try {
       // Decode the payload (the middle part)
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+      // Firebase uses URL-safe base64 encoding, so we need to add padding if needed
+      let base64Payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      // Add padding if needed
+      while (base64Payload.length % 4) {
+        base64Payload += '=';
+      }
+      
+      const payload = JSON.parse(Buffer.from(base64Payload, 'base64').toString());
       
       // Extract the Firebase UID from the payload
+      // Firebase uses 'sub' in newer tokens, but might use 'user_id' or 'uid' in others
       const firebaseUid = payload.user_id || payload.sub || payload.uid;
       
       if (!firebaseUid) {
