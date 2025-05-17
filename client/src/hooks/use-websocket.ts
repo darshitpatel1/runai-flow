@@ -79,7 +79,7 @@ export function useWebSocket(options: WebSocketOptions = {}) {
   }, [reconnectAttempts, reconnectInterval]);
   
   // Create WebSocket connection
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     // Don't try to reconnect too quickly to avoid console spam
     const now = Date.now();
     if (now - lastConnectAttempt.current < 5000) {
@@ -101,8 +101,11 @@ export function useWebSocket(options: WebSocketOptions = {}) {
       // Get a valid WebSocket URL
       const wsUrl = getWebSocketUrl();
       
-      // Create the new WebSocket connection
-      const socket = new WebSocket(wsUrl);
+      // Create the new WebSocket connection with query param for token
+      // This helps avoid CORS issues with the WebSocket connection
+      const token = user ? await user.getIdToken() : '';
+      const wsUrlWithToken = `${wsUrl}?token=${encodeURIComponent(token)}`;
+      const socket = new WebSocket(wsUrlWithToken);
       socketRef.current = socket;
       
       // Set up event handlers

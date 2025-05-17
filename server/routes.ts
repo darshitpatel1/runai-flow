@@ -1,8 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from 'ws';
-// Import Firestore storage implementation
-import { firestoreStorage } from "./firestore-storage";
+// Import Firebase Admin storage implementation
+import { firestoreStorage } from "./firestore-admin-storage";
 import { 
   connectorSchema, 
   flowSchema,
@@ -676,7 +676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
       const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
       
-      const rows = await firestoreStorage.getTableRows(tableId, { limit, offset });
+      const rows = await firestoreStorage.getTableRows(tableId, limit, offset);
       res.json(rows);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
