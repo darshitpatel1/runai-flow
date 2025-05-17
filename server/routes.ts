@@ -801,13 +801,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Mark as authenticated and store user ID
             authenticated = true;
-            userId = user.id;
-            
-            // Register this connection for the user
-            if (!connections.has(userId)) {
-              connections.set(userId, []);
+            // Ensure we have a valid user ID (string in Firestore)
+            if (user && user.id) {
+              userId = user.id;
+              
+              // Register this connection for the user
+              const userIdString = userId.toString();
+              if (!connections.has(userIdString)) {
+                connections.set(userIdString, []);
+              }
+              connections.get(userIdString)?.push(ws);
             }
-            connections.get(userId)?.push(ws);
             
             console.log(`User ${userId} authenticated on WebSocket`);
             
