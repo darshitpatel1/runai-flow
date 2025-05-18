@@ -282,6 +282,46 @@ export default function FlowBuilderPage() {
     }
   };
   
+  // Test an individual node
+  const handleTestNode = async (nodeId: string, nodeData: any) => {
+    if (!user || !flow?.id) {
+      throw new Error("Please save the flow before testing nodes");
+    }
+    
+    try {
+      // Get a fresh ID token for authentication
+      const idToken = await user.getIdToken(true);
+      
+      // Make sure we're using proper authentication
+      const response = await fetch(`/api/flows/${id}/nodes/${nodeId}/test`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          nodeData: nodeData,
+          // Include the flow's entire structure so the server has context
+          flowData: {
+            nodes,
+            edges
+          }
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to test node');
+      }
+      
+      return await response.json();
+      
+    } catch (error: any) {
+      console.error("Error testing node:", error);
+      throw error;
+    }
+  };
+
   return (
     <AppLayout>
       <div className="flex flex-col h-full overflow-hidden">
@@ -342,6 +382,7 @@ export default function FlowBuilderPage() {
               onEdgesChange={setEdges}
               connectors={connectors}
               flowId={id}
+              onTestNode={handleTestNode}
             />
             
             {/* Execution Progress Panel */}

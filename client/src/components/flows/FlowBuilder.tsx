@@ -64,6 +64,7 @@ interface FlowBuilderProps {
   onEdgesChange: (edges: any[]) => void;
   connectors: any[];
   flowId?: string;
+  onTestNode?: (nodeId: string, nodeData: any) => Promise<any>;
 }
 
 export function FlowBuilder({ 
@@ -72,7 +73,8 @@ export function FlowBuilder({
   onNodesChange: reportNodesChange,
   onEdgesChange: reportEdgesChange,
   connectors,
-  flowId
+  flowId,
+  onTestNode
 }: FlowBuilderProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   // Use regular state for more control over node position handling
