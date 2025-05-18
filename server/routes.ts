@@ -79,28 +79,37 @@ const requireAuth = async (req: Request, res: Response, next: Function) => {
     // For a real Firebase implementation, we'd use admin.auth().verifyIdToken(token)
     // But for simplicity, we'll extract the Firebase UID from the token payload
     
-    // Firebase tokens are JWTs, so we can decode them
-    // without verification for this development implementation
-    // The format is: header.payload.signature
+    let firebaseUid;
+    
+    // Check if token is a JWT (has 3 parts separated by dots)
     const parts = token.split('.');
-    if (parts.length !== 3) {
-      return res.status(401).json({ error: 'Invalid token format' });
+    if (parts.length === 3) {
+      // Token appears to be a JWT, try to decode it
+      try {
+        // Decode the payload (the middle part)
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+        
+        // Extract the Firebase UID from various possible fields in the payload
+        firebaseUid = payload.user_id || payload.sub || payload.uid;
+        
+        console.log('Extracted Firebase UID from token:', firebaseUid);
+        
+        if (!firebaseUid) {
+          return res.status(401).json({ error: 'Could not extract user ID from token' });
+        }
+      } catch (decodeError) {
+        console.error('Error decoding JWT token:', decodeError);
+        // If decoding fails, try using the token directly as the UID
+        firebaseUid = token;
+      }
+    } else {
+      // Token is not a JWT, try using it directly as the Firebase UID
+      console.log('Using raw token as Firebase UID');
+      firebaseUid = token;
     }
     
-    try {
-      // Decode the payload (the middle part)
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-      
-      // Extract the Firebase UID from the payload
-      const firebaseUid = payload.user_id || payload.sub || payload.uid;
-      
-      if (!firebaseUid) {
-        return res.status(401).json({ error: 'Could not extract user ID from token' });
-      }
-      
-      // Look up the user by Firebase UID
-      const user = await storage.getUserByFirebaseUid(firebaseUid);
-      
+    // Look up the user by Firebase UID
+    const user = await storage.getUserByFirebaseUid(firebaseUid);
       if (!user) {
         // For development purposes, if the user doesn't exist, we'll create them
         // This helps with testing and development when the frontend and backend states get out of sync
@@ -1112,25 +1121,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (data.type === 'auth') {
           const { token, userId } = data;
           if (token && userId) {
+            // We'll extract a Firebase UID from the token similar to our requireAuth middleware
+            let firebaseUid = userId; // Default to using userId directly
+            
+            // If token looks like a JWT (contains dots), try to decode it
+            if (token.includes('.')) {
+              try {
+                const parts = token.split('.');
+                if (parts.length === 3) {
+                  // Decode JWT payload
+                  const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+                  // Extract UID from payload
+                  const tokenUid = payload.user_id || payload.sub || payload.uid;
+                  if (tokenUid) {
+                    firebaseUid = tokenUid;
+                    console.log(`WebSocket: Extracted user ID ${firebaseUid} from token`);
+                  }
+                }
+              } catch (err) {
+                console.warn('WebSocket: Failed to parse token, using provided userId', err);
+                // Continue with userId as firebaseUid
+              }
+            }
+            
             // Store connection by user ID
-            if (!connections.has(userId)) {
-              connections.set(userId, []);
+            if (!connections.has(firebaseUid)) {
+              connections.set(firebaseUid, []);
             }
             
             // Add this connection to the user's connections
-            const userConnections = connections.get(userId);
+            const userConnections = connections.get(firebaseUid);
             if (userConnections) {
               // Check if connection already exists for this user
               if (!userConnections.includes(ws)) {
                 userConnections.push(ws);
-                console.log(`User ${userId} authenticated on WebSocket`);
+                // Store the userId on the websocket object for reference
+                // @ts-ignore - add userId to ws
+                ws.userId = firebaseUid;
+                console.log(`User ${firebaseUid} authenticated on WebSocket`);
               }
               
               // Send confirmation
               try {
                 ws.send(JSON.stringify({
                   type: 'auth_success',
-                  message: 'Authentication successful'
+                  message: 'Authentication successful',
+                  userId: firebaseUid
                 }));
               } catch (e) {
                 console.error('Error sending auth success message:', e.message);
