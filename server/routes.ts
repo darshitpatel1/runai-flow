@@ -110,32 +110,29 @@ const requireAuth = async (req: Request, res: Response, next: Function) => {
     
     // Look up the user by Firebase UID
     const user = await storage.getUserByFirebaseUid(firebaseUid);
-      if (!user) {
-        // For development purposes, if the user doesn't exist, we'll create them
-        // This helps with testing and development when the frontend and backend states get out of sync
-        console.log(`User with Firebase UID ${firebaseUid} not found in database, creating...`);
-        if (payload.email) {
-          const newUser = await storage.createUser({
-            firebaseUid,
-            email: payload.email,
-            displayName: payload.name || '',
-            photoUrl: payload.picture || ''
-          });
-          (req as any).user = newUser;
-          next();
-          return;
-        } else {
-          return res.status(401).json({ error: 'User not found and could not auto-create user' });
-        }
+    if (!user) {
+      // For development purposes, if the user doesn't exist, we'll create a basic one
+      // This helps with testing and development when the frontend and backend states get out of sync
+      console.log(`User with Firebase UID ${firebaseUid} not found in database, creating...`);
+      try {
+        const newUser = await storage.createUser({
+          firebaseUid,
+          email: `${firebaseUid}@example.com`,
+          displayName: `User-${firebaseUid.substring(0, 6)}`,
+          photoUrl: ''
+        });
+        (req as any).user = newUser;
+        next();
+        return;
+      } catch (createError) {
+        console.error('Error creating user:', createError);
+        return res.status(401).json({ error: 'User not found and could not auto-create user' });
       }
-      
-      // Attach user to request object for later use
-      (req as any).user = user;
-      next();
-    } catch (decodeError: any) {
-      console.error('Error decoding JWT token:', decodeError);
-      return res.status(401).json({ error: 'Invalid token' });
     }
+    
+    // Attach user to request object for later use
+    (req as any).user = user;
+    next();
   } catch (error: any) {
     console.error('Authentication error:', error);
     return res.status(401).json({ error: error.message || 'Authentication failed' });
