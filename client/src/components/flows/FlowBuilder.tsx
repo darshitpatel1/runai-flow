@@ -641,18 +641,18 @@ export function FlowBuilder({
       }
       
       // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Generate a response based on the connector and method
-      if (nodeData.connector) {
-        // OAuth connectors (simulate successful authentication)
-        const responseLog = {
-          timestamp: new Date(),
-          type: "success",
-          nodeId: node.id,
-          message: `Response: 200 OK (authenticated with ${nodeData.connector})`
-        };
-        setLogs((logs) => [...logs, responseLog]);
+      return new Promise(resolve => {
+        setTimeout(() => {
+          // Generate a response based on the connector and method
+          if (nodeData.connector) {
+            // OAuth connectors (simulate successful authentication)
+            const responseLog = {
+              timestamp: new Date(),
+              type: "success",
+              nodeId: node.id,
+              message: `Response: 200 OK (authenticated with ${nodeData.connector})`
+            };
+            setLogs((logs) => [...logs, responseLog]);
         
         // Add mock response data with more realistic schema
         if (nodeData.connector === 'workday' && nodeData.body && nodeData.body.includes('locationType')) {
