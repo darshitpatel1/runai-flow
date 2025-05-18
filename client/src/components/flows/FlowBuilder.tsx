@@ -163,7 +163,18 @@ export function FlowBuilder({
       lastUpdateTime = now;
       
       // Apply changes with minimal spreading/copying
-      setNodes(nds => applyNodeChanges(changes, nds));
+      setNodes(nds => {
+        const updatedNodes = applyNodeChanges(changes, nds);
+        
+        // Report all node changes to parent for saving to Firestore
+        if (reportNodesChange && typeof reportNodesChange === 'function') {
+          console.log("Reporting regular node changes to parent");
+          // Use setTimeout to ensure this happens after the state update
+          setTimeout(() => reportNodesChange(updatedNodes), 10);
+        }
+        
+        return updatedNodes;
+      });
       
     } catch (error) {
       console.error("Error in onNodesChange:", error);
