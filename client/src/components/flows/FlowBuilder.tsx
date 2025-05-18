@@ -11,53 +11,33 @@ import ReactFlow, {
   applyEdgeChanges,
   NodeChange,
   EdgeChange,
-  useReactFlow,
   Node
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-
 import { NodePanel } from "./NodePanel";
 import { NodeConfiguration } from "./NodeConfiguration";
 import { NodeContextMenu } from "./NodeContextMenu";
 import { ConsoleOutput, LogMessage } from "./ConsoleOutput";
 import { useToast } from "@/hooks/use-toast";
-// Define the node types directly here instead of importing
+import {
+  HttpRequestNode,
+  SetVariableNode,
+  IfElseNode,
+  LogNode,
+  DelayNode,
+  LoopNode,
+  StopJobNode
+} from "./SimpleNode";
+
+// Define custom node types
 const nodeTypes = {
-  httpRequest: ({ data }: { data: any }) => (
-    <div className="bg-white dark:bg-gray-800 shadow-md rounded-md p-3 border border-gray-300 dark:border-gray-700">
-      <div className="font-medium text-gray-900 dark:text-gray-100">{data?.label || 'HTTP Request'}</div>
-    </div>
-  ),
-  setVariable: ({ data }: { data: any }) => (
-    <div className="bg-white dark:bg-gray-800 shadow-md rounded-md p-3 border border-gray-300 dark:border-gray-700">
-      <div className="font-medium text-gray-900 dark:text-gray-100">{data?.label || 'Set Variable'}</div>
-    </div>
-  ),
-  ifElse: ({ data }: { data: any }) => (
-    <div className="bg-white dark:bg-gray-800 shadow-md rounded-md p-3 border border-gray-300 dark:border-gray-700">
-      <div className="font-medium text-gray-900 dark:text-gray-100">{data?.label || 'If/Else'}</div>
-    </div>
-  ),
-  logMessage: ({ data }: { data: any }) => (
-    <div className="bg-white dark:bg-gray-800 shadow-md rounded-md p-3 border border-gray-300 dark:border-gray-700">
-      <div className="font-medium text-gray-900 dark:text-gray-100">{data?.label || 'Log'}</div>
-    </div>
-  ),
-  delay: ({ data }: { data: any }) => (
-    <div className="bg-white dark:bg-gray-800 shadow-md rounded-md p-3 border border-gray-300 dark:border-gray-700">
-      <div className="font-medium text-gray-900 dark:text-gray-100">{data?.label || 'Delay'}</div>
-    </div>
-  ),
-  loop: ({ data }: { data: any }) => (
-    <div className="bg-white dark:bg-gray-800 shadow-md rounded-md p-3 border border-gray-300 dark:border-gray-700">
-      <div className="font-medium text-gray-900 dark:text-gray-100">{data?.label || 'Loop'}</div>
-    </div>
-  ),
-  stopJob: ({ data }: { data: any }) => (
-    <div className="bg-white dark:bg-gray-800 shadow-md rounded-md p-3 border border-gray-300 dark:border-gray-700">
-      <div className="font-medium text-gray-900 dark:text-gray-100">{data?.label || 'Stop Job'}</div>
-    </div>
-  )
+  httpRequest: HttpRequestNode,
+  setVariable: SetVariableNode,
+  ifElse: IfElseNode,
+  log: LogNode,
+  delay: DelayNode,
+  loop: LoopNode,
+  stopJob: StopJobNode
 };
 
 interface FlowBuilderProps {
@@ -220,38 +200,156 @@ export function FlowBuilder({
     });
   }, [toast]);
 
-  // Handle testing a node
-  const handleTestNode = useCallback(async (nodeId: string, nodeData: any) => {
-    if (!onTestNode) {
-      toast({
-        title: "Test not available",
-        description: "No test function provided",
-        variant: "destructive"
-      });
-      return null;
-    }
+  // Skip a node (keep it in the flow but mark it as skipped)
+  const skipNode = useCallback((nodeId: string) => {
+    // Close the context menu
+    setContextMenuNodeId(null);
+    setContextMenuPosition(null);
+    
+    // Mark the node as skipped
+    setNodes((nodes) =>
+      nodes.map((node) => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              skipped: !node.data.skipped,
+            },
+            style: {
+              ...node.style,
+              opacity: node.data.skipped ? 1 : 0.5,
+            },
+          };
+        }
+        return node;
+      })
+    );
+    
+    toast({
+      title: "Node status updated",
+      description: "The node will be skipped during execution",
+    });
+  }, [toast]);
 
+  // Helper function to generate log entries
+  const addLogEntry = useCallback((message: string, type: string = "info", nodeId?: string) => {
+    const logEntry: LogMessage = {
+      timestamp: new Date(),
+      type,
+      message,
+      nodeId
+    };
+    
+    setLogs(logs => [...logs, logEntry]);
+  }, []);
+
+  // Test an HTTP request node
+  const testHttpNode = useCallback(async (nodeId: string, nodeData: any) => {
     setIsTestRunning(true);
     setLogs([]);
-
+    
+    // Add start log
+    addLogEntry(`Testing HTTP request to ${nodeData.url || "unknown URL"}`, "info", nodeId);
+    
     try {
-      // Call the test function passed from parent
-      const result = await onTestNode(nodeId, nodeData);
+      // Log request details
+      if (nodeData.url) {
+        addLogEntry(`URL: ${nodeData.url}`, "info", nodeId);
+      }
+      
+      if (nodeData.method) {
+        addLogEntry(`Method: ${nodeData.method}`, "info", nodeId);
+      }
+      
+      if (nodeData.body) {
+        addLogEntry(`Body: ${nodeData.body}`, "info", nodeId);
+      }
+      
+      // Call the test function if provided
+      let result;
+      if (onTestNode) {
+        result = await onTestNode(nodeId, nodeData);
+        addLogEntry(`Response received: ${JSON.stringify(result, null, 2)}`, "success", nodeId);
+      } else {
+        // Generate mock response if no test function provided
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        result = {
+          success: true,
+          data: {
+            id: "mock-123",
+            status: "success",
+            message: "This is a mock response for testing"
+          }
+        };
+        addLogEntry(`Mock response: ${JSON.stringify(result, null, 2)}`, "success", nodeId);
+      }
+      
       return result;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error testing node:", error);
+      addLogEntry(`Error: ${error.message || "Unknown error"}`, "error", nodeId);
+      
       toast({
         title: "Test failed",
-        description: error instanceof Error ? error.message : "Unknown error",
+        description: error.message || "An error occurred during testing",
         variant: "destructive"
       });
+      
       return null;
     } finally {
       setIsTestRunning(false);
     }
-  }, [onTestNode, toast]);
+  }, [onTestNode, addLogEntry, toast]);
 
-  // Handle clicking on the pane to close the node configuration
+  // Handle testing different node types
+  const handleTestNode = useCallback(async (nodeId: string, nodeData: any) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return null;
+    
+    // Different testing logic based on node type
+    switch (node.type) {
+      case 'httpRequest':
+        return testHttpNode(nodeId, nodeData);
+      
+      case 'setVariable':
+        setIsTestRunning(true);
+        setLogs([]);
+        addLogEntry(`Testing Set Variable node`, "info", nodeId);
+        addLogEntry(`Variable name: ${nodeData.variableName || "unnamed"}`, "info", nodeId);
+        addLogEntry(`Value: ${nodeData.value || "undefined"}`, "info", nodeId);
+        
+        setTimeout(() => {
+          addLogEntry(`Variable set successfully`, "success", nodeId);
+          setIsTestRunning(false);
+        }, 1000);
+        
+        return { success: true, variableName: nodeData.variableName, value: nodeData.value };
+        
+      case 'log':
+        setIsTestRunning(true);
+        setLogs([]);
+        addLogEntry(`Testing Log node`, "info", nodeId);
+        addLogEntry(`Message: ${nodeData.message || "No message"}`, "info", nodeId);
+        
+        setTimeout(() => {
+          addLogEntry(`Log message processed`, "success", nodeId);
+          setIsTestRunning(false);
+        }, 1000);
+        
+        return { success: true, message: nodeData.message };
+        
+      default:
+        toast({
+          title: "Test not implemented",
+          description: `Testing for ${node.type} nodes is not implemented yet`,
+          variant: "destructive"
+        });
+        return null;
+    }
+  }, [nodes, testHttpNode, addLogEntry, toast]);
+
+  // Handle clicking on a node
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     setSelectedNode(node);
   }, []);
@@ -311,7 +409,7 @@ export function FlowBuilder({
               <NodeContextMenu
                 nodeId={contextMenuNodeId}
                 onDelete={deleteNode}
-                onSkip={() => {}}
+                onSkip={skipNode}
               />
             </div>
           )}
