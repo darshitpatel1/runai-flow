@@ -12,7 +12,8 @@ import ReactFlow, {
   NodeChange,
   useReactFlow,
   getConnectedEdges,
-  Node
+  Node,
+  ReactFlowProvider
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useToast } from "@/hooks/use-toast";

@@ -4,7 +4,7 @@ import { doc, collection, getDoc, addDoc, updateDoc, getDocs } from "firebase/fi
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { FlowBuilder } from "@/components/flows/FlowBuilder";
+import { FlowBuilder, FlowBuilderWithProvider } from "@/components/flows/FlowBuilder";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SaveIcon, PlayIcon } from "lucide-react";
@@ -375,7 +375,7 @@ export default function FlowBuilderPage() {
         <div className="flex-1 flex overflow-hidden" style={{ height: 'calc(100% - 4rem)' }}>
           {/* Main Flow Builder */}
           <div className="flex-1 relative">
-            <FlowBuilder
+            <FlowBuilderWithProvider
               initialNodes={nodes}
               initialEdges={edges}
               onNodesChange={setNodes}
