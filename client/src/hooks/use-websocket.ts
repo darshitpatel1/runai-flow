@@ -135,10 +135,7 @@ export function useWebSocket(options: WebSocketOptions = {}) {
       };
       
       socket.onclose = (event: CloseEvent) => {
-        // Only log clean closures, not connection errors which are too noisy
-        if (event.wasClean) {
-          console.log('WebSocket connection closed cleanly');
-        }
+        console.log(`WebSocket connection closed: code=${event.code}, reason=${event.reason || 'no reason'}, wasClean=${event.wasClean}`);
         
         setIsConnected(false);
         
@@ -146,8 +143,13 @@ export function useWebSocket(options: WebSocketOptions = {}) {
         
         // Use a more aggressive reconnect strategy
         if (autoReconnect) {
-          // Even if it was clean, still try to reconnect
-          attemptReconnect();
+          // Don't reconnect on normal closure (1000)
+          if (event.code !== 1000) {
+            console.log('Attempting to reconnect to WebSocket server...');
+            attemptReconnect();
+          } else {
+            console.log('Normal WebSocket closure, not reconnecting');
+          }
         }
       };
       
