@@ -8,7 +8,6 @@ import ReactFlow, {
   Node,
   ReactFlowProvider,
   useReactFlow,
-  NodeTypes,
   applyNodeChanges as applyReactFlowNodeChanges,
   applyEdgeChanges as applyReactFlowEdgeChanges
 } from 'reactflow';
@@ -98,13 +97,13 @@ export function FlowBuilder({
     
     setNodes((nds) => {
       // Apply the changes to the nodes
-      let updatedNodes = applyNodeChanges(snappedChanges, nds);
+      const updatedNodes = applyReactFlowNodeChanges(snappedChanges, nds);
       
       // For node selection changes, update the selectedNode state
       const selectionChanges = changes.filter(change => change.type === 'select');
       
       if (selectionChanges.length > 0) {
-        const selectedNodes = updatedNodes.filter(node => node.selected);
+        const selectedNodes = updatedNodes.filter((node) => node.selected);
         
         if (selectedNodes.length === 1) {
           setSelectedNode(selectedNodes[0]);
@@ -242,6 +241,7 @@ export function FlowBuilder({
           snapToGrid
           snapGrid={[gridSize, gridSize]}
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+          nodeTypes={{}}
         >
           <Background />
           <Controls />
