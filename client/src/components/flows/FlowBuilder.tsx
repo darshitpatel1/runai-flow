@@ -579,12 +579,28 @@ export function FlowBuilder({
     setSelectedNode(null);
   }, []);
   
+  // Node testing function that connects to the server endpoint
+  const testNode = useCallback(async (nodeId: string, nodeData: any) => {
+    if (!onTestNode) {
+      throw new Error("Test node functionality is not available");
+    }
+    
+    try {
+      // Forward the test request to the parent component that handles API calls
+      const result = await onTestNode(nodeId, nodeData);
+      return result;
+    } catch (error: any) {
+      console.error("Error testing node:", error);
+      throw error;
+    }
+  }, [onTestNode]);
+  
   const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
     setEdges((eds) => eds.filter((e) => e.id !== edge.id));
   }, [setEdges]);
   
-  // Test a node in isolation
-  const testNode = useCallback(async (nodeId: string, nodeData: any) => {
+  // Legacy simulation function - keeping for reference
+  const simulateNodeTest = useCallback(async (nodeId: string, nodeData: any) => {
     // Find the node by ID
     const node = nodes.find(n => n.id === nodeId);
     if (!node) {
