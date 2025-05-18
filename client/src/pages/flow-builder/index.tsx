@@ -123,12 +123,17 @@ export default function FlowBuilderPage() {
       setAutoSaving(true);
       
       try {
+        // Properly serialize the data to ensure Firestore compatibility
+        const serializedNodes = JSON.parse(JSON.stringify(nodes));
+        const serializedEdges = JSON.parse(JSON.stringify(edges));
+        
         const flowData = {
-          nodes,
-          edges,
+          nodes: serializedNodes,
+          edges: serializedEdges,
           updatedAt: new Date()
         };
         
+        console.log("Auto-saving with data:", flowData);
         const flowRef = doc(db, "users", user.uid, "flows", id);
         await updateDoc(flowRef, flowData);
         
@@ -156,11 +161,15 @@ export default function FlowBuilderPage() {
     setSaving(true);
     
     try {
+      // Properly serialize nodes and edges to ensure they're Firestore-compatible
+      const serializedNodes = JSON.parse(JSON.stringify(nodes));
+      const serializedEdges = JSON.parse(JSON.stringify(edges));
+      
       const flowData = {
         name: flowName,
         description: flowDescription,
-        nodes,
-        edges,
+        nodes: serializedNodes,
+        edges: serializedEdges,
         updatedAt: new Date()
       };
       
