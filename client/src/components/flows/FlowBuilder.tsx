@@ -1218,7 +1218,7 @@ export function FlowBuilder({
                 }}
                 
                 // More intuitive connections
-                connectionMode="strict"
+                connectionMode={"strict" as any}
                 
                 // Key controls
                 selectNodesOnDrag={false}
