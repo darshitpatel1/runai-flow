@@ -132,13 +132,13 @@ const requireAuth = async (req: Request, res: Response, next: Function) => {
       // Attach user to request object for later use
       (req as any).user = user;
       next();
-    } catch (error) {
-      console.error('Error decoding JWT token:', error);
+    } catch (decodeError: any) {
+      console.error('Error decoding JWT token:', decodeError);
       return res.status(401).json({ error: 'Invalid token' });
     }
   } catch (error: any) {
     console.error('Authentication error:', error);
-    return res.status(401).json({ error: error.message });
+    return res.status(401).json({ error: error.message || 'Authentication failed' });
   }
 };
 
