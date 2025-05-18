@@ -234,13 +234,17 @@ export default function FlowBuilderPage() {
     setTesting(true);
     
     try {
+      // Get an ID token from Firebase for authentication
+      const idToken = await user.getIdToken(true);
+      console.log("Using auth token for flow execution");
+      
       // Use the API endpoint to execute the flow
       // This will trigger real-time updates through WebSockets
       const response = await fetch(`/api/flows/${id}/execute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.uid}`
+          'Authorization': `Bearer ${idToken}`
         },
         body: JSON.stringify({
           input: {

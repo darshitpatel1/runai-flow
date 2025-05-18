@@ -106,18 +106,29 @@ export function useWebSocket(options: WebSocketOptions = {}) {
       socketRef.current = socket;
       
       // Set up event handlers
-      socket.onopen = () => {
+      socket.onopen = async () => {
         console.log('WebSocket connection established');
         setIsConnected(true);
         reconnectAttemptsRef.current = 0;
         
-        // Authenticate the connection by sending user info
+        // Authenticate the connection by sending user info with a proper token
         if (user) {
-          socket.send(JSON.stringify({
-            type: 'auth',
-            token: user.uid, // Using Firebase UID as token
-            userId: user.uid
-          }));
+          try {
+            // Get a fresh Firebase ID token for proper authentication
+            const idToken = await user.getIdToken(true);
+            
+            // Only send if socket is still open
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({
+                type: 'auth',
+                token: idToken, // Using Firebase ID token instead of UID
+                userId: user.uid
+              }));
+              console.log('WebSocket authenticated with Firebase token');
+            }
+          } catch (error) {
+            console.error('Failed to get auth token for WebSocket:', error);
+          }
         }
         
         if (onOpen) onOpen();
