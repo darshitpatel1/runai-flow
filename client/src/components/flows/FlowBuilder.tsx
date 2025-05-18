@@ -182,21 +182,32 @@ export function FlowBuilder({
   useEffect(() => {
     // Initial nodes loaded
     if (initialNodes && initialNodes.length > 0) {
-      // Create a deep copy to prevent reference issues
-      const nodesCopy = JSON.parse(JSON.stringify(initialNodes));
+      console.log("Initial nodes data received in Flow Builder:", initialNodes);
       
-      // Ensure nodes have stable positions with positionAbsolute
-      const stabilizedNodes = nodesCopy.map((node: any) => ({
-        ...node,
-        // Ensure positionAbsolute matches position to prevent movement
-        positionAbsolute: node.positionAbsolute || node.position,
-        // Prevent node from being selected on load
-        selected: false,
-        // Prevent node from being in dragging state
-        dragging: false
-      }));
-      
-      setNodes(stabilizedNodes);
+      try {
+        // Create a deep copy to prevent reference issues
+        const nodesCopy = JSON.parse(JSON.stringify(initialNodes));
+        
+        // Ensure nodes have stable positions with positionAbsolute
+        const stabilizedNodes = nodesCopy.map((node: any) => ({
+          ...node,
+          // Ensure positionAbsolute matches position to prevent movement
+          positionAbsolute: node.positionAbsolute || node.position,
+          // Prevent node from being selected on load
+          selected: false,
+          // Prevent node from being in dragging state
+          dragging: false
+        }));
+        
+        console.log("Setting processed nodes:", stabilizedNodes);
+        setNodes(stabilizedNodes);
+      } catch (error) {
+        console.error("Error processing initial nodes:", error);
+        // Fallback to using the original nodes without processing if there's an error
+        setNodes(initialNodes);
+      }
+    } else {
+      console.log("No initial nodes to load or empty array received");
     }
   }, [initialNodes, setNodes]);
   
@@ -384,6 +395,12 @@ export function FlowBuilder({
         setNodes((nds) => {
           // First add the new node to the graph
           const updatedNodes = nds.concat(newNode);
+          
+          // Make sure to report this change to the parent component for saving
+          if (reportNodesChange) {
+            console.log("Reporting node added to parent:", updatedNodes);
+            setTimeout(() => reportNodesChange(updatedNodes), 0);
+          }
           
           // Create a connection with a slight delay to ensure node rendering is complete
           if (nds && nds.length > 0) {
