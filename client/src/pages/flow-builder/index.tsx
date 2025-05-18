@@ -24,8 +24,10 @@ export default function FlowBuilderPage() {
   const [edges, setEdges] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [autoSaving, setAutoSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [connectors, setConnectors] = useState<any[]>([]);
+  const [lastSavedState, setLastSavedState] = useState<{nodes: any[], edges: any[]}>({nodes: [], edges: []});
   
   // Fetch flow data if id exists, or initialize new flow
   useEffect(() => {
@@ -64,6 +66,12 @@ export default function FlowBuilderPage() {
             // Update state
             setNodes(savedNodes);
             setEdges(savedEdges);
+            
+            // Save the initial state to compare for autosave
+            setLastSavedState({
+              nodes: savedNodes,
+              edges: savedEdges
+            });
           } else {
             toast({
               title: "Flow not found",
@@ -86,6 +94,62 @@ export default function FlowBuilderPage() {
     fetchFlowData();
   }, [id, user, toast]);
   
+  // Auto-save flow when nodes or edges change
+  useEffect(() => {
+    // Don't try to autosave if:
+    // - The flow is still loading
+    // - There's no user logged in
+    // - There's no flow id (new unsaved flow)
+    // - Manual save is already in progress
+    // - No meaningful changes compared to last saved state
+    if (
+      loading || 
+      !user || 
+      !id || 
+      !flow || 
+      saving || 
+      autoSaving ||
+      (
+        JSON.stringify(lastSavedState.nodes) === JSON.stringify(nodes) && 
+        JSON.stringify(lastSavedState.edges) === JSON.stringify(edges)
+      )
+    ) {
+      return;
+    }
+    
+    // Debounce auto-save (wait 2 seconds after last change before saving)
+    const autoSaveTimer = setTimeout(async () => {
+      console.log("Auto-saving flow changes...");
+      setAutoSaving(true);
+      
+      try {
+        const flowData = {
+          nodes,
+          edges,
+          updatedAt: new Date()
+        };
+        
+        const flowRef = doc(db, "users", user.uid, "flows", id);
+        await updateDoc(flowRef, flowData);
+        
+        setLastSavedState({
+          nodes,
+          edges
+        });
+        
+        console.log("Flow auto-saved successfully");
+      } catch (error: any) {
+        console.error("Error auto-saving flow:", error);
+        // Don't show toast for auto-save errors to avoid disrupting the user
+      } finally {
+        setAutoSaving(false);
+      }
+    }, 2000);
+    
+    // Clear the timeout if the component unmounts or if nodes/edges change again
+    return () => clearTimeout(autoSaveTimer);
+  }, [nodes, edges, user, id, flow, loading, saving, autoSaving, lastSavedState]);
+  
   const handleSaveFlow = async () => {
     if (!user) return;
     
@@ -105,6 +169,12 @@ export default function FlowBuilderPage() {
         const flowRef = doc(db, "users", user.uid, "flows", id);
         await updateDoc(flowRef, flowData);
         
+        // Update last saved state to avoid immediate auto-save
+        setLastSavedState({
+          nodes,
+          edges
+        });
+        
         toast({
           title: "Flow updated",
           description: "Flow has been saved successfully",
@@ -119,6 +189,12 @@ export default function FlowBuilderPage() {
         });
         
         setFlow({ id: newFlow.id, ...flowData, createdAt: new Date() });
+        
+        // Update last saved state
+        setLastSavedState({
+          nodes,
+          edges
+        });
         
         toast({
           title: "Flow created",
