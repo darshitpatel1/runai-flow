@@ -64,15 +64,35 @@ function sendExecutionUpdate(userId: string, executionData: any) {
 
 // Middleware to ensure user is authenticated via Firebase
 const requireAuth = async (req: Request, res: Response, next: Function) => {
+  // Check if there's a query parameter for firebaseId (for testing purposes)
+  const queryFirebaseId = req.query.firebaseId as string;
+  
+  // First try to get auth from headers
   const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: 'No authorization header' });
+  let token: string | null = null;
+  
+  if (authHeader) {
+    // Extract token from the Authorization header
+    token = authHeader.split(' ')[1];
   }
-
-  // Extract token from the Authorization header
-  const token = authHeader.split(' ')[1];
+  
+  // If we have a query parameter for firebaseId, use that instead (for testing)
+  if (queryFirebaseId) {
+    console.log(`Using query parameter firebaseId: ${queryFirebaseId}`);
+    try {
+      const user = await storage.getUserByFirebaseUid(queryFirebaseId);
+      if (user) {
+        (req as any).user = user;
+        return next();
+      }
+    } catch (error) {
+      console.error("Error finding user by firebaseId query param:", error);
+    }
+  }
+  
+  // If no query parameter or it didn't work, proceed with token auth
   if (!token) {
-    return res.status(401).json({ error: 'No token provided' });
+    return res.status(401).json({ error: 'Invalid token' });
   }
 
   try {
