@@ -106,36 +106,28 @@ export function useWebSocket(options: WebSocketOptions = {}) {
       socketRef.current = socket;
       
       // Set up event handlers
-      socket.onopen = async () => {
+      socket.onopen = () => {
         console.log('WebSocket connection established');
         setIsConnected(true);
         reconnectAttemptsRef.current = 0;
         
-        // Authenticate the connection by sending user info with a proper token
+        // Authenticate the connection by sending user info
         if (user) {
-          try {
-            // Get a fresh Firebase ID token for proper authentication
-            const idToken = await user.getIdToken(true);
-            
-            // Only send if socket is still open
-            if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({
-                type: 'auth',
-                token: idToken, // Using Firebase ID token instead of UID
-                userId: user.uid
-              }));
-              console.log('WebSocket authenticated with Firebase token');
-            }
-          } catch (error) {
-            console.error('Failed to get auth token for WebSocket:', error);
-          }
+          socket.send(JSON.stringify({
+            type: 'auth',
+            token: user.uid, // Using Firebase UID as token
+            userId: user.uid
+          }));
         }
         
         if (onOpen) onOpen();
       };
       
       socket.onclose = (event: CloseEvent) => {
-        console.log(`WebSocket connection closed: code=${event.code}, reason=${event.reason || 'no reason'}, wasClean=${event.wasClean}`);
+        // Only log clean closures, not connection errors which are too noisy
+        if (event.wasClean) {
+          console.log('WebSocket connection closed cleanly');
+        }
         
         setIsConnected(false);
         
@@ -143,13 +135,8 @@ export function useWebSocket(options: WebSocketOptions = {}) {
         
         // Use a more aggressive reconnect strategy
         if (autoReconnect) {
-          // Don't reconnect on normal closure (1000)
-          if (event.code !== 1000) {
-            console.log('Attempting to reconnect to WebSocket server...');
-            attemptReconnect();
-          } else {
-            console.log('Normal WebSocket closure, not reconnecting');
-          }
+          // Even if it was clean, still try to reconnect
+          attemptReconnect();
         }
       };
       

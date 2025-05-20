@@ -79,63 +79,57 @@ const requireAuth = async (req: Request, res: Response, next: Function) => {
     // For a real Firebase implementation, we'd use admin.auth().verifyIdToken(token)
     // But for simplicity, we'll extract the Firebase UID from the token payload
     
-    let firebaseUid;
-    
-    // Check if token is a JWT (has 3 parts separated by dots)
+    // Firebase tokens are JWTs, so we can decode them
+    // without verification for this development implementation
+    // The format is: header.payload.signature
     const parts = token.split('.');
-    if (parts.length === 3) {
-      // Token appears to be a JWT, try to decode it
-      try {
-        // Decode the payload (the middle part)
-        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-        
-        // Extract the Firebase UID from various possible fields in the payload
-        firebaseUid = payload.user_id || payload.sub || payload.uid;
-        
-        console.log('Extracted Firebase UID from token:', firebaseUid);
-        
-        if (!firebaseUid) {
-          return res.status(401).json({ error: 'Could not extract user ID from token' });
+    if (parts.length !== 3) {
+      return res.status(401).json({ error: 'Invalid token format' });
+    }
+    
+    try {
+      // Decode the payload (the middle part)
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+      
+      // Extract the Firebase UID from the payload
+      const firebaseUid = payload.user_id || payload.sub || payload.uid;
+      
+      if (!firebaseUid) {
+        return res.status(401).json({ error: 'Could not extract user ID from token' });
+      }
+      
+      // Look up the user by Firebase UID
+      const user = await storage.getUserByFirebaseUid(firebaseUid);
+      
+      if (!user) {
+        // For development purposes, if the user doesn't exist, we'll create them
+        // This helps with testing and development when the frontend and backend states get out of sync
+        console.log(`User with Firebase UID ${firebaseUid} not found in database, creating...`);
+        if (payload.email) {
+          const newUser = await storage.createUser({
+            firebaseUid,
+            email: payload.email,
+            displayName: payload.name || '',
+            photoUrl: payload.picture || ''
+          });
+          (req as any).user = newUser;
+          next();
+          return;
+        } else {
+          return res.status(401).json({ error: 'User not found and could not auto-create user' });
         }
-      } catch (decodeError) {
-        console.error('Error decoding JWT token:', decodeError);
-        // If decoding fails, try using the token directly as the UID
-        firebaseUid = token;
       }
-    } else {
-      // Token is not a JWT, try using it directly as the Firebase UID
-      console.log('Using raw token as Firebase UID');
-      firebaseUid = token;
+      
+      // Attach user to request object for later use
+      (req as any).user = user;
+      next();
+    } catch (error) {
+      console.error('Error decoding JWT token:', error);
+      return res.status(401).json({ error: 'Invalid token' });
     }
-    
-    // Look up the user by Firebase UID
-    const user = await storage.getUserByFirebaseUid(firebaseUid);
-    if (!user) {
-      // For development purposes, if the user doesn't exist, we'll create a basic one
-      // This helps with testing and development when the frontend and backend states get out of sync
-      console.log(`User with Firebase UID ${firebaseUid} not found in database, creating...`);
-      try {
-        const newUser = await storage.createUser({
-          firebaseUid,
-          email: `${firebaseUid}@example.com`,
-          displayName: `User-${firebaseUid.substring(0, 6)}`,
-          photoUrl: ''
-        });
-        (req as any).user = newUser;
-        next();
-        return;
-      } catch (createError) {
-        console.error('Error creating user:', createError);
-        return res.status(401).json({ error: 'User not found and could not auto-create user' });
-      }
-    }
-    
-    // Attach user to request object for later use
-    (req as any).user = user;
-    next();
   } catch (error: any) {
     console.error('Authentication error:', error);
-    return res.status(401).json({ error: error.message || 'Authentication failed' });
+    return res.status(401).json({ error: error.message });
   }
 };
 
@@ -501,236 +495,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Node testing endpoint - test a single node in isolation
-  app.post('/api/flows/:flowId/nodes/:nodeId/test', requireAuth, async (req, res) => {
-    try {
-      const userId = (req as any).user.id;
-      const flowId = req.params.flowId;
-      const nodeId = req.params.nodeId;
-      
-      // Get the flow to verify ownership
-      const flow = await storage.getFlow(userId, parseInt(flowId));
-      if (!flow) {
-        return res.status(404).json({ error: 'Flow not found' });
-      }
-      
-      // Extract node data and flow context from the request
-      const { nodeData, flowData } = req.body;
-      
-      if (!nodeData) {
-        return res.status(400).json({ error: 'Missing node data' });
-      }
-      
-      // Handle different node types
-      const nodeType = nodeData.type || '';
-      let result: any = { success: true };
-      
-      console.log(`Testing node ${nodeId} of type ${nodeType}`);
-      
-      // Process the node based on its type
-      switch (nodeType) {
-        case 'httpRequest':
-          try {
-            // Find the connector if specified
-            let connectorConfig = null;
-            if (nodeData.connector) {
-              const userConnectors = await storage.getConnectors(userId);
-              const connector = userConnectors.find(c => c.name === nodeData.connector);
-              if (connector) {
-                connectorConfig = connector;
-              }
-            }
-            
-            // Start building the request options
-            const method = nodeData.method || 'GET';
-            let url = nodeData.url || '';
-            
-            // Handle base URL from connector if available
-            if (connectorConfig && connectorConfig.baseUrl) {
-              // Don't double the URL if the node already has the full URL
-              if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                // Ensure the connector base URL and node path join correctly with a slash
-                const baseUrl = connectorConfig.baseUrl.endsWith('/') 
-                  ? connectorConfig.baseUrl.slice(0, -1) 
-                  : connectorConfig.baseUrl;
-                const path = url.startsWith('/') ? url : `/${url}`;
-                url = `${baseUrl}${path}`;
-              }
-            }
-            
-            if (!url) {
-              return res.status(400).json({ error: 'URL is required for HTTP request nodes' });
-            }
-            
-            // Prepare headers
-            let headers: Record<string, string> = { 
-              'Content-Type': 'application/json' 
-            };
-            
-            // Add connector headers if available
-            if (connectorConfig && connectorConfig.headers) {
-              headers = { ...headers, ...connectorConfig.headers };
-            }
-            
-            // Add node-specific headers if available
-            if (nodeData.headers && Array.isArray(nodeData.headers)) {
-              nodeData.headers.forEach((header: any) => {
-                if (header.key && header.value) {
-                  headers[header.key] = header.value;
-                }
-              });
-            }
-            
-            // Add authentication if configured in connector
-            if (connectorConfig && connectorConfig.authType) {
-              const authConfig = connectorConfig.authConfig || {};
-              
-              switch (connectorConfig.authType) {
-                case 'basic':
-                  if (authConfig.username && authConfig.password) {
-                    const auth = Buffer.from(`${authConfig.username}:${authConfig.password}`).toString('base64');
-                    headers['Authorization'] = `Basic ${auth}`;
-                  }
-                  break;
-                case 'bearer':
-                  if (authConfig.token) {
-                    headers['Authorization'] = `Bearer ${authConfig.token}`;
-                  }
-                  break;
-                case 'api_key':
-                  if (authConfig.key && authConfig.value) {
-                    const { key, value, location = 'header' } = authConfig;
-                    if (location === 'header') {
-                      headers[key] = value;
-                    } else if (location === 'query') {
-                      // Add as query parameter
-                      const separator = url.includes('?') ? '&' : '?';
-                      url = `${url}${separator}${key}=${encodeURIComponent(value)}`;
-                    }
-                  }
-                  break;
-              }
-            }
-            
-            // Add query parameters
-            if (nodeData.queryParams && Array.isArray(nodeData.queryParams)) {
-              const queryParams = new URLSearchParams();
-              nodeData.queryParams.forEach((param: any) => {
-                if (param.key && param.value !== undefined) {
-                  queryParams.append(param.key, param.value);
-                }
-              });
-              
-              const queryString = queryParams.toString();
-              if (queryString) {
-                const separator = url.includes('?') ? '&' : '?';
-                url = `${url}${separator}${queryString}`;
-              }
-            }
-            
-            // Prepare request body if needed
-            let body = undefined;
-            if (['POST', 'PUT', 'PATCH'].includes(method) && nodeData.body) {
-              body = JSON.stringify(nodeData.body);
-            }
-            
-            console.log(`Making ${method} request to ${url}`);
-            
-            // Make the request
-            const fetchOptions: any = {
-              method,
-              headers,
-              redirect: 'follow'
-            };
-            
-            if (body) {
-              fetchOptions.body = body;
-            }
-            
-            const response = await fetch(url, fetchOptions);
-            
-            // Process response
-            let responseData: any;
-            const contentType = response.headers.get('content-type') || '';
-            
-            if (contentType.includes('application/json')) {
-              responseData = await response.json();
-            } else if (contentType.includes('text/')) {
-              responseData = await response.text();
-            } else {
-              // For binary responses, just return info about the response
-              responseData = {
-                message: 'Binary response received',
-                contentType,
-                size: response.headers.get('content-length') || 'unknown'
-              };
-            }
-            
-            result = {
-              status: response.status,
-              statusText: response.statusText,
-              headers: Object.fromEntries(response.headers.entries()),
-              data: responseData
-            };
-            
-          } catch (error: any) {
-            console.error('Error executing HTTP request:', error);
-            result = {
-              success: false,
-              error: error.message || 'Failed to execute HTTP request'
-            };
-          }
-          break;
-          
-        case 'javascript':
-          try {
-            // Simple evaluation of JavaScript code for the test
-            // In a real implementation, you'd use a proper sandboxed environment
-            const code = nodeData.code || '';
-            
-            // Just return the code for now as we can't safely execute it
-            result = {
-              code: code,
-              message: 'JavaScript execution is simulated in test mode'
-            };
-          } catch (error: any) {
-            result = {
-              success: false,
-              error: error.message || 'Failed to execute JavaScript code'
-            };
-          }
-          break;
-          
-        case 'setVariable':
-          try {
-            const variableKey = nodeData.variableKey || 'testVariable';
-            const variableValue = nodeData.variableValue || '';
-            
-            result = {
-              variable: variableKey,
-              value: variableValue
-            };
-          } catch (error: any) {
-            result = {
-              success: false,
-              error: error.message || 'Failed to set variable'
-            };
-          }
-          break;
-          
-        default:
-          result = {
-            message: `Test mode for node type "${nodeType}" is not implemented yet`
-          };
-      }
-      
-      res.json(result);
-    } catch (error: any) {
-      console.error('Error testing node:', error);
-      res.status(500).json({ error: error.message || 'An error occurred while testing the node' });
-    }
-  });
-
   app.get('/api/executions', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
@@ -1348,52 +1112,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (data.type === 'auth') {
           const { token, userId } = data;
           if (token && userId) {
-            // We'll extract a Firebase UID from the token similar to our requireAuth middleware
-            let firebaseUid = userId; // Default to using userId directly
-            
-            // If token looks like a JWT (contains dots), try to decode it
-            if (token.includes('.')) {
-              try {
-                const parts = token.split('.');
-                if (parts.length === 3) {
-                  // Decode JWT payload
-                  const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-                  // Extract UID from payload
-                  const tokenUid = payload.user_id || payload.sub || payload.uid;
-                  if (tokenUid) {
-                    firebaseUid = tokenUid;
-                    console.log(`WebSocket: Extracted user ID ${firebaseUid} from token`);
-                  }
-                }
-              } catch (err) {
-                console.warn('WebSocket: Failed to parse token, using provided userId', err);
-                // Continue with userId as firebaseUid
-              }
-            }
-            
             // Store connection by user ID
-            if (!connections.has(firebaseUid)) {
-              connections.set(firebaseUid, []);
+            if (!connections.has(userId)) {
+              connections.set(userId, []);
             }
             
             // Add this connection to the user's connections
-            const userConnections = connections.get(firebaseUid);
+            const userConnections = connections.get(userId);
             if (userConnections) {
               // Check if connection already exists for this user
               if (!userConnections.includes(ws)) {
                 userConnections.push(ws);
-                // Store the userId on the websocket object for reference
-                // @ts-ignore - add userId to ws
-                ws.userId = firebaseUid;
-                console.log(`User ${firebaseUid} authenticated on WebSocket`);
+                console.log(`User ${userId} authenticated on WebSocket`);
               }
               
               // Send confirmation
               try {
                 ws.send(JSON.stringify({
                   type: 'auth_success',
-                  message: 'Authentication successful',
-                  userId: firebaseUid
+                  message: 'Authentication successful'
                 }));
               } catch (e) {
                 console.error('Error sending auth success message:', e.message);

@@ -5,7 +5,6 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { FlowBuilder } from "@/components/flows/FlowBuilder";
-import { ReactFlowProvider } from 'reactflow';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SaveIcon, PlayIcon } from "lucide-react";
@@ -235,17 +234,13 @@ export default function FlowBuilderPage() {
     setTesting(true);
     
     try {
-      // Get an ID token from Firebase for authentication
-      const idToken = await user.getIdToken(true);
-      console.log("Using auth token for flow execution");
-      
       // Use the API endpoint to execute the flow
       // This will trigger real-time updates through WebSockets
       const response = await fetch(`/api/flows/${id}/execute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
+          'Authorization': `Bearer ${user.uid}`
         },
         body: JSON.stringify({
           input: {
@@ -283,46 +278,6 @@ export default function FlowBuilderPage() {
     }
   };
   
-  // Test an individual node
-  const handleTestNode = async (nodeId: string, nodeData: any) => {
-    if (!user || !flow?.id) {
-      throw new Error("Please save the flow before testing nodes");
-    }
-    
-    try {
-      // Get a fresh ID token for authentication
-      const idToken = await user.getIdToken(true);
-      
-      // Make sure we're using proper authentication
-      const response = await fetch(`/api/flows/${id}/nodes/${nodeId}/test`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({
-          nodeData: nodeData,
-          // Include the flow's entire structure so the server has context
-          flowData: {
-            nodes,
-            edges
-          }
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to test node');
-      }
-      
-      return await response.json();
-      
-    } catch (error: any) {
-      console.error("Error testing node:", error);
-      throw error;
-    }
-  };
-
   return (
     <AppLayout>
       <div className="flex flex-col h-full overflow-hidden">
@@ -376,17 +331,14 @@ export default function FlowBuilderPage() {
         <div className="flex-1 flex overflow-hidden" style={{ height: 'calc(100% - 4rem)' }}>
           {/* Main Flow Builder */}
           <div className="flex-1 relative">
-            <ReactFlowProvider>
-              <FlowBuilder
-                initialNodes={nodes}
-                initialEdges={edges}
-                onNodesChange={setNodes}
-                onEdgesChange={setEdges}
-                connectors={connectors}
-                flowId={id}
-                onTestNode={handleTestNode}
-              />
-            </ReactFlowProvider>
+            <FlowBuilder
+              initialNodes={nodes}
+              initialEdges={edges}
+              onNodesChange={setNodes}
+              onEdgesChange={setEdges}
+              connectors={connectors}
+              flowId={id}
+            />
             
             {/* Execution Progress Panel */}
             {id && (
