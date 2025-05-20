@@ -98,8 +98,16 @@ export function useWebSocket(options: WebSocketOptions = {}) {
     }
     
     try {
-      // Get a valid WebSocket URL
-      const wsUrl = getWebSocketUrl();
+      // Get a valid WebSocket URL and add the Firebase user ID
+      let wsUrl = getWebSocketUrl();
+      
+      // Add authentication parameter to the WebSocket URL
+      if (user && user.uid) {
+        wsUrl += wsUrl.includes('?') ? '&' : '?';
+        wsUrl += `firebaseId=${encodeURIComponent(user.uid)}`;
+      }
+      
+      console.log('Connecting to WebSocket with auth:', wsUrl);
       
       // Create the new WebSocket connection
       const socket = new WebSocket(wsUrl);

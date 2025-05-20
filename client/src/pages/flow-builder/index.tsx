@@ -234,9 +234,9 @@ export default function FlowBuilderPage() {
     setTesting(true);
     
     try {
-      // Use the API endpoint to execute the flow
-      // This will trigger real-time updates through WebSockets
-      const response = await fetch(`/api/flows/${id}/execute`, {
+      // Use the API endpoint to execute the flow with the firebaseId query param
+      // This will help with authentication and trigger real-time updates
+      const response = await fetch(`/api/flows/${id}/execute?firebaseId=${encodeURIComponent(user.uid)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -244,9 +244,10 @@ export default function FlowBuilderPage() {
         },
         body: JSON.stringify({
           input: {
-            // Any input parameters for the flow
+            // Test parameters for the flow
             timestamp: new Date().toISOString(),
-            testMode: true
+            testMode: true,
+            nodes: JSON.parse(JSON.stringify(nodes))
           }
         })
       });

@@ -1109,6 +1109,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   wss.on('connection', (ws, req) => {
     console.log('WebSocket client connected');
     
+    // Extract Firebase ID from URL query parameters if present
+    const url = new URL(req.url || '', `http://${req.headers.host}`);
+    const firebaseId = url.searchParams.get('firebaseId');
+    
+    if (firebaseId) {
+      // If firebaseId was provided in the URL, authenticate immediately
+      console.log(`User ${firebaseId} authenticated via URL params`);
+      
+      // Create connections collection if not exists
+      if (!connections.has(firebaseId)) {
+        connections.set(firebaseId, []);
+      }
+      
+      // Add this connection to the user's connections
+      const userConnections = connections.get(firebaseId);
+      if (userConnections && !userConnections.includes(ws)) {
+        userConnections.push(ws);
+      }
+      
+      // Send confirmation of successful authentication
+      try {
+        ws.send(JSON.stringify({
+          type: 'auth_success',
+          message: 'Authentication successful via URL params'
+        }));
+      } catch (error) {
+        console.error('Error sending auth success message:', error);
+      }
+    }
+    
     // Initialize client as alive and set up heartbeat
     // @ts-ignore
     ws.isAlive = true;
