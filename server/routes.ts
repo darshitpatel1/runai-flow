@@ -190,6 +190,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.log(`Response: ${responseData}`);
               console.log('=== END API RESPONSE ===');
               
+              // Parse and log specific artwork data for easy viewing
+              try {
+                const apiData = JSON.parse(responseData);
+                if (apiData.data && apiData.data.length > 0) {
+                  const artwork = apiData.data[0];
+                  console.log('🎨 ARTWORK DETAILS:');
+                  console.log(`Title: ${artwork.title}`);
+                  console.log(`Artist: ${artwork.artist_display}`);
+                  console.log(`Date: ${artwork.date_display}`);
+                  console.log(`Medium: ${artwork.medium_display}`);
+                  console.log(`Dimensions: ${artwork.dimensions}`);
+                }
+              } catch (e) {
+                console.log('Response is not JSON or has different structure');
+              }
+              
               // Flow execution update logged to console
               console.log(`✅ Flow Progress: HTTP ${response.status} ${response.statusText} (${endTime - startTime}ms)`);
               

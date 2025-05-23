@@ -59,11 +59,15 @@ export function ExecutionProgress({
       
       const result = await response.text();
       
+      // Log the successful response to browser console for inspection
+      console.log('🎉 Flow Execution Success!', result);
+      console.log('📊 API Response Data:', JSON.parse(result));
+      
       // Show real API response in console
       const responseLog: LogMessage = {
         timestamp: new Date(),
         type: 'success',
-        message: `API Response: ${result}`
+        message: `✅ Flow completed successfully! Check browser console for full response data.`
       };
       
       setLogs(prev => [...prev, responseLog]);
