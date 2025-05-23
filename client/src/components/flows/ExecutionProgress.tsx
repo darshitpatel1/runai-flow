@@ -47,8 +47,8 @@ export function ExecutionProgress({
     onLogsUpdate?.([newLog]);
     
     try {
-      // Call the execution API directly
-      const response = await fetch(`/api/execute-flow/${flowId}`, {
+      // Call the execution API with required firebaseId parameter
+      const response = await fetch(`/api/execute-flow/${flowId}?firebaseId=D95yn62H6FSy8xaafJmBF6rdEk93`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
