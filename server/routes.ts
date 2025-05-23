@@ -134,7 +134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = 1; // Simplified for testing
       console.log('Full request body:', JSON.stringify(req.body, null, 2));
       
-      const flowNodes = req.body.input?.nodes || [];
+      const flowNodes = req.body.nodes || [];
       const nodeCount = flowNodes.length || 1;
       
       console.log(`Executing flow with ${nodeCount} nodes`);
@@ -154,6 +154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Execute actual HTTP nodes with real API calls
       const executeNodes = async () => {
         console.log('Starting actual node execution with real API calls...');
+        const allResponses = [];
         
         for (let i = 0; i < flowNodes.length; i++) {
           const node = flowNodes[i];
@@ -166,7 +167,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // If it's an HTTP node, make the actual API request
           if (node.type === 'http' || node.type === 'httpRequest') {
-            const apiUrl = node.data?.url || node.data?.endpoint || 'https://jsonplaceholder.typicode.com/posts/1';
+            const apiUrl = node.data?.url || node.data?.endpoint;
+            if (!apiUrl) {
+              console.log('No API URL found for HTTP node, skipping...');
+              continue;
+            }
+            
             try {
               console.log(`Making HTTP ${node.data?.method || 'GET'} request to: ${apiUrl}`);
               const startTime = Date.now();
@@ -181,18 +187,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const endTime = Date.now();
               const responseData = await response.text();
               
-              // Store the API response globally so it can be retrieved for main console
-              (global as any).lastApiResponse = responseData;
-              
               console.log(`✅ HTTP Response: ${response.status} ${response.statusText} (${endTime - startTime}ms)`);
-              console.log(`✅ Response data: ${responseData.substring(0, 500)}...`);
+              console.log(`✅ Full API Response Data: ${responseData}`);
               
-              // DIRECT console output for immediate testing
-              console.log('=== REAL API RESPONSE FOR CONSOLE ===');
-              console.log(`URL: ${apiUrl}`);
-              console.log(`Status: ${response.status} ${response.statusText}`);
-              console.log(`Response: ${responseData}`);
-              console.log('=== END API RESPONSE ===');
+              // Store response for returning to frontend
+              const responseInfo = {
+                nodeId: node.id,
+                url: apiUrl,
+                method: node.data?.method || 'GET',
+                status: response.status,
+                statusText: response.statusText,
+                responseTime: endTime - startTime,
+                data: responseData
+              };
+              
+              allResponses.push(responseInfo);
               
               // Parse and log specific artwork data for easy viewing
               try {
@@ -228,33 +237,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await new Promise(resolve => setTimeout(resolve, 100));
         }
         
-        // Send completion message
         console.log('🎉 Flow execution completed successfully!');
+        return allResponses;
       };
       
-      // Execute nodes and wait for completion before responding
-      await executeNodes();
+      // Execute nodes and get all API responses
+      const responses = await executeNodes();
       
       // Update execution status to completed
       execution.status = 'completed';
       
-      // Save execution to Firebase (simplified approach)
+      // Save execution to database (simplified approach)
       console.log(`Saving execution ${execution.id} for flow ${flowId} - Status: completed`);
       
-      // Check if this is a request for real response data
-      if (req.body.getRealResponse) {
-        // Return the actual latest API response data for the main console
-        const latestApiResponse = global.lastApiResponse || '{"message": "No API response available yet"}';
-        return res.status(200).send(latestApiResponse);
-      }
-      
       // Return success response with the actual API response data
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         execution: execution,
-        message: 'Flow execution completed successfully',
-        apiResponse: global.lastApiResponse || null,
-        artworkDetails: global.lastArtworkDetails || null
+        responses: responses,
+        logs: responses.map(resp => ({
+          timestamp: new Date(),
+          type: 'success',
+          message: `✅ ${resp.method} ${resp.url} → ${resp.status} ${resp.statusText} (${resp.responseTime}ms)`,
+          nodeId: resp.nodeId,
+          data: resp.data
+        }))
       });
       
     } catch (error: any) {
