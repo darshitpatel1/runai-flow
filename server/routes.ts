@@ -117,9 +117,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('=== FLOW EXECUTION ENDPOINT HIT ===');
     
     const flowId = req.params.id;
-    const firebaseId = req.query.firebaseId as string;
+    const firebaseId = req.body.firebaseId || req.query.firebaseId as string;
     
     console.log(`Flow execution: flowId=${flowId}, firebaseId=${firebaseId}`);
+    console.log('Full request body:', JSON.stringify(req.body, null, 2));
     
     if (!flowId) {
       return res.status(400).json({ error: 'Flow ID required' });
