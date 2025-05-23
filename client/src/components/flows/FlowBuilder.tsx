@@ -1334,14 +1334,6 @@ export function FlowBuilder({
           </div>
         )}
       </div>
-      
-      {/* Console Output - Main Console at Bottom */}
-      <ConsoleOutput 
-        logs={logs} 
-        isRunning={isTestRunning} 
-        onRunTest={runFlowTest} 
-        flowId={flowId}
-      />
     </div>
   );
 }

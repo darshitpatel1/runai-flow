@@ -341,11 +341,11 @@ export default function FlowBuilderPage() {
               try {
                 const parsedResponse = JSON.parse(apiResult);
                 
-                // Show the actual API response in main console
+                // Show the FULL API response in main console (your 1000+ line response)
                 setLogs(prevLogs => [...prevLogs, {
                   timestamp: new Date(),
                   type: 'success',
-                  message: `🎨 Art Institute API Response: ${apiResult.substring(0, 500)}...`,
+                  message: `Response Data: ${apiResult}`,
                 }]);
                 
                 // Try to extract artwork details if it's Art Institute data
@@ -543,15 +543,16 @@ export default function FlowBuilderPage() {
             {/* Removed duplicate ExecutionProgress console - all logs go to main console below */}
           </div>
           
-          {/* Main Console Panel - This is what you want to see! */}
-          <div className="w-full">
-            <ConsoleOutput
-              logs={logs}
-              isRunning={testing}
-              onRunTest={handleTestFlow}
-              flowId={id}
-            />
-          </div>
+        </div>
+        
+        {/* Main Console Panel at Bottom - Your 1000+ line API response will show here */}
+        <div className="border-t border-slate-200 dark:border-slate-700">
+          <ConsoleOutput
+            logs={logs}
+            isRunning={testing}
+            onRunTest={handleTestFlow}
+            flowId={id}
+          />
         </div>
       </div>
     </AppLayout>
