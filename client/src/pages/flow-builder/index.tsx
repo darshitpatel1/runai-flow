@@ -422,15 +422,14 @@ export default function FlowBuilderPage() {
               flowId={id}
             />
             
-            {/* Execution Progress Panel */}
-            {id && (
-              <div className="absolute top-4 right-16 w-72">
-                <ExecutionProgress 
-                  flowId={id} 
-                  executionId={flow?.executionId}
-                />
-              </div>
-            )}
+            {/* Console Output Panel */}
+            <div className="absolute bottom-4 right-4 w-80">
+              <ConsoleOutput 
+                logs={logs}
+                isRunning={testing}
+                onRunTest={handleTestFlow}
+              />
+            </div>
           </div>
         </div>
       </div>
