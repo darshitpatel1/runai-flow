@@ -209,6 +209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const progress = Math.floor(((i + 1) / flowNodes.length) * 100);
           
           console.log(`Executing node ${i + 1}/${flowNodes.length}: ${node.type}`);
+          console.log(`Node data:`, JSON.stringify(node, null, 2));
           
           sendExecutionUpdate(firebaseId, {
             executionId: execution.id,
