@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { XIcon, PlayIcon, Code2Icon, Variable } from "lucide-react";
+import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -130,11 +131,16 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
       
       console.log(`🧪 Testing HTTP node: ${method} ${url}`);
       
+      // Get Firebase auth token for authenticated request
+      const auth = getAuth();
+      const token = await auth.currentUser?.getIdToken();
+      
       // Call the new test-node endpoint for real API responses
       const response = await fetch('/api/test-node', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
         },
         body: JSON.stringify({
           url: url,
