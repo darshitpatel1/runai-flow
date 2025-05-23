@@ -963,12 +963,58 @@ export function FlowBuilder({
     const initialLog = {
       timestamp: new Date(),
       type: "info",
-      message: "Starting flow execution..."
+      message: "🚀 Starting Art Institute API flow execution..."
     };
     
     // Initialize logs array
     const executionLogs = [initialLog];
     setLogs([initialLog]);
+    
+    // Add a log to fetch real API response data for main console
+    setTimeout(async () => {
+      try {
+        // Get the real API response from server
+        const response = await fetch(`/api/execute-flow/${flowId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firebaseId: getAuth().currentUser?.uid,
+            getRealResponse: true
+          })
+        });
+        
+        if (response.ok) {
+          const realApiData = await response.text();
+          
+          // Add the real 1000+ line API response to main console
+          const apiResponseLog = {
+            timestamp: new Date(),
+            type: "success",
+            message: `Response Data: ${realApiData}`
+          };
+          setLogs(prev => [...prev, apiResponseLog]);
+          
+          // Extract and display artwork details in main console
+          try {
+            const parsed = JSON.parse(realApiData);
+            if (parsed.data && parsed.data[0]) {
+              const artwork = parsed.data[0];
+              const artworkDetailsLog = {
+                timestamp: new Date(),
+                type: "info",
+                message: `🎨 Artwork: "${artwork.title}" by ${artwork.artist_display} (${artwork.date_display}) - ${artwork.medium_display}`
+              };
+              setLogs(prev => [...prev, artworkDetailsLog]);
+            }
+          } catch (e) {
+            // If not JSON, still show raw response
+            console.log('Showing raw API response in main console');
+          }
+        }
+      } catch (error) {
+        console.warn('Could not fetch real API response for main console:', error);
+      }
+    }, 2000);
     
     // Mock execution for demonstration
     const mockExecution = async () => {
@@ -1275,11 +1321,12 @@ export function FlowBuilder({
         )}
       </div>
       
-      {/* Console Output */}
+      {/* Console Output - Main Console at Bottom */}
       <ConsoleOutput 
         logs={logs} 
         isRunning={isTestRunning} 
         onRunTest={runFlowTest} 
+        flowId={flowId}
       />
     </div>
   );
