@@ -47,9 +47,10 @@ export function useWebSocket(options: WebSocketOptions = {}) {
     const replitMatch = url.match(/https?:\/\/([^/]+)/);
     
     if (replitMatch && replitMatch[1]) {
-      // We are in a Replit environment, use the domain directly
+      // We are in a Replit environment, use the domain directly with firebaseId for auth
       console.log('Using Replit domain for WebSocket connection:', replitMatch[1]);
-      return `${protocol}//${replitMatch[1]}/ws`;
+      const firebaseId = localStorage.getItem('firebaseUser') ? JSON.parse(localStorage.getItem('firebaseUser') || '{}').uid : 'anonymous';
+      return `${protocol}//${replitMatch[1]}/ws?firebaseId=${firebaseId}`;
     } 
     
     // Fallback - use the best host we can find
