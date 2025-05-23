@@ -221,9 +221,14 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
         const updatedNodeData = {
           ...nodeData,
           testResult: result.data,
-          variables: variables
+          variables: variables,
+          // Store raw test data for previews
+          _rawTestData: result.data
         };
         updateNodeData(node.id, updatedNodeData);
+        
+        console.log('✅ Generated variables:', variables);
+        console.log('✅ Test result stored:', result.data);
       }
       
       toast({

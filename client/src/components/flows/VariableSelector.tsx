@@ -29,6 +29,8 @@ type VariableEntry = {
   variableName: string;
   path: string;
   source: "variable" | "testResult";
+  preview?: string;
+  rawValue?: any;
 };
 
 export function VariableSelector({ open, onClose, onSelectVariable, currentNodeId, manualNodes }: VariableSelectorProps) {
@@ -178,9 +180,15 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
               // Create user-friendly display name
               const displayName = path.split('.').map(part => {
                 if (part === 'length') return 'Count';
-                if (part === 'data') return 'Data';
+                if (part === 'data') return 'Artworks';
                 if (part === 'pagination') return 'Page Info';
-                if (part.includes('[0]')) return part.replace('[0]', ' (First Item)');
+                if (part.includes('[0]')) return part.replace('[0]', ' (First)');
+                if (part === 'title') return 'Title';
+                if (part === 'artist_title') return 'Artist';
+                if (part === 'date_display') return 'Date';
+                if (part === 'total') return 'Total Count';
+                if (part === 'limit') return 'Items Per Page';
+                if (part === 'offset') return 'Page Offset';
                 
                 // Convert snake_case to readable
                 return part.replace(/_/g, ' ')
@@ -189,13 +197,48 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
                   .join(' ');
               }).join(' → ');
               
+              // Get preview value from test result
+              let preview = 'No preview';
+              let rawValue = null;
+              try {
+                const pathParts = path.split('.');
+                let value = testResult;
+                for (const part of pathParts) {
+                  if (part.includes('[') && part.includes(']')) {
+                    const arrayName = part.split('[')[0];
+                    const index = parseInt(part.split('[')[1].split(']')[0]);
+                    value = value[arrayName][index];
+                  } else {
+                    value = value[part];
+                  }
+                }
+                rawValue = value;
+                if (typeof value === 'string') {
+                  preview = value.length > 50 ? `"${value.substring(0, 50)}..."` : `"${value}"`;
+                } else if (typeof value === 'number') {
+                  preview = value.toLocaleString();
+                } else if (typeof value === 'boolean') {
+                  preview = value ? 'true' : 'false';
+                } else if (Array.isArray(value)) {
+                  preview = `Array (${value.length} items)`;
+                } else if (value && typeof value === 'object') {
+                  preview = `Object (${Object.keys(value).length} properties)`;
+                } else {
+                  preview = String(value);
+                }
+              } catch (error) {
+                preview = 'Preview unavailable';
+              }
+              
               variableList.push({
                 nodeId: node.id,
                 nodeName: node.data?.label || node.type || "Node",
                 nodeType: node.type || "unknown",
                 variableName: displayName,
                 path: `{{${node.id}.result.${path}}}`,
-                source: "testResult"
+                source: "testResult",
+                preview: preview,
+                rawValue: rawValue
               });
             }
           });
@@ -360,28 +403,36 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
                       {nodeVariables.map((variable, idx) => (
                         <div
                           key={`${variable.nodeId}-${idx}`}
-                          className="flex items-start p-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 rounded cursor-pointer"
+                          className="flex items-start p-3 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer border hover:border-blue-300 dark:hover:border-blue-600 transition-all"
                           onClick={() => {
-                            onSelectVariable(`{{${variable.path}}}`);
+                            onSelectVariable(variable.path);
                             onClose();
                           }}
                         >
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium flex flex-wrap items-center">
-                              <span className="truncate mr-1">{variable.variableName}</span>
+                            <div className="font-medium flex flex-wrap items-center gap-2 mb-1">
+                              <span className="text-slate-900 dark:text-slate-100">{variable.variableName}</span>
                               {variable.source === "testResult" && (
-                                <Badge className="shrink-0 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800">
-                                  Test Result
+                                <Badge className="shrink-0 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                                  🎯 Live Data
                                 </Badge>
                               )}
                               {variable.source === "variable" && (
-                                <Badge className="shrink-0 bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200 hover:bg-violet-200 dark:hover:bg-violet-800">
-                                  Variable
+                                <Badge className="shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                  💾 Variable
                                 </Badge>
                               )}
                             </div>
-                            <div className="text-xs text-muted-foreground font-mono truncate break-all">
-                              {`{{${variable.path}}}`}
+                            
+                            {/* Preview of actual data */}
+                            {variable.preview && (
+                              <div className="text-xs bg-slate-50 dark:bg-slate-800 rounded px-2 py-1 mb-1 text-slate-600 dark:text-slate-400">
+                                Preview: <span className="font-semibold text-slate-800 dark:text-slate-200">{variable.preview}</span>
+                              </div>
+                            )}
+                            
+                            <div className="text-xs text-muted-foreground font-mono text-slate-500 dark:text-slate-400">
+                              {variable.path}
                             </div>
                           </div>
                         </div>
