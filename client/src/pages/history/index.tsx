@@ -51,46 +51,36 @@ export default function History() {
       if (!user) return;
       
       try {
-        // Get all user flows for mapping names
-        const flowsRef = collection(db, "users", user.uid, "flows");
-        const flowsSnapshot = await getDocs(flowsRef);
-        const flowsData: Record<string, any> = {};
-        flowsSnapshot.docs.forEach(doc => {
-          flowsData[doc.id] = doc.data();
+        // Fetch executions from our backend API (PostgreSQL) instead of Firestore
+        const response = await fetch('/api/executions', {
+          headers: {
+            'Authorization': `Bearer ${user.uid}`,
+            'Content-Type': 'application/json'
+          }
         });
-        setFlowsMap(flowsData);
         
-        // Build query for executions
-        let executionsQuery = query(
-          collection(db, "users", user.uid, "executions"),
-          orderBy("createdAt", "desc"),
-          limit(10)
-        );
-        
-        const snapshot = await getDocs(executionsQuery);
-        
-        if (snapshot.empty) {
-          setExecutions([]);
-          setLoading(false);
-          return;
+        if (!response.ok) {
+          throw new Error('Failed to fetch executions');
         }
         
-        const executionsData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const data = await response.json();
+        const executionsData = data.executions || [];
         
         setExecutions(executionsData);
-        setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
+        setLoading(false);
       } catch (error: any) {
+        console.error('Error fetching executions:', error);
         toast({
           title: "Error loading execution history",
           description: error.message,
-          variant: "destructive",
+          variant: "destructive"
         });
-      } finally {
         setLoading(false);
       }
+    };
+
+    fetchExecutions();
+  }, [user]);
     };
     
     fetchExecutions();

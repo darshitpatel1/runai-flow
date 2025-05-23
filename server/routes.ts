@@ -253,15 +253,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           flowId: parseInt(flowId),
           userId: userId,
           status: 'completed',
-          startedAt: new Date(execution.createdAt),
-          finishedAt: new Date(),
-          logs: JSON.stringify(responses.map(resp => ({
-            timestamp: new Date(),
-            type: 'success',
-            message: `✅ ${resp.method} ${resp.url} → ${resp.status} ${resp.statusText} (${resp.responseTime}ms)`,
-            nodeId: resp.nodeId,
-            data: resp.data
-          })))
+          input: JSON.stringify({
+            responses: responses,
+            logs: responses.map(resp => ({
+              timestamp: new Date(),
+              type: 'success',
+              message: `✅ ${resp.method} ${resp.url} → ${resp.status} ${resp.statusText} (${resp.responseTime}ms)`,
+              nodeId: resp.nodeId,
+              data: resp.data
+            }))
+          })
         });
         console.log(`✅ Execution saved to database for flow ${flowId}`);
       } catch (error) {
