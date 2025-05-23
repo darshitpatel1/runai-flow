@@ -540,16 +540,7 @@ export default function FlowBuilderPage() {
               flowId={id}
             />
             
-            {/* Execution Progress Panel */}
-            {id && (
-              <div className="absolute top-4 right-16 w-72">
-                <ExecutionProgress 
-                  flowId={id} 
-                  executionId={flow?.executionId}
-                  onLogsUpdate={setLogs}
-                />
-              </div>
-            )}
+            {/* Removed duplicate ExecutionProgress console - all logs go to main console below */}
           </div>
           
           {/* Main Console Panel - This is what you want to see! */}
