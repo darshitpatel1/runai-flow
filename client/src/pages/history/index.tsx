@@ -63,7 +63,7 @@ export default function History() {
         // Build query for executions
         let executionsQuery = query(
           collection(db, "users", user.uid, "executions"),
-          orderBy("startedAt", "desc"),
+          orderBy("createdAt", "desc"),
           limit(10)
         );
         
