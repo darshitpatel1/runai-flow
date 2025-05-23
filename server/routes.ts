@@ -148,13 +148,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       // Flow execution progress logged to console
-      sendExecutionUpdate(firebaseId, {
-        executionId: execution.id,
-        flowId,
-        status: 'running',
-        message: 'Flow execution started',
-        progress: 0
-      });
+      console.log(`🚀 Flow execution started for ${flowId}`);
       
       // Execute actual HTTP nodes with real API calls
       const executeNodes = async () => {
@@ -202,24 +196,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.log(`Response: ${responseData}`);
               console.log('=== END API RESPONSE ===');
               
-              sendExecutionUpdate(firebaseId, {
-                executionId: execution.id,
-                flowId,
-                status: 'running',
-                message: `✅ HTTP ${response.status} ${response.statusText} (${endTime - startTime}ms)`,
-                progress,
-                responseData: responseData.substring(0, 1000)
-              });
+              // Flow execution update logged to console
+              console.log(`✅ Flow Progress: HTTP ${response.status} ${response.statusText} (${endTime - startTime}ms)`);
               
             } catch (error: any) {
               console.error(`HTTP request failed:`, error.message);
-              sendExecutionUpdate(firebaseId, {
-                executionId: execution.id,
-                flowId,
-                status: 'running',
-                message: `❌ Request failed: ${error.message}`,
-                progress
-              });
+              // Flow error logged to console
+              console.log(`❌ Flow Error: Request failed: ${error.message}`);
             }
           } else {
             // For other node types, simulate execution
