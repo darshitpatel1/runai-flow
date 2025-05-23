@@ -83,7 +83,6 @@ export function useWebSocket(options: WebSocketOptions = {}) {
     // Don't try to reconnect too quickly to avoid console spam
     const now = Date.now();
     if (now - lastConnectAttempt.current < 5000) {
-      console.log('Skipping reconnect attempt, too soon');
       return;
     }
     lastConnectAttempt.current = now;

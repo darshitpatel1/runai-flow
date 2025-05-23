@@ -223,7 +223,6 @@ export function FlowBuilder({
   }, [initialNodes, setNodes]);
   
   useEffect(() => {
-    console.log("Loading initial edges:", initialEdges);
     if (initialEdges && initialEdges.length > 0) {
       // Create a deep copy to prevent reference issues
       const edgesCopy = JSON.parse(JSON.stringify(initialEdges));
