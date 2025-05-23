@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { WebSocketServer, WebSocket } from 'ws';
+// WebSocket removed - using direct API calls instead
 import { storage } from "./storage";
 import { 
   insertConnectorSchema, 
@@ -12,10 +12,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 
-// Store active WebSocket connections by user ID
-const connections = new Map<string, WebSocket[]>();
-
-// Helper function to send execution updates to connected users with improved error handling
+// WebSocket completely removed - using direct API calls instead
 function sendExecutionUpdate(userId: string, executionData: any) {
   const userConnections = connections.get(userId.toString());
   
@@ -1212,185 +1209,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Set up WebSocket server with more robust error handling
-  const wss = new WebSocketServer({ 
-    server: httpServer, 
-    path: '/ws',
-    // More robust error handling
-    clientTracking: true,
-    perMessageDeflate: {
-      zlibDeflateOptions: {
-        chunkSize: 1024,
-        memLevel: 7,
-        level: 3
-      },
-      zlibInflateOptions: {
-        chunkSize: 10 * 1024
-      }
-    }
-  });
-  
-  // Keep track of connection errors server-wide
-  wss.on('error', (error) => {
-    console.error('WebSocket server error:', error.message);
-  });
-  
-  // Set up heartbeat to detect disconnected clients
-  function heartbeat() {
-    // @ts-ignore - add isAlive property to track client state
-    this.isAlive = true;
-  }
-  
-  const interval = setInterval(function ping() {
-    wss.clients.forEach(function each(ws) {
-      // @ts-ignore - check if client is still connected
-      if (ws.isAlive === false) {
-        console.log('Terminating dead WebSocket connection');
-        return ws.terminate();
-      }
-      
-      // @ts-ignore - reset alive status
-      ws.isAlive = false;
-      try {
-        ws.ping();
-      } catch (e) {
-        console.error('Error sending ping:', e.message);
-        ws.terminate();
-      }
-    });
-  }, 30000);
-  
-  wss.on('close', function close() {
-    clearInterval(interval);
-  });
-  
-  wss.on('connection', (ws: any, req: any) => {
-    console.log('WebSocket client connected from:', req.url);
-    
-    // Extract authentication from URL params
-    const url = new URL(req.url, `http://${req.headers.host}`);
-    const firebaseId = url.searchParams.get('firebaseId') || url.searchParams.get('token');
-    const defaultUserId = firebaseId || 'D95yn62H6FSy8xaafJmBF6rdEk93';
-    
-    console.log(`Authenticating WebSocket user: ${defaultUserId}`);
-    
-    // Create connections collection if not exists
-    if (!connections.has(defaultUserId)) {
-      connections.set(defaultUserId, []);
-    }
-    
-    // Add this connection to the user's connections
-    const userConnections = connections.get(defaultUserId);
-    if (userConnections && !userConnections.includes(ws)) {
-      userConnections.push(ws);
-      console.log(`Added WebSocket connection for user ${defaultUserId}. Total connections: ${userConnections.length}`);
-    }
-    
-    // Send confirmation of successful authentication
-    try {
-      ws.send(JSON.stringify({
-        type: 'auth_success',
-        message: 'WebSocket authentication successful',
-        userId: defaultUserId
-      }));
-    } catch (error: any) {
-      console.error('Error sending auth success message:', error?.message);
-    }
-    
-    // Initialize heartbeat mechanism
-    ws.isAlive = true;
-    ws.on('pong', heartbeat);
-    
-    // Handle incoming messages
-    ws.on('message', (message: any) => {
-      try {
-        // Prevent large messages from causing issues
-        if (message.length > 100000) {
-          ws.send(JSON.stringify({
-            type: 'error',
-            message: 'Message too large'
-          }));
-          return;
-        }
-        
-        const data = JSON.parse(message.toString());
-        
-        // Handle authentication
-        if (data.type === 'auth') {
-          const { token, userId } = data;
-          if (token && userId) {
-            // Store connection by user ID
-            if (!connections.has(userId)) {
-              connections.set(userId, []);
-            }
-            
-            // Add this connection to the user's connections
-            const userConnections = connections.get(userId);
-            if (userConnections) {
-              // Check if connection already exists for this user
-              if (!userConnections.includes(ws)) {
-                userConnections.push(ws);
-                console.log(`User ${userId} authenticated on WebSocket`);
-              }
-              
-              // Send confirmation
-              try {
-                ws.send(JSON.stringify({
-                  type: 'auth_success',
-                  message: 'Authentication successful'
-                }));
-              } catch (e: any) {
-                console.error('Error sending auth success message:', e?.message);
-              }
-            }
-          } else {
-            try {
-              ws.send(JSON.stringify({
-                type: 'auth_error',
-                message: 'Authentication failed: missing token or userId'
-              }));
-            } catch (e) {
-              console.error('Error sending auth error message:', e.message);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error processing WebSocket message:', error.message);
-        try {
-          ws.send(JSON.stringify({
-            type: 'error',
-            message: 'Failed to process message'
-          }));
-        } catch (e) {
-          console.error('Error sending error message:', e.message);
-        }
-      }
-    });
-    
-    // Handle connection errors
-    ws.on('error', (error) => {
-      console.error('WebSocket connection error:', error.message);
-    });
-    
-    // Handle connection close
-    ws.on('close', (code, reason) => {
-      console.log(`WebSocket client disconnected. Code: ${code}, Reason: ${reason || 'No reason provided'}`);
-      
-      // Remove connection from all user connections
-      for (const [userId, userConnections] of connections.entries()) {
-        const index = userConnections.indexOf(ws);
-        if (index !== -1) {
-          userConnections.splice(index, 1);
-          console.log(`Removed connection for user ${userId}`);
-          
-          // Clean up empty user connections
-          if (userConnections.length === 0) {
-            connections.delete(userId);
-          }
-        }
-      }
-    });
-  });
+  // WebSocket completely removed - flow execution now uses direct API calls
+  console.log('Server ready for direct flow execution (WebSocket removed)');
   
   return httpServer;
 }
