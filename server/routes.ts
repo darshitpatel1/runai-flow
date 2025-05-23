@@ -228,11 +228,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       setTimeout(processNodes, 200);
-      res.status(202).json(execution);
+      
+      // Always return a properly formatted JSON response
+      res.status(200).json({
+        success: true,
+        execution: execution,
+        message: 'Flow execution started successfully'
+      });
       
     } catch (error: any) {
       console.error('Flow execution error:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ 
+        success: false,
+        error: error.message || 'Unknown error occurred',
+        message: 'Failed to execute flow'
+      });
     }
   });
   

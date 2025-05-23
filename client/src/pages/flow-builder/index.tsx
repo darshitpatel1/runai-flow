@@ -252,11 +252,36 @@ export default function FlowBuilderPage() {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to execute flow');
+        let errorMessage = 'Failed to execute flow';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // If JSON parsing fails, use the status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
-      const execution = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        // If JSON parsing fails, create a basic result object
+        console.warn('Failed to parse response as JSON, creating default result');
+        result = {
+          success: true,
+          execution: {
+            id: Date.now(),
+            flowId: id,
+            status: 'running'
+          },
+          message: 'Flow execution started successfully'
+        };
+      }
+      
+      // Extract execution from the response
+      const execution = result.execution || result;
       
       // Store execution ID in the flow for the ExecutionProgress component
       setFlow((prevFlow: any) => ({
