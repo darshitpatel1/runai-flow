@@ -1264,11 +1264,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     clearInterval(interval);
   });
   
-  wss.on('connection', (ws, req) => {
+  wss.on('connection', (ws: any, req: any) => {
     console.log('WebSocket client connected');
     
     // For immediate authentication, assign to a default user
-    const defaultUserId = 'D95yn62H6FSy8xaafJmBF6rdEk93'; // Use the Firebase ID we see in logs
+    const defaultUserId = 'D95yn62H6FSy8xaafJmBF6rdEk93';
     console.log(`Auto-authenticating user: ${defaultUserId}`);
     
     // Create connections collection if not exists
@@ -1287,23 +1287,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       ws.send(JSON.stringify({
         type: 'auth_success',
-          message: 'Authentication successful via URL params'
-        }));
-      } catch (error) {
-        console.error('Error sending auth success message:', error);
-      }
+        message: 'Authentication successful'
+      }));
+    } catch (error) {
+      console.error('Error sending auth success message:', error);
     }
     
-    // Initialize client as alive and set up heartbeat
-    // @ts-ignore
+    // Initialize heartbeat mechanism
     ws.isAlive = true;
     ws.on('pong', heartbeat);
     
     // Handle incoming messages
-    ws.on('message', (message) => {
+    ws.on('message', (message: any) => {
       try {
         // Prevent large messages from causing issues
-        if ((message as any).length > 100000) {
+        if (message.length > 100000) {
           ws.send(JSON.stringify({
             type: 'error',
             message: 'Message too large'
@@ -1337,8 +1335,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   type: 'auth_success',
                   message: 'Authentication successful'
                 }));
-              } catch (e) {
-                console.error('Error sending auth success message:', e.message);
+              } catch (e: any) {
+                console.error('Error sending auth success message:', e?.message);
               }
             }
           } else {
