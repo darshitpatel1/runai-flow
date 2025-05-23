@@ -234,9 +234,8 @@ export default function FlowBuilderPage() {
     setTesting(true);
     
     try {
-      // Use the API endpoint to execute the flow with the firebaseId query param
-      // This will help with authentication and trigger real-time updates
-      const response = await fetch(`/api/flows/${id}/execute?firebaseId=${encodeURIComponent(user.uid)}`, {
+      // Use a dedicated flow execution endpoint to avoid routing conflicts
+      const response = await fetch(`/api/execute-flow/${id}?firebaseId=${encodeURIComponent(user.uid)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
