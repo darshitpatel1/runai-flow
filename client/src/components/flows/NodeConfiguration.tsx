@@ -1292,7 +1292,17 @@ return sourceData * 2;"
   };
   
   return (
-    <div className="w-80 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-black flex flex-col">
+    <div 
+      className="border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-black flex flex-col relative"
+      style={{ width: sidebarWidth }}
+    >
+      {/* Drag handle for resizing */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500 hover:w-1.5 transition-all duration-150 z-10"
+        onMouseDown={handleResizeStart}
+        style={{ backgroundColor: isDragging ? '#3b82f6' : 'transparent' }}
+      />
+      
       <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
         <h2 className="font-medium">Configure Node</h2>
         <Button variant="ghost" size="icon" onClick={onClose} className="dark:hover:bg-slate-800">
