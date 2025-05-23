@@ -160,7 +160,16 @@ export default function FlowBuilderPage() {
   };
 
   const handleTestFlow = async () => {
-    if (!id || !user?.uid) return;
+    if (!id || !user?.uid) {
+      toast({
+        title: "Authentication required",
+        description: "Please make sure you're logged in to test flows",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    console.log('Starting flow execution with user:', user.uid);
     
     setTesting(true);
     setLogs([{
@@ -170,9 +179,13 @@ export default function FlowBuilderPage() {
     }]);
     
     try {
+      console.log('Making API call with firebaseId:', user.uid);
       const response = await fetch(`/api/execute-flow/${id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.uid}`
+        },
         body: JSON.stringify({
           firebaseId: user.uid,
           nodes: JSON.parse(JSON.stringify(nodes))
