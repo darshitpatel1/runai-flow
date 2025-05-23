@@ -3,7 +3,6 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle, AlertTriangle, Minimize2, Maximize2 } from 'lucide-react';
-import { useWebSocket } from '@/hooks/use-websocket';
 import { LogMessage } from '@/components/flows/ConsoleOutput';
 
 interface ExecutionProgressProps {
@@ -31,12 +30,61 @@ export function ExecutionProgress({
     return savedState ? JSON.parse(savedState) : false;
   });
 
-  // Connect to WebSocket for real-time updates
-  const { lastMessage, isConnected } = useWebSocket({
-    onMessage: (data) => {
-      console.log('WebSocket message received:', data);
+  // Execute flow using direct API calls
+  const executeFlow = async () => {
+    if (status === 'running') return;
+    
+    setStatus('running');
+    setProgress(0);
+    setStatusMessage('Starting execution...');
+    
+    const newLog: LogMessage = {
+      timestamp: new Date(),
+      type: 'info',
+      message: 'Flow execution started'
+    };
+    setLogs([newLog]);
+    onLogsUpdate?.([newLog]);
+    
+    try {
+      // Call the execution API directly
+      const response = await fetch(`/api/execute-flow/${flowId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Execution failed: ${response.statusText}`);
+      }
+      
+      const result = await response.text();
+      
+      // Show real API response in console
+      const responseLog: LogMessage = {
+        timestamp: new Date(),
+        type: 'success',
+        message: `API Response: ${result}`
+      };
+      
+      setLogs(prev => [...prev, responseLog]);
+      onLogsUpdate?.([...logs, responseLog]);
+      setProgress(100);
+      setStatus('completed');
+      setStatusMessage('Execution completed successfully');
+      
+    } catch (error: any) {
+      const errorLog: LogMessage = {
+        timestamp: new Date(),
+        type: 'error',
+        message: `Execution failed: ${error.message}`
+      };
+      
+      setLogs(prev => [...prev, errorLog]);
+      onLogsUpdate?.([...logs, errorLog]);
+      setStatus('failed');
+      setStatusMessage('Execution failed');
     }
-  });
+  };
 
   // Save minimized state to localStorage
   useEffect(() => {
@@ -47,65 +95,12 @@ export function ExecutionProgress({
     setMinimized(!minimized);
   };
 
-  // Process incoming WebSocket messages
+  // Auto-start execution when component mounts
   useEffect(() => {
-    if (lastMessage?.type === 'execution_update') {
-      const executionData = lastMessage.data;
-      
-      // Only process messages for the current flow
-      if (executionData?.flowId && executionData.flowId.toString() === flowId.toString()) {
-        // Update execution status
-        if (executionData.status) {
-          setStatus(executionData.status === 'completed' 
-            ? 'completed' 
-            : executionData.status === 'failed' 
-              ? 'failed' 
-              : 'running');
-        }
-        
-        // Update progress
-        if (typeof executionData.progress === 'number') {
-          setProgress(executionData.progress);
-        }
-        
-        // Update status message
-        if (executionData.message) {
-          setStatusMessage(executionData.message);
-        }
-        
-        // Add log entry for execution status
-        const newLog: LogMessage = {
-          timestamp: new Date(executionData.timestamp) || new Date(),
-          type: executionData.status === 'failed' ? 'error' : executionData.status === 'completed' ? 'success' : 'info',
-          message: executionData.message || 'Execution update received',
-          nodeId: executionData.currentNode ? `node_${executionData.currentNode}` : undefined
-        };
-        
-        // If there's API response data, add it as a separate detailed log
-        const logsToAdd = [newLog];
-        if (executionData.responseData) {
-          const responseLog: LogMessage = {
-            timestamp: new Date(),
-            type: 'response',
-            message: `API Response: ${executionData.responseData}`,
-            nodeId: executionData.currentNode ? `node_${executionData.currentNode}` : undefined
-          };
-          logsToAdd.push(responseLog);
-        }
-        
-        setLogs(prevLogs => {
-          const updatedLogs = [...prevLogs, ...logsToAdd];
-          
-          // Notify parent component about log updates (THIS IS CRITICAL!)
-          if (onLogsUpdate) {
-            onLogsUpdate(updatedLogs);
-          }
-          
-          return updatedLogs;
-        });
-      }
+    if (executionId && status === 'idle') {
+      executeFlow();
     }
-  }, [lastMessage, flowId, onLogsUpdate]);
+  }, [executionId]);
 
   // Status indicator badge
   const StatusBadge = () => {
@@ -181,10 +176,10 @@ export function ExecutionProgress({
             )}
           </div>
           
-          {!isConnected && (
-            <div className="text-xs text-amber-500 flex items-center gap-1 mt-1">
-              <AlertTriangle className="w-3 h-3" />
-              Waiting for connection...
+          {status === 'running' && (
+            <div className="text-xs text-blue-500 flex items-center gap-1 mt-1">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Executing flow...
             </div>
           )}
         </>
