@@ -1265,11 +1265,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   wss.on('connection', (ws: any, req: any) => {
-    console.log('WebSocket client connected');
+    console.log('WebSocket client connected from:', req.url);
     
-    // For immediate authentication, assign to a default user
-    const defaultUserId = 'D95yn62H6FSy8xaafJmBF6rdEk93';
-    console.log(`Auto-authenticating user: ${defaultUserId}`);
+    // Extract authentication from URL params
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const firebaseId = url.searchParams.get('firebaseId') || url.searchParams.get('token');
+    const defaultUserId = firebaseId || 'D95yn62H6FSy8xaafJmBF6rdEk93';
+    
+    console.log(`Authenticating WebSocket user: ${defaultUserId}`);
     
     // Create connections collection if not exists
     if (!connections.has(defaultUserId)) {
@@ -1287,10 +1290,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       ws.send(JSON.stringify({
         type: 'auth_success',
-        message: 'Authentication successful'
+        message: 'WebSocket authentication successful',
+        userId: defaultUserId
       }));
-    } catch (error) {
-      console.error('Error sending auth success message:', error);
+    } catch (error: any) {
+      console.error('Error sending auth success message:', error?.message);
     }
     
     // Initialize heartbeat mechanism

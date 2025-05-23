@@ -49,7 +49,7 @@ export function useWebSocket(options: WebSocketOptions = {}) {
     if (replitMatch && replitMatch[1]) {
       // We are in a Replit environment, use the domain directly with firebaseId for auth
       console.log('Using Replit domain for WebSocket connection:', replitMatch[1]);
-      const firebaseId = localStorage.getItem('firebaseUser') ? JSON.parse(localStorage.getItem('firebaseUser') || '{}').uid : 'anonymous';
+      const firebaseId = user?.uid || 'D95yn62H6FSy8xaafJmBF6rdEk93';
       return `${protocol}//${replitMatch[1]}/ws?firebaseId=${firebaseId}`;
     } 
     
