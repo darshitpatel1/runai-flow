@@ -212,16 +212,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('🎉 Flow execution completed successfully!');
       };
       
-      setTimeout(executeNodes, 200);
+      // Execute nodes and wait for completion before responding
+      await executeNodes();
       
       // Save execution to Firebase (simplified approach)
       console.log(`Saving execution ${execution.id} for flow ${flowId}`);
       
-      // Always return a properly formatted JSON response
+      // Return success response after execution completes
       res.status(200).json({
         success: true,
         execution: execution,
-        message: 'Flow execution started successfully'
+        message: 'Flow execution completed successfully'
       });
       
     } catch (error: any) {
