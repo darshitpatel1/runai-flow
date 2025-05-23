@@ -451,6 +451,8 @@ export default function FlowBuilderPage() {
               onEdgesChange={setEdges}
               connectors={connectors}
               flowId={id}
+              logs={logs}
+              onLogsUpdate={setLogs}
             />
             
             {/* Execution Progress Panel */}
