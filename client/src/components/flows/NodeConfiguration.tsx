@@ -103,7 +103,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
   };
   
   const handleTestNode = async () => {
-    if (nodeData.type !== 'http') {
+    if (node.type !== 'httpRequest') {
       toast({
         title: "Test functionality not available",
         description: "Only HTTP nodes can be tested individually.",
@@ -112,7 +112,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
       return;
     }
     
-    if (!nodeData.url) {
+    if (!nodeData.endpoint && !nodeData.url) {
       toast({
         title: "Missing Configuration",
         description: "Please configure the URL before testing this node.",
@@ -125,7 +125,10 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
       setIsTestingNode(true);
       updateNodeData(node.id, nodeData);
       
-      console.log(`🧪 Testing HTTP node: ${nodeData.method || 'GET'} ${nodeData.url}`);
+      const url = nodeData.endpoint || nodeData.url;
+      const method = nodeData.method || 'GET';
+      
+      console.log(`🧪 Testing HTTP node: ${method} ${url}`);
       
       // Call the new test-node endpoint for real API responses
       const response = await fetch('/api/test-node', {
@@ -134,8 +137,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          url: nodeData.url,
-          method: nodeData.method || 'GET',
+          url: url,
+          method: method,
           headers: nodeData.headers || {},
           body: nodeData.body || null
         })

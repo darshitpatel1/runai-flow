@@ -2,12 +2,18 @@ import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PlayIcon, Loader2Icon, ChevronUp, ChevronDown } from "lucide-react";
 
 export interface LogMessage {
   timestamp: Date;
-  type: string; 
+  type: string;
   message: string;
   nodeId?: string;
 }
@@ -19,10 +25,15 @@ interface ResizableConsoleProps {
   flowId?: string | number;
 }
 
-const CONSOLE_COLLAPSED_KEY = 'runai_console_collapsed';
-const CONSOLE_HEIGHT_KEY = 'runai_console_height';
+const CONSOLE_COLLAPSED_KEY = "runai_console_collapsed";
+const CONSOLE_HEIGHT_KEY = "runai_console_height";
 
-export function ResizableConsole({ logs, isRunning, onRunTest, flowId }: ResizableConsoleProps) {
+export function ResizableConsole({
+  logs,
+  isRunning,
+  onRunTest,
+  flowId,
+}: ResizableConsoleProps) {
   const [autoScroll, setAutoScroll] = useState(true);
   const [logFilter, setLogFilter] = useState("all");
   const [collapsed, setCollapsed] = useState(() => {
@@ -66,22 +77,23 @@ export function ResizableConsole({ logs, isRunning, onRunTest, flowId }: Resizab
     };
 
     if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
     }
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isResizing]);
 
   // Filter logs based on selected filter
-  const filteredLogs = logs.filter(log => {
+  const filteredLogs = logs.filter((log) => {
     if (logFilter === "all") return true;
     if (logFilter === "errors" && log.type === "error") return true;
     if (logFilter === "http" && log.type === "http") return true;
-    if (logFilter === "custom" && !["error", "http", "info"].includes(log.type)) return true;
+    if (logFilter === "custom" && !["error", "http", "info"].includes(log.type))
+      return true;
     return false;
   });
 
@@ -94,11 +106,11 @@ export function ResizableConsole({ logs, isRunning, onRunTest, flowId }: Resizab
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
     });
   };
 
@@ -118,23 +130,23 @@ export function ResizableConsole({ logs, isRunning, onRunTest, flowId }: Resizab
   };
 
   const formatJsonResponse = (message: string) => {
-    if (message.includes('🎨 API Response Data:')) {
+    if (message.includes("🎨 API Response Data:")) {
       try {
-        const jsonStart = message.indexOf('\n') + 1;
+        const jsonStart = message.indexOf("\n") + 1;
         const jsonData = message.substring(jsonStart);
         const parsed = JSON.parse(jsonData);
         return JSON.stringify(parsed, null, 2);
       } catch (e) {
-        return message.substring(message.indexOf('\n') + 1);
+        return message.substring(message.indexOf("\n") + 1);
       }
     }
     return message;
   };
 
   return (
-    <div 
+    <div
       className="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-black flex flex-col transition-all duration-300"
-      style={{ height: collapsed ? '48px' : `${height}px` }}
+      style={{ height: collapsed ? "48px" : `${height}px` }}
     >
       {/* Resize handle */}
       {!collapsed && (
@@ -150,22 +162,26 @@ export function ResizableConsole({ logs, isRunning, onRunTest, flowId }: Resizab
 
       <div className="flex items-center justify-between p-2 border-b border-slate-200 dark:border-slate-700">
         <div className="flex items-center space-x-2">
-          <Button 
+          <Button
             size="sm"
-            className="h-8 text-xs px-2 bg-[#6366F1] hover:bg-[#4F46E5] text-white disabled:opacity-50"
-            onClick={onRunTest} 
+            className="h-8 text-xs px-2 bg-[#4F46E5] hover:bg-[#6366F1] text-white disabled:opacity-50"
+            onClick={onRunTest}
             disabled={isRunning}
           >
             {isRunning ? (
-              <><Loader2Icon className="w-3 h-3 mr-1 animate-spin" /> Running</>
+              <>
+                <Loader2Icon className="w-3 h-3 mr-1 animate-spin" /> Running
+              </>
             ) : (
-              <><PlayIcon className="w-3 h-3 mr-1" /> Run Test</>
+              <>
+                <PlayIcon className="w-3 h-3 mr-1" /> Run Test
+              </>
             )}
           </Button>
-          
+
           {!collapsed && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               className="h-8 text-xs px-2"
               onClick={clearLogs}
@@ -174,20 +190,22 @@ export function ResizableConsole({ logs, isRunning, onRunTest, flowId }: Resizab
             </Button>
           )}
         </div>
-        
+
         <div className="flex items-center space-x-2">
           {!collapsed && (
             <>
               <div className="flex items-center space-x-1">
-                <Label htmlFor="auto-scroll" className="text-xs">Auto-scroll</Label>
-                <Switch 
-                  id="auto-scroll" 
-                  checked={autoScroll} 
+                <Label htmlFor="auto-scroll" className="text-xs">
+                  Auto-scroll
+                </Label>
+                <Switch
+                  id="auto-scroll"
+                  checked={autoScroll}
                   onCheckedChange={setAutoScroll}
                   className="scale-75"
                 />
               </div>
-              
+
               <Select value={logFilter} onValueChange={setLogFilter}>
                 <SelectTrigger className="w-[120px] h-8 text-xs">
                   <SelectValue placeholder="Log Filter" />
@@ -201,10 +219,10 @@ export function ResizableConsole({ logs, isRunning, onRunTest, flowId }: Resizab
               </Select>
             </>
           )}
-          
-          <Button 
-            variant="ghost" 
-            size="icon" 
+
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={toggleCollapse}
             className="h-8 w-8 p-0"
           >
@@ -212,9 +230,9 @@ export function ResizableConsole({ logs, isRunning, onRunTest, flowId }: Resizab
           </Button>
         </div>
       </div>
-      
+
       {!collapsed && (
-        <div 
+        <div
           ref={consoleRef}
           className="flex-1 overflow-y-auto p-2 font-mono text-xs bg-slate-50 dark:bg-black"
         >
@@ -224,13 +242,17 @@ export function ResizableConsole({ logs, isRunning, onRunTest, flowId }: Resizab
                 <span className="text-slate-400 inline-block w-20 flex-shrink-0">
                   [{formatTime(log.timestamp)}]
                 </span>
-                <span className={`${getLogTypeStyles(log.type)} flex-shrink-0 mr-2`}>
+                <span
+                  className={`${getLogTypeStyles(log.type)} flex-shrink-0 mr-2`}
+                >
                   {log.type.toUpperCase()}
                 </span>
                 <div className="text-slate-700 dark:text-slate-300 break-words break-all min-w-0 flex-1">
-                  {log.message.includes('🎨 API Response Data:') ? (
+                  {log.message.includes("🎨 API Response Data:") ? (
                     <div className="border-l-2 border-green-400 pl-2 mt-1">
-                      <div className="text-xs text-green-500 font-semibold mb-1">🎨 API Response Data:</div>
+                      <div className="text-xs text-green-500 font-semibold mb-1">
+                        🎨 API Response Data:
+                      </div>
                       <pre className="whitespace-pre-wrap break-all bg-slate-100 dark:bg-gray-900 border dark:border-slate-700 p-2 rounded-md text-xs overflow-x-auto max-w-full">
                         {formatJsonResponse(log.message)}
                       </pre>
