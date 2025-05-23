@@ -132,7 +132,6 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
       console.log(`🧪 Testing HTTP node: ${method} ${url}`);
       
       // Get Firebase auth token for authenticated request
-      const auth = getAuth();
       const token = await auth.currentUser?.getIdToken();
       
       // Call the new test-node endpoint for real API responses
