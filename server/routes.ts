@@ -180,6 +180,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const endTime = Date.now();
               const responseData = await response.text();
               
+              // Store the API response globally so it can be retrieved for main console
+              (global as any).lastApiResponse = responseData;
+              
               console.log(`✅ HTTP Response: ${response.status} ${response.statusText} (${endTime - startTime}ms)`);
               console.log(`✅ Response data: ${responseData.substring(0, 500)}...`);
               
@@ -236,6 +239,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Save execution to Firebase (simplified approach)
       console.log(`Saving execution ${execution.id} for flow ${flowId} - Status: completed`);
+      
+      // Check if this is a request for real response data
+      if (req.body.getRealResponse) {
+        // Return the actual latest API response data for the main console
+        const latestApiResponse = global.lastApiResponse || '{"message": "No API response available yet"}';
+        return res.status(200).send(latestApiResponse);
+      }
       
       // Return success response with reference to check server logs for full data
       res.status(200).json({

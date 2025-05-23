@@ -319,13 +319,78 @@ export default function FlowBuilderPage() {
           message: `🚀 Starting flow execution with ${nodes.length} node(s)`,
         }]);
         
-        // Add success message when execution completes
+        // Get the real API response data and show it in the main console
         setTimeout(async () => {
-          setLogs(prevLogs => [...prevLogs, {
-            timestamp: new Date(),
-            type: 'success',
-            message: `🎨 Art Institute API Success! Real artwork data retrieved - check server logs for details (title, artist, date, medium)`,
-          }]);
+          // Make another call to get the actual API response data for display
+          try {
+            const apiResponse = await fetch(`/api/execute-flow/${id}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                firebaseId: user?.uid,
+                getRealResponse: true // Flag to get actual API data
+              })
+            });
+            
+            if (apiResponse.ok) {
+              const apiResult = await apiResponse.text();
+              
+              // Try to parse and extract artwork data
+              try {
+                const parsedResponse = JSON.parse(apiResult);
+                
+                // Show the actual API response in main console
+                setLogs(prevLogs => [...prevLogs, {
+                  timestamp: new Date(),
+                  type: 'success',
+                  message: `🎨 Art Institute API Response: ${apiResult.substring(0, 500)}...`,
+                }]);
+                
+                // Try to extract artwork details if it's Art Institute data
+                if (apiResult.includes('artic.edu')) {
+                  const artworkMatch = apiResult.match(/"title":"([^"]+)"/);
+                  const artistMatch = apiResult.match(/"artist_display":"([^"]+)"/);
+                  const dateMatch = apiResult.match(/"date_display":"([^"]+)"/);
+                  
+                  if (artworkMatch) {
+                    setLogs(prevLogs => [...prevLogs, {
+                      timestamp: new Date(),
+                      type: 'info',
+                      message: `🖼️ Artwork: ${artworkMatch[1]}`,
+                    }]);
+                  }
+                  
+                  if (artistMatch) {
+                    setLogs(prevLogs => [...prevLogs, {
+                      timestamp: new Date(),
+                      type: 'info',
+                      message: `👨‍🎨 Artist: ${artistMatch[1]}`,
+                    }]);
+                  }
+                  
+                  if (dateMatch) {
+                    setLogs(prevLogs => [...prevLogs, {
+                      timestamp: new Date(),
+                      type: 'info',
+                      message: `📅 Date: ${dateMatch[1]}`,
+                    }]);
+                  }
+                }
+                
+              } catch (e) {
+                // If not JSON, just show the raw response
+                setLogs(prevLogs => [...prevLogs, {
+                  timestamp: new Date(),
+                  type: 'success',
+                  message: `📊 API Response: ${apiResult.substring(0, 300)}...`,
+                }]);
+              }
+            }
+          } catch (error) {
+            console.warn('Could not fetch API response data:', error);
+          }
           
           // Update execution status to completed in Firebase
           try {
