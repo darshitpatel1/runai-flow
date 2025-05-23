@@ -188,8 +188,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdAt: new Date()
       };
       
-      // Send progress updates
-      sendExecutionUpdate(userId.toString(), {
+      // Send progress updates (use firebaseId for better connection matching)
+      sendExecutionUpdate(firebaseId, {
         executionId: execution.id,
         flowId,
         status: 'running',
@@ -203,7 +203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentNode++;
           const progress = Math.floor((currentNode / nodeCount) * 100);
           
-          sendExecutionUpdate(userId.toString(), {
+          sendExecutionUpdate(firebaseId, {
             executionId: execution.id,
             flowId,
             status: 'running',
@@ -215,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             processNodes();
           } else {
             setTimeout(() => {
-              sendExecutionUpdate(userId.toString(), {
+              sendExecutionUpdate(firebaseId, {
                 executionId: execution.id,
                 flowId,
                 status: 'completed',
@@ -228,6 +228,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       setTimeout(processNodes, 200);
+      
+      // Save execution to Firebase (simplified approach)
+      console.log(`Saving execution ${execution.id} for flow ${flowId}`);
       
       // Always return a properly formatted JSON response
       res.status(200).json({

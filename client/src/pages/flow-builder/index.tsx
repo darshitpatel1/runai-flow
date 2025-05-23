@@ -288,6 +288,22 @@ export default function FlowBuilderPage() {
         ...prevFlow,
         executionId: execution.id
       }));
+
+      // Save execution to Firebase for history
+      try {
+        const executionRef = doc(db, "users", user.uid, "executions", execution.id.toString());
+        await setDoc(executionRef, {
+          flowId: id,
+          flowName: flowName,
+          status: 'running',
+          startTime: new Date(),
+          nodeCount: nodes.length,
+          createdAt: new Date()
+        });
+        console.log('Execution saved to Firebase for history');
+      } catch (error) {
+        console.warn('Could not save execution to Firebase:', error);
+      }
       
       toast({
         title: "Flow execution started",
