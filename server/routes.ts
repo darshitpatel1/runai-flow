@@ -175,6 +175,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     try {
       const userId = 1; // Simplified for testing
+      console.log('Full request body:', JSON.stringify(req.body, null, 2));
+      
       const flowNodes = req.body.input?.nodes || [];
       const nodeCount = flowNodes.length || 1;
       
