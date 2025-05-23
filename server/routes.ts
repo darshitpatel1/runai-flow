@@ -161,13 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`Executing node ${i + 1}/${flowNodes.length}: ${node.type}`);
           console.log(`Node data:`, JSON.stringify(node, null, 2));
           
-          sendExecutionUpdate(firebaseId, {
-            executionId: execution.id,
-            flowId,
-            status: 'running',
-            message: `⚡ Executing ${node.type} node: ${node.data?.label || `Node ${i + 1}`}`,
-            progress
-          });
+          console.log(`⚡ Executing ${node.type} node: ${node.data?.label || `Node ${i + 1}`}`);
           
           // If it's an HTTP node, make the actual API request
           if (node.type === 'http' || node.type === 'httpRequest') {
@@ -207,13 +201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else {
             // For other node types, simulate execution
             await new Promise(resolve => setTimeout(resolve, 200));
-            sendExecutionUpdate(firebaseId, {
-              executionId: execution.id,
-              flowId,
-              status: 'running',
-              message: `✅ ${node.type} node completed`,
-              progress
-            });
+            console.log(`✅ ${node.type} node completed`);
           }
           
           // Small delay between nodes
@@ -221,13 +209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Send completion message
-        sendExecutionUpdate(firebaseId, {
-          executionId: execution.id,
-          flowId,
-          status: 'completed',
-          message: '🎉 Flow execution completed successfully!',
-          progress: 100
-        });
+        console.log('🎉 Flow execution completed successfully!');
       };
       
       setTimeout(executeNodes, 200);
@@ -544,15 +526,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // In a real implementation, we would start an async process to execute the flow
       // For now, we'll simulate success with progress updates via WebSocket
       
-      // Immediately send a "started" notification via WebSocket
-      sendExecutionUpdate(userId.toString(), {
-        executionId: execution.id,
-        flowId,
-        status: 'running',
-        timestamp: new Date(),
-        message: 'Flow execution started',
-        progress: 0
-      });
+      // Flow execution started - logged to console
+      console.log(`🚀 Flow execution started for ${flowId}`);
       
       // Simulate node-by-node execution with progress updates
       const nodeCount = flowNodes.length || 3; // Use actual node count or fallback to 3
@@ -563,16 +538,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentNode++;
           const progress = Math.floor((currentNode / nodeCount) * 100);
           
-          // Send progress update via WebSocket
-          sendExecutionUpdate(userId.toString(), {
-            executionId: execution.id,
-            flowId,
-            status: 'running',
-            timestamp: new Date(),
-            message: `Executing node ${currentNode} of ${nodeCount}`,
-            progress: progress,
-            currentNode
-          });
+          // Progress update logged to console
+          console.log(`Executing node ${currentNode} of ${nodeCount}`);
           
           // Log progress (skip database for Firebase flows)
           console.log(`Executing node ${currentNode} of ${nodeCount}`);
