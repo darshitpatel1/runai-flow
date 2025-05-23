@@ -247,14 +247,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(200).send(latestApiResponse);
       }
       
-      // Return success response with reference to check server logs for full data
+      // Return success response with the actual API response data
       res.status(200).json({
         success: true,
         execution: execution,
-        message: 'Flow execution completed successfully - Art Institute API data logged to server console',
-        artworkFound: 'Real artwork data retrieved successfully',
-        checkServerLogs: 'Full Art Institute API response with artwork details available in server console',
-        apiResponseData: 'Full artwork details available in server console logs above'
+        message: 'Flow execution completed successfully',
+        apiResponse: global.lastApiResponse || null,
+        artworkDetails: global.lastArtworkDetails || null
       });
       
     } catch (error: any) {
