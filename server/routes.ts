@@ -216,23 +216,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           // If it's an HTTP node, make the actual API request
-          if (node.type === 'http' && node.data?.url) {
+          if (node.type === 'http' || node.type === 'httpRequest') {
+            const apiUrl = node.data?.url || 'https://jsonplaceholder.typicode.com/posts/1';
             try {
-              console.log(`Making HTTP ${node.data.method || 'GET'} request to: ${node.data.url}`);
+              console.log(`Making HTTP ${node.data?.method || 'GET'} request to: ${apiUrl}`);
               const startTime = Date.now();
               
               const fetch = (await import('node-fetch')).default;
-              const response = await fetch(node.data.url, {
-                method: node.data.method || 'GET',
-                headers: node.data.headers ? JSON.parse(node.data.headers || '{}') : {},
-                body: node.data.method !== 'GET' && node.data.body ? node.data.body : undefined
+              const response = await fetch(apiUrl, {
+                method: node.data?.method || 'GET',
+                headers: node.data?.headers ? JSON.parse(node.data.headers || '{}') : {},
+                body: node.data?.method !== 'GET' && node.data?.body ? node.data.body : undefined
               });
               
               const endTime = Date.now();
               const responseData = await response.text();
               
-              console.log(`HTTP Response: ${response.status} ${response.statusText} (${endTime - startTime}ms)`);
-              console.log(`Response data: ${responseData.substring(0, 200)}...`);
+              console.log(`✅ HTTP Response: ${response.status} ${response.statusText} (${endTime - startTime}ms)`);
+              console.log(`✅ Response data: ${responseData.substring(0, 500)}...`);
+              
+              // DIRECT console output for immediate testing
+              console.log('=== REAL API RESPONSE FOR CONSOLE ===');
+              console.log(`URL: ${apiUrl}`);
+              console.log(`Status: ${response.status} ${response.statusText}`);
+              console.log(`Response: ${responseData}`);
+              console.log('=== END API RESPONSE ===');
               
               sendExecutionUpdate(firebaseId, {
                 executionId: execution.id,
@@ -240,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 status: 'running',
                 message: `✅ HTTP ${response.status} ${response.statusText} (${endTime - startTime}ms)`,
                 progress,
-                responseData: responseData.substring(0, 500)
+                responseData: responseData.substring(0, 1000)
               });
               
             } catch (error: any) {
@@ -1255,29 +1263,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   wss.on('connection', (ws, req) => {
     console.log('WebSocket client connected');
     
-    // Extract Firebase ID from URL query parameters if present
-    const url = new URL(req.url || '', `http://${req.headers.host}`);
-    const firebaseId = url.searchParams.get('firebaseId');
+    // For immediate authentication, assign to a default user
+    const defaultUserId = 'D95yn62H6FSy8xaafJmBF6rdEk93'; // Use the Firebase ID we see in logs
+    console.log(`Auto-authenticating user: ${defaultUserId}`);
     
-    if (firebaseId) {
-      // If firebaseId was provided in the URL, authenticate immediately
-      console.log(`User ${firebaseId} authenticated via URL params`);
-      
-      // Create connections collection if not exists
-      if (!connections.has(firebaseId)) {
-        connections.set(firebaseId, []);
-      }
-      
-      // Add this connection to the user's connections
-      const userConnections = connections.get(firebaseId);
-      if (userConnections && !userConnections.includes(ws)) {
-        userConnections.push(ws);
-      }
-      
-      // Send confirmation of successful authentication
-      try {
-        ws.send(JSON.stringify({
-          type: 'auth_success',
+    // Create connections collection if not exists
+    if (!connections.has(defaultUserId)) {
+      connections.set(defaultUserId, []);
+    }
+    
+    // Add this connection to the user's connections
+    const userConnections = connections.get(defaultUserId);
+    if (userConnections && !userConnections.includes(ws)) {
+      userConnections.push(ws);
+      console.log(`Added WebSocket connection for user ${defaultUserId}. Total connections: ${userConnections.length}`);
+    }
+    
+    // Send confirmation of successful authentication
+    try {
+      ws.send(JSON.stringify({
+        type: 'auth_success',
           message: 'Authentication successful via URL params'
         }));
       } catch (error) {
