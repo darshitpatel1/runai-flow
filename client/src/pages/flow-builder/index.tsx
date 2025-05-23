@@ -198,21 +198,37 @@ export default function FlowBuilderPage() {
       
       const result = await response.json();
       
-      // Add success log
-      setLogs(prev => [...prev, {
+      // Display real API response data in main console
+      const newLogs = [];
+      
+      if (result.responses && result.responses.length > 0) {
+        result.responses.forEach((resp: any) => {
+          // Add API call success message
+          newLogs.push({
+            timestamp: new Date(),
+            type: "success",
+            message: `✅ ${resp.method} ${resp.url} → ${resp.status} ${resp.statusText} (${resp.responseTime}ms)`,
+            nodeId: resp.nodeId
+          });
+          
+          // Add the actual API response data (works for ANY API response)
+          newLogs.push({
+            timestamp: new Date(),
+            type: "info",
+            message: `🎨 API Response Data:\n${resp.data}`,
+            nodeId: resp.nodeId
+          });
+        });
+      }
+      
+      // Add completion message
+      newLogs.push({
         timestamp: new Date(),
         type: "success",
         message: `✅ Flow completed successfully! Execution ID: ${result.execution?.id}`
-      }]);
+      });
       
-      // Show the actual API response data (works for ANY API - GET, POST, with/without auth)
-      if (result.apiResponse) {
-        setLogs(prev => [...prev, {
-          timestamp: new Date(),
-          type: "success",
-          message: `Response Data: ${result.apiResponse}`
-        }]);
-      }
+      setLogs(prev => [...prev, ...newLogs]);
       
       // Show extracted details if available (for any structured API response)
       if (result.artworkDetails) {
