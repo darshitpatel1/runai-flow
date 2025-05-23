@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SaveIcon, PlayIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { LogMessage, ConsoleOutput } from "@/components/flows/ConsoleOutput";
+import { LogMessage, ResizableConsole } from "@/components/flows/ResizableConsole";
 
 export default function FlowBuilderPage() {
   const { id } = useParams<{ id: string }>();

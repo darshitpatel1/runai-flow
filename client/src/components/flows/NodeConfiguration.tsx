@@ -103,10 +103,19 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
   };
   
   const handleTestNode = async () => {
-    if (!onTestNode) {
+    if (nodeData.type !== 'http') {
       toast({
         title: "Test functionality not available",
-        description: "Please save the flow first to enable node testing.",
+        description: "Only HTTP nodes can be tested individually.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!nodeData.url) {
+      toast({
+        title: "Missing Configuration",
+        description: "Please configure the URL before testing this node.",
         variant: "destructive",
       });
       return;
@@ -114,25 +123,47 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     
     try {
       setIsTestingNode(true);
-      // Apply any unsaved changes before testing
       updateNodeData(node.id, nodeData);
       
-      // Run the test
-      const result = await onTestNode(node.id, nodeData);
-      setTestResult(result);
+      console.log(`🧪 Testing HTTP node: ${nodeData.method || 'GET'} ${nodeData.url}`);
+      
+      // Call the new test-node endpoint for real API responses
+      const response = await fetch('/api/test-node', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: nodeData.url,
+          method: nodeData.method || 'GET',
+          headers: nodeData.headers || {},
+          body: nodeData.body || null
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Node test result:', result);
+      
+      // Set the actual API response data
+      setTestResult(result.data);
       setShowTestResult(true);
       
-      // Automatically generate a list of available variables from the result
-      if (result && typeof result === 'object') {
-        const variables = generateVariablePaths(result);
+      // Generate variables from the real response
+      if (result.data && typeof result.data === 'object') {
+        const variables = generateVariablePaths(result.data);
         setAvailableVariables(variables);
       }
       
       toast({
         title: "Node Test Complete",
-        description: "Test completed successfully. View the result and create variables.",
+        description: `Got real API response! ${result.status} ${result.statusText} (${result.responseTime}ms)`,
       });
     } catch (error: any) {
+      console.error('❌ Node test failed:', error);
       toast({
         title: "Test Failed",
         description: error.message || "An error occurred while testing the node",

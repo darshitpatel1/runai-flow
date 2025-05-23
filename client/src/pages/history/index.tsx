@@ -81,10 +81,6 @@ export default function History() {
 
     fetchExecutions();
   }, [user]);
-    };
-    
-    fetchExecutions();
-  }, [user, toast]);
   
   const handleLoadMore = async () => {
     if (!user || !lastVisible || loadingMore) return;

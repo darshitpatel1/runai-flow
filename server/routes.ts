@@ -292,6 +292,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Test single node endpoint for real API responses
+  app.post("/api/test-node", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { url, method = 'GET', headers = {}, body } = req.body;
+      
+      if (!url) {
+        return res.status(400).json({ error: 'URL is required' });
+      }
+
+      console.log(`🧪 Testing node: ${method} ${url}`);
+      const startTime = Date.now();
+
+      const fetchOptions: RequestInit = {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers
+        }
+      };
+
+      if (body && method !== 'GET') {
+        fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
+      }
+
+      const response = await fetch(url, fetchOptions);
+      const responseTime = Date.now() - startTime;
+      
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        data = await response.text();
+      }
+
+      console.log(`✅ Node test completed: ${response.status} ${response.statusText} (${responseTime}ms)`);
+
+      res.json({
+        data,
+        status: response.status,
+        statusText: response.statusText,
+        responseTime,
+        success: true
+      });
+
+    } catch (error) {
+      console.error('❌ Node test failed:', error);
+      res.status(500).json({ 
+        error: error instanceof Error ? error.message : 'Test failed',
+        success: false 
+      });
+    }
+  });
   
   // Auth routes
   app.post('/api/auth/register', async (req, res) => {
