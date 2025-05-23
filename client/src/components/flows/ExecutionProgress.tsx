@@ -63,11 +63,14 @@ export function ExecutionProgress({
       console.log('🎉 Flow Execution Success!', result);
       console.log('📊 API Response Data:', JSON.parse(result));
       
-      // Show real API response in console
+      // Parse the response to get more details
+      const responseData = JSON.parse(result);
+      
+      // Show success message in console with artwork confirmation
       const responseLog: LogMessage = {
         timestamp: new Date(),
         type: 'success',
-        message: `✅ Flow completed successfully! Check browser console for full response data.`
+        message: `✅ ${responseData.message} - Art Institute API data retrieved!`
       };
       
       setLogs(prev => [...prev, responseLog]);
