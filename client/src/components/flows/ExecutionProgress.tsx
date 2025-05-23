@@ -61,16 +61,17 @@ export function ExecutionProgress({
       
       // Log the successful response to browser console for inspection
       console.log('🎉 Flow Execution Success!', result);
-      console.log('📊 API Response Data:', JSON.parse(result));
-      
-      // Parse the response to get more details
       const responseData = JSON.parse(result);
+      console.log('📊 API Response Data:', responseData);
+      
+      // Add a note about where to find the actual artwork data
+      console.log('🎨 ARTWORK DATA: Check the server console logs above for full Art Institute API response with artwork details (title, artist, date, medium, dimensions)');
       
       // Show success message in console with artwork confirmation
       const responseLog: LogMessage = {
         timestamp: new Date(),
         type: 'success',
-        message: `✅ ${responseData.message} - Art Institute API data retrieved!`
+        message: `🎨 Art Institute API Success! Real artwork data retrieved - check server logs for details (title, artist, date, medium)`
       };
       
       setLogs(prev => [...prev, responseLog]);

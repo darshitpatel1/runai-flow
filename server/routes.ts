@@ -231,8 +231,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Execute nodes and wait for completion before responding
       await executeNodes();
       
+      // Update execution status to completed
+      execution.status = 'completed';
+      execution.finishedAt = new Date().toISOString();
+      
       // Save execution to Firebase (simplified approach)
-      console.log(`Saving execution ${execution.id} for flow ${flowId}`);
+      console.log(`Saving execution ${execution.id} for flow ${flowId} - Status: completed`);
       
       // Return success response with reference to check server logs for full data
       res.status(200).json({
@@ -240,7 +244,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         execution: execution,
         message: 'Flow execution completed successfully - Art Institute API data logged to server console',
         artworkFound: 'Real artwork data retrieved successfully',
-        checkServerLogs: 'Full Art Institute API response with artwork details available in server console'
+        checkServerLogs: 'Full Art Institute API response with artwork details available in server console',
+        apiResponseData: 'Full artwork details available in server console logs above'
       });
       
     } catch (error: any) {
