@@ -253,6 +253,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           flowId: parseInt(flowId),
           userId: userId,
           status: 'completed',
+          startedAt: new Date(),
+          finishedAt: new Date(),
           input: JSON.stringify({
             responses: responses,
             logs: responses.map(resp => ({

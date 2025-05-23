@@ -151,9 +151,8 @@ export function ResizableConsole({ logs, isRunning, onRunTest, flowId }: Resizab
       <div className="flex items-center justify-between p-2 border-b border-slate-200 dark:border-slate-700">
         <div className="flex items-center space-x-2">
           <Button 
-            variant="outline" 
             size="sm"
-            className="h-8 text-xs px-2"
+            className="h-8 text-xs px-2 bg-purple-600 hover:bg-purple-700 text-white border-purple-600 disabled:opacity-50"
             onClick={onRunTest} 
             disabled={isRunning}
           >
