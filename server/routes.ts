@@ -217,7 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // If it's an HTTP node, make the actual API request
           if (node.type === 'http' || node.type === 'httpRequest') {
-            const apiUrl = node.data?.url || 'https://jsonplaceholder.typicode.com/posts/1';
+            const apiUrl = node.data?.url || node.data?.endpoint || 'https://jsonplaceholder.typicode.com/posts/1';
             try {
               console.log(`Making HTTP ${node.data?.method || 'GET'} request to: ${apiUrl}`);
               const startTime = Date.now();
