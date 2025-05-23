@@ -129,17 +129,8 @@ export function ExecutionProgress({
       default:
         return (
           <Badge className="bg-slate-500 text-white flex items-center gap-1">
-            {isConnected ? (
-              <>
-                <CheckCircle className="w-3 h-3" />
-                Ready
-              </>
-            ) : (
-              <>
-                <AlertTriangle className="w-3 h-3" />
-                Disconnected
-              </>
-            )}
+            <CheckCircle className="w-3 h-3" />
+            Ready
           </Badge>
         );
     }

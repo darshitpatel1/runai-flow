@@ -17,12 +17,13 @@ interface ConsoleOutputProps {
   logs: LogMessage[];
   isRunning: boolean;
   onRunTest: () => void;
+  flowId?: string | number;
 }
 
 // Local storage key for console state
 const CONSOLE_COLLAPSED_KEY = 'runai_console_collapsed';
 
-export function ConsoleOutput({ logs, isRunning, onRunTest }: ConsoleOutputProps) {
+export function ConsoleOutput({ logs, isRunning, onRunTest, flowId }: ConsoleOutputProps) {
   const [autoScroll, setAutoScroll] = useState(true);
   const [logFilter, setLogFilter] = useState("all");
   const [collapsed, setCollapsed] = useState(() => {
