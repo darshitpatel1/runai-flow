@@ -176,9 +176,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = 1; // Simplified for testing
       const flowNodes = req.body.input?.nodes || [];
-      const nodeCount = flowNodes.length || 3;
+      const nodeCount = flowNodes.length || 1;
       
       console.log(`Executing flow with ${nodeCount} nodes`);
+      console.log('Received nodes:', JSON.stringify(flowNodes, null, 2));
       
       const execution = {
         id: Date.now(),
