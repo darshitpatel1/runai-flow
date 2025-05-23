@@ -34,6 +34,10 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
   const [transformScript, setTransformScript] = useState("");
   const [availableVariables, setAvailableVariables] = useState<string[]>([]);
   
+  // Resizable sidebar state
+  const [sidebarWidth, setSidebarWidth] = useState(400);
+  const [isDragging, setIsDragging] = useState(false);
+  
   useEffect(() => {
     setNodeData(node.data);
     // Clear test result when switching to a different node
@@ -41,6 +45,42 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     setShowTestResult(false);
     setAvailableVariables([]);
   }, [node.id]);
+
+  // Handle resizing functionality
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      
+      const newWidth = window.innerWidth - e.clientX;
+      const minWidth = 300;
+      const maxWidth = window.innerWidth * 0.7;
+      
+      setSidebarWidth(Math.max(minWidth, Math.min(maxWidth, newWidth)));
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
   
   const handleChange = (field: string, value: any) => {
     setNodeData({ ...nodeData, [field]: value });

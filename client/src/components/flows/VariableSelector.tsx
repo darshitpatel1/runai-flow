@@ -175,12 +175,26 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
             );
             
             if (!exists) {
+              // Create user-friendly display name
+              const displayName = path.split('.').map(part => {
+                if (part === 'length') return 'Count';
+                if (part === 'data') return 'Data';
+                if (part === 'pagination') return 'Page Info';
+                if (part.includes('[0]')) return part.replace('[0]', ' (First Item)');
+                
+                // Convert snake_case to readable
+                return part.replace(/_/g, ' ')
+                  .split(' ')
+                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(' ');
+              }).join(' → ');
+              
               variableList.push({
                 nodeId: node.id,
                 nodeName: node.data?.label || node.type || "Node",
                 nodeType: node.type || "unknown",
-                variableName: variableName,
-                path: `${node.id}.result.${path}`,
+                variableName: displayName,
+                path: `{{${node.id}.result.${path}}}`,
                 source: "testResult"
               });
             }
