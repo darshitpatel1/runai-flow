@@ -233,7 +233,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update execution status to completed
       execution.status = 'completed';
-      execution.finishedAt = new Date().toISOString();
       
       // Save execution to Firebase (simplified approach)
       console.log(`Saving execution ${execution.id} for flow ${flowId} - Status: completed`);

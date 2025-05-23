@@ -78,7 +78,7 @@ export function ExecutionProgress({
       onLogsUpdate?.([...logs, responseLog]);
       setProgress(100);
       setStatus('completed');
-      setStatusMessage('Execution completed successfully');
+      setStatusMessage('Art Institute API execution completed successfully!');
       
     } catch (error: any) {
       const errorLog: LogMessage = {
