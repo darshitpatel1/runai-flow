@@ -486,6 +486,16 @@ export default function FlowBuilderPage() {
               </div>
             )}
           </div>
+          
+          {/* Main Console Panel - This is what you want to see! */}
+          <div className="w-full">
+            <ConsoleOutput
+              logs={logs}
+              isRunning={testing}
+              onRunTest={handleTestFlow}
+              flowId={id}
+            />
+          </div>
         </div>
       </div>
     </AppLayout>

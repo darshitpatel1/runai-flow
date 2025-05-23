@@ -1,0 +1,44 @@
+WebSocket constructor patched to fix Vite HMR connection issues
+react-dom.development.js:29895 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+AuthContext.tsx:18 
+            
+            
+            POST https://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/api/auth/register 409 (Conflict)
+registerUserWithBackend @ AuthContext.tsx:18
+(anonymous) @ AuthContext.tsx:59
+(anonymous) @ auth_impl.ts:755
+Promise.then
+registerStateListener @ auth_impl.ts:751
+onAuthStateChanged @ auth_impl.ts:558
+onAuthStateChanged @ index.ts:198
+(anonymous) @ AuthContext.tsx:55
+commitHookEffectListMount @ react-dom.development.js:23189
+commitPassiveMountOnFiber @ react-dom.development.js:24965
+commitPassiveMountEffects_complete @ react-dom.development.js:24930
+commitPassiveMountEffects_begin @ react-dom.development.js:24917
+commitPassiveMountEffects @ react-dom.development.js:24905
+flushPassiveEffectsImpl @ react-dom.development.js:27078
+flushPassiveEffects @ react-dom.development.js:27023
+performSyncWorkOnRoot @ react-dom.development.js:26115
+flushSyncCallbacks @ react-dom.development.js:12042
+commitRootImpl @ react-dom.development.js:26998
+commitRoot @ react-dom.development.js:26721
+finishConcurrentRender @ react-dom.development.js:26020
+performConcurrentWorkOnRoot @ react-dom.development.js:25848
+workLoop @ scheduler.development.js:266
+flushWork @ scheduler.development.js:239
+performWorkUntilDeadline @ scheduler.development.js:533
+mpPs0hkOn9k5ryPJOfMv:90 User already exists in the database
+mpPs0hkOn9k5ryPJOfMv:90 No initial nodes to load or empty array received
+mpPs0hkOn9k5ryPJOfMv:90 Loading saved nodes: [{…}]
+mpPs0hkOn9k5ryPJOfMv:90 Loading saved edges: [{…}]
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: [{…}]
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: [{…}]
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: [{…}]
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: [{…}]
+mpPs0hkOn9k5ryPJOfMv:90 🎉 Flow Execution Success! {"success":true,"execution":{"id":1748013765307,"flowId":"mpPs0hkOn9k5ryPJOfMv","userId":1,"status":"completed","createdAt":"2025-05-23T15:22:45.307Z"},"message":"Flow execution completed successfully - Art Institute API data logged to server console","artworkFound":"Real artwork data retrieved successfully","checkServerLogs":"Full Art Institute API response with artwork details available in server console","apiResponseData":"Full artwork details available in server console logs above"}
+mpPs0hkOn9k5ryPJOfMv:90 📊 API Response Data: {success: true, execution: {…}, message: 'Flow execution completed successfully - Art Institute API data logged to server console', artworkFound: 'Real artwork data retrieved successfully', checkServerLogs: 'Full Art Institute API response with artwork details available in server console', …}apiResponseData: "Full artwork details available in server console logs above"artworkFound: "Real artwork data retrieved successfully"checkServerLogs: "Full Art Institute API response with artwork details available in server console"execution: createdAt: "2025-05-23T15:22:45.307Z"flowId: "mpPs0hkOn9k5ryPJOfMv"id: 1748013765307status: "completed"userId: 1[[Prototype]]: Objectmessage: "Flow execution completed successfully - Art Institute API data logged to server console"success: true[[Prototype]]: Object
+mpPs0hkOn9k5ryPJOfMv:90 🎨 ARTWORK DATA: Check the server console logs above for full Art Institute API response with artwork details (title, artist, date, medium, dimensions)
+mpPs0hkOn9k5ryPJOfMv:90 Execution saved to Firebase for history
+mpPs0hkOn9k5ryPJOfMv:90 Execution status updated to completed in Firebase
