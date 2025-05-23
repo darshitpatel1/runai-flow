@@ -403,7 +403,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Flow Execution routes
+  // Flow Execution routes - Updated to handle Firebase document IDs
   app.post('/api/flows/:id/execute', async (req, res) => {
     try {
       // Allow authentication via query parameter for easier testing
@@ -424,25 +424,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Authentication required' });
       }
       
-      const flowId = parseInt(req.params.id);
+      const flowId = req.params.id;
       
-      if (isNaN(flowId)) {
+      // For Firebase document IDs, we don't parse as integer
+      if (!flowId || flowId.trim() === '') {
         return res.status(400).json({ error: 'Invalid flow ID' });
       }
       
-      // Check if flow exists and belongs to user
-      const flow = await storage.getFlow(userId, flowId);
-      if (!flow) {
-        return res.status(404).json({ error: 'Flow not found' });
-      }
+      console.log(`Executing flow ${flowId} for user ${userId}`);
       
-      // Create a new execution record
-      const execution = await storage.createExecution({
+      // Since flows are stored in Firebase, we'll use the flow data from the request
+      const flowNodes = req.body.input?.nodes || [];
+      const flowEdges = req.body.input?.edges || [];
+      
+      console.log(`Flow has ${flowNodes.length} nodes and ${flowEdges.length} edges`);
+      
+      // Create a new execution record with a simulated ID since we're using Firebase
+      const execution = {
+        id: Date.now(), // Use timestamp as a simple ID
         flowId,
         userId,
         status: 'running',
-        input: req.body.input || {}
-      });
+        input: req.body.input || {},
+        createdAt: new Date()
+      };
       
       // In a real implementation, we would start an async process to execute the flow
       // For now, we'll simulate success with progress updates via WebSocket
@@ -458,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Simulate node-by-node execution with progress updates
-      const nodeCount = (flow.nodes && Array.isArray(flow.nodes) ? flow.nodes.length : 0) || 5; // Fallback to 5 if no nodes defined
+      const nodeCount = flowNodes.length || 3; // Use actual node count or fallback to 3
       let currentNode = 0;
       
       const processNodes = () => {
@@ -477,12 +482,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             currentNode
           });
           
-          // Add log entry
-          await storage.addExecutionLog({
-            executionId: execution.id,
-            level: 'info',
-            message: `Executing node ${currentNode} of ${nodeCount}`
-          });
+          // Log progress (skip database for Firebase flows)
+          console.log(`Executing node ${currentNode} of ${nodeCount}`);
           
           // Continue processing nodes or complete
           if (currentNode < nodeCount) {
@@ -491,20 +492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Final completion update
             setTimeout(async () => {
               try {
-                // Update execution with success
-                await storage.updateExecution(execution.id, {
-                  status: 'success',
-                  finishedAt: new Date(),
-                  duration: (nodeCount + 1) * 300, // Simulate duration based on node count
-                  output: { success: true, message: 'Flow executed successfully' }
-                });
-                
-                // Add completion log
-                await storage.addExecutionLog({
-                  executionId: execution.id,
-                  level: 'info',
-                  message: 'Flow execution completed successfully'
-                });
+                console.log('Flow execution completed successfully');
                 
                 // Send completion notification via WebSocket
                 sendExecutionUpdate(userId.toString(), {
@@ -516,7 +504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   progress: 100
                 });
               } catch (error) {
-                console.error('Error updating execution:', error);
+                console.error('Error sending completion update:', error);
               }
             }, 300);
           }

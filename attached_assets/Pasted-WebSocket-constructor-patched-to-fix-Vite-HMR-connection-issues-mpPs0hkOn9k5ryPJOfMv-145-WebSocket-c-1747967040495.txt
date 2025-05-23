@@ -1,0 +1,45 @@
+WebSocket constructor patched to fix Vite HMR connection issues
+mpPs0hkOn9k5ryPJOfMv:145 WebSocket connection to 'wss://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/?token=_ZjIceU5O15D' failed: 
+window.WebSocket @ mpPs0hkOn9k5ryPJOfMv:145
+setupWebSocket @ client:536
+(anonymous) @ client:531Understand this error
+mpPs0hkOn9k5ryPJOfMv:90 Fixing invalid WebSocket URL: wss://localhost:undefined/?token=_ZjIceU5O15D
+mpPs0hkOn9k5ryPJOfMv:90 Fixed WebSocket URL: wss://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/?token=_ZjIceU5O15D
+mpPs0hkOn9k5ryPJOfMv:140 WebSocket connection to 'wss://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/?token=_ZjIceU5O15D' failed: 
+window.WebSocket @ mpPs0hkOn9k5ryPJOfMv:140
+setupWebSocket @ client:536
+fallback @ client:509
+(anonymous) @ client:555Understand this error
+chunk-WERSD76P.js?v=6955a941:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+AuthContext.tsx:18 
+            
+            
+           POST https://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/api/auth/register 409 (Conflict)
+registerUserWithBackend @ AuthContext.tsx:18
+(anonymous) @ AuthContext.tsx:59
+(anonymous) @ firebase_auth.js?v=6955a941:2739
+Promise.then
+registerStateListener @ firebase_auth.js?v=6955a941:2735
+onAuthStateChanged @ firebase_auth.js?v=6955a941:2595
+onAuthStateChanged @ firebase_auth.js?v=6955a941:5112
+(anonymous) @ AuthContext.tsx:55
+commitHookEffectListMount @ chunk-WERSD76P.js?v=6955a941:16915
+commitPassiveMountOnFiber @ chunk-WERSD76P.js?v=6955a941:18156
+commitPassiveMountEffects_complete @ chunk-WERSD76P.js?v=6955a941:18129
+commitPassiveMountEffects_begin @ chunk-WERSD76P.js?v=6955a941:18119
+commitPassiveMountEffects @ chunk-WERSD76P.js?v=6955a941:18109
+flushPassiveEffectsImpl @ chunk-WERSD76P.js?v=6955a941:19490
+flushPassiveEffects @ chunk-WERSD76P.js?v=6955a941:19447
+performSyncWorkOnRoot @ chunk-WERSD76P.js?v=6955a941:18868
+flushSyncCallbacks @ chunk-WERSD76P.js?v=6955a941:9119
+commitRootImpl @ chunk-WERSD76P.js?v=6955a941:19432
+commitRoot @ chunk-WERSD76P.js?v=6955a941:19277
+finishConcurrentRender @ chunk-WERSD76P.js?v=6955a941:18805
+performConcurrentWorkOnRoot @ chunk-WERSD76P.js?v=6955a941:18718
+workLoop @ chunk-WERSD76P.js?v=6955a941:197
+flushWork @ chunk-WERSD76P.js?v=6955a941:176
+performWorkUntilDeadline @ chunk-WERSD76P.js?v=6955a941:384Understand this error
+mpPs0hkOn9k5ryPJOfMv:90 User already exists in the database
+mpPs0hkOn9k5ryPJOfMv:90 No initial nodes to load or empty array received
+mpPs0hkOn9k5ryPJOfMv:90 Loading initial edges: []
+mpPs0hkOn9k5ryPJOfMv:90 Using Replit domain for WebSocket connection: e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev
