@@ -10,7 +10,7 @@ export interface LogMessage {
   timestamp: Date;
   type: string; 
   message: string;
-  nodeId?: string; // Make nodeId optional
+  nodeId?: string;
 }
 
 interface ConsoleOutputProps {
@@ -49,14 +49,12 @@ export function ConsoleOutput({ logs, isRunning, onRunTest, flowId }: ConsoleOut
     if (logFilter === "all") return true;
     if (logFilter === "errors" && log.type === "error") return true;
     if (logFilter === "http" && log.type === "http") return true;
-    if (logFilter === "custom" && log.type === "log") return true;
+    if (logFilter === "custom" && !["error", "http", "info"].includes(log.type)) return true;
     return false;
   });
   
   const clearLogs = () => {
-    // This would need to be implemented via a prop or state in the parent component
-    // For now, just show a message that it's not implemented
-    alert("Clear functionality would be implemented here");
+    // This would need to be implemented by the parent component
   };
   
   const toggleCollapse = () => {
@@ -91,6 +89,20 @@ export function ConsoleOutput({ logs, isRunning, onRunTest, flowId }: ConsoleOut
     }
   };
   
+  const formatJsonResponse = (message: string) => {
+    if (message.includes('🎨 API Response Data:')) {
+      try {
+        const jsonStart = message.indexOf('\n') + 1;
+        const jsonData = message.substring(jsonStart);
+        const parsed = JSON.parse(jsonData);
+        return JSON.stringify(parsed, null, 2);
+      } catch (e) {
+        return message.substring(message.indexOf('\n') + 1);
+      }
+    }
+    return message;
+  };
+  
   return (
     <div 
       className={`border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-black flex flex-col transition-all duration-300 ${
@@ -98,23 +110,18 @@ export function ConsoleOutput({ logs, isRunning, onRunTest, flowId }: ConsoleOut
       }`}
     >
       <div className="flex items-center justify-between p-2 border-b border-slate-200 dark:border-slate-700">
-        <div className="flex space-x-2">
+        <div className="flex items-center space-x-2">
           <Button 
+            variant="outline" 
             size="sm"
-            className="flex items-center gap-1 h-8"
-            onClick={onRunTest}
+            className="h-8 text-xs px-2"
+            onClick={onRunTest} 
             disabled={isRunning}
           >
             {isRunning ? (
-              <>
-                <Loader2Icon className="h-3 w-3 animate-spin" />
-                Running...
-              </>
+              <><Loader2Icon className="w-3 h-3 mr-1 animate-spin" /> Running</>
             ) : (
-              <>
-                <PlayIcon className="h-3 w-3" />
-                Run Test
-              </>
+              <><PlayIcon className="w-3 h-3 mr-1" /> Run Test</>
             )}
           </Button>
           
@@ -182,52 +189,18 @@ export function ConsoleOutput({ logs, isRunning, onRunTest, flowId }: ConsoleOut
                 <span className={getLogTypeStyles(log.type)}>
                   {log.type.toUpperCase()}
                 </span>
-                <span className="text-slate-700 dark:text-slate-300 ml-2">
-                  {log.message.startsWith('Response Data:') ? (
-                    <div className="pl-2 border-l-2 border-blue-400 mt-1">
-                      <div className="text-xs text-blue-500 font-semibold mb-1">Response Data:</div>
-                      <pre className="whitespace-pre-wrap break-all bg-slate-100 dark:bg-black border dark:border-slate-700 p-2 rounded-md">
-                        {(() => {
-                          try {
-                            const jsonData = JSON.parse(log.message.replace('Response Data: ', ''));
-                            return JSON.stringify(jsonData, null, 2);
-                          } catch (e) {
-                            return log.message.replace('Response Data: ', '');
-                          }
-                        })()}
-                      </pre>
-                    </div>
-                  ) : log.message.startsWith('Request Body:') ? (
-                    <div className="pl-2 border-l-2 border-purple-400 mt-1">
-                      <div className="text-xs text-purple-500 font-semibold mb-1">Request Body:</div>
-                      <pre className="whitespace-pre-wrap break-all bg-slate-100 dark:bg-black border dark:border-slate-700 p-2 rounded-md">
-                        {(() => {
-                          try {
-                            const jsonData = JSON.parse(log.message.replace('Request Body: ', ''));
-                            return JSON.stringify(jsonData, null, 2);
-                          } catch (e) {
-                            return log.message.replace('Request Body: ', '');
-                          }
-                        })()}
-                      </pre>
-                    </div>
-                  ) : log.message.startsWith('HTTP Response:') ? (
+                <div className="text-slate-700 dark:text-slate-300 ml-2 break-words break-all min-w-0 flex-1">
+                  {log.message.includes('🎨 API Response Data:') ? (
                     <div className="pl-2 border-l-2 border-green-400 mt-1">
-                      <div className="text-xs text-green-500 font-semibold mb-1">HTTP Response:</div>
-                      <div className="bg-slate-100 dark:bg-black border dark:border-slate-700 p-2 rounded-md">
-                        {log.message.replace('HTTP Response: ', '')}
-                      </div>
-                    </div>
-                  ) : log.type === 'error' ? (
-                    <div className="pl-2 border-l-2 border-red-400 mt-1">
-                      <div className="bg-red-50 dark:bg-red-900/10 border dark:border-red-900/30 p-2 rounded-md">
-                        {log.message}
-                      </div>
+                      <div className="text-xs text-green-500 font-semibold mb-1">🎨 API Response Data:</div>
+                      <pre className="whitespace-pre-wrap break-all bg-slate-100 dark:bg-gray-900 border dark:border-slate-700 p-2 rounded-md text-xs overflow-x-auto max-w-full">
+                        {formatJsonResponse(log.message)}
+                      </pre>
                     </div>
                   ) : (
-                    log.message
+                    <span className="break-words break-all">{log.message}</span>
                   )}
-                </span>
+                </div>
               </div>
             ))
           ) : (

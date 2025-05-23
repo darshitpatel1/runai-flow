@@ -247,8 +247,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update execution status to completed
       execution.status = 'completed';
       
-      // Save execution to database (simplified approach)
-      console.log(`Saving execution ${execution.id} for flow ${flowId} - Status: completed`);
+      // Save execution with response data to database for history page
+      try {
+        await storage.createExecution({
+          flowId: parseInt(flowId),
+          userId: userId,
+          status: 'completed',
+          startedAt: new Date(execution.createdAt),
+          finishedAt: new Date(),
+          logs: JSON.stringify(responses.map(resp => ({
+            timestamp: new Date(),
+            type: 'success',
+            message: `✅ ${resp.method} ${resp.url} → ${resp.status} ${resp.statusText} (${resp.responseTime}ms)`,
+            nodeId: resp.nodeId,
+            data: resp.data
+          })))
+        });
+        console.log(`✅ Execution saved to database for flow ${flowId}`);
+      } catch (error) {
+        console.error('Failed to save execution to database:', error);
+      }
       
       // Return success response with the actual API response data
       return res.status(200).json({
