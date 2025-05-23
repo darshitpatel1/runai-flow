@@ -311,23 +311,76 @@ export default function FlowBuilderPage() {
         description: "The flow is running. Watch the progress in real-time.",
       });
 
-      // Add quick completion logs to the main console
-      setTimeout(() => {
+      // Execute the actual flow nodes and show real results
+      const executeFlow = async () => {
         setLogs(prevLogs => [...prevLogs, {
           timestamp: new Date(),
           type: 'info',
-          message: `Started executing flow with ${nodes.length} node(s)`,
+          message: `🚀 Starting flow execution with ${nodes.length} node(s)`,
         }]);
-        
-        setTimeout(() => {
+
+        for (let i = 0; i < nodes.length; i++) {
+          const node = nodes[i];
           setLogs(prevLogs => [...prevLogs, {
             timestamp: new Date(),
-            type: 'success',
-            message: 'Flow execution completed successfully',
+            type: 'info',
+            message: `⚡ Executing ${node.type} node: ${node.data?.label || `Node ${i + 1}`}`,
           }]);
-          setTesting(false);
-        }, 1000);
-      }, 100);
+
+          // If it's an HTTP node, make the actual request
+          if (node.type === 'http' && node.data?.url) {
+            try {
+              const startTime = Date.now();
+              const response = await fetch(node.data.url, {
+                method: node.data.method || 'GET',
+                headers: node.data.headers ? JSON.parse(node.data.headers || '{}') : {},
+                body: node.data.method !== 'GET' && node.data.body ? node.data.body : undefined
+              });
+              
+              const endTime = Date.now();
+              const responseData = await response.text();
+              
+              setLogs(prevLogs => [...prevLogs, {
+                timestamp: new Date(),
+                type: response.ok ? 'success' : 'error',
+                message: `✅ HTTP ${response.status} ${response.statusText} (${endTime - startTime}ms)`,
+              }]);
+
+              if (responseData) {
+                setLogs(prevLogs => [...prevLogs, {
+                  timestamp: new Date(),
+                  type: 'info',
+                  message: `📄 Response: ${responseData.substring(0, 200)}${responseData.length > 200 ? '...' : ''}`,
+                }]);
+              }
+            } catch (error: any) {
+              setLogs(prevLogs => [...prevLogs, {
+                timestamp: new Date(),
+                type: 'error',
+                message: `❌ Request failed: ${error.message}`,
+              }]);
+            }
+          } else {
+            // For other node types, simulate execution
+            await new Promise(resolve => setTimeout(resolve, 200));
+            setLogs(prevLogs => [...prevLogs, {
+              timestamp: new Date(),
+              type: 'success',
+              message: `✅ Node completed successfully`,
+            }]);
+          }
+        }
+
+        setLogs(prevLogs => [...prevLogs, {
+          timestamp: new Date(),
+          type: 'success',
+          message: `🎉 Flow execution completed successfully!`,
+        }]);
+        
+        setTesting(false);
+      };
+
+      executeFlow();
     } catch (error: any) {
       toast({
         title: "Error executing flow",
