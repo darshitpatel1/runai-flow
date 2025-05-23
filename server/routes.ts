@@ -197,37 +197,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
         progress: 0
       });
       
-      let currentNode = 0;
-      const processNodes = () => {
-        setTimeout(() => {
-          currentNode++;
-          const progress = Math.floor((currentNode / nodeCount) * 100);
+      // Execute actual HTTP nodes with real API calls
+      const executeNodes = async () => {
+        console.log('Starting actual node execution with real API calls...');
+        
+        for (let i = 0; i < flowNodes.length; i++) {
+          const node = flowNodes[i];
+          const progress = Math.floor(((i + 1) / flowNodes.length) * 100);
+          
+          console.log(`Executing node ${i + 1}/${flowNodes.length}: ${node.type}`);
           
           sendExecutionUpdate(firebaseId, {
             executionId: execution.id,
             flowId,
             status: 'running',
-            message: `Executing node ${currentNode} of ${nodeCount}`,
+            message: `⚡ Executing ${node.type} node: ${node.data?.label || `Node ${i + 1}`}`,
             progress
           });
           
-          if (currentNode < nodeCount) {
-            processNodes();
-          } else {
-            setTimeout(() => {
+          // If it's an HTTP node, make the actual API request
+          if (node.type === 'http' && node.data?.url) {
+            try {
+              console.log(`Making HTTP ${node.data.method || 'GET'} request to: ${node.data.url}`);
+              const startTime = Date.now();
+              
+              const fetch = (await import('node-fetch')).default;
+              const response = await fetch(node.data.url, {
+                method: node.data.method || 'GET',
+                headers: node.data.headers ? JSON.parse(node.data.headers || '{}') : {},
+                body: node.data.method !== 'GET' && node.data.body ? node.data.body : undefined
+              });
+              
+              const endTime = Date.now();
+              const responseData = await response.text();
+              
+              console.log(`HTTP Response: ${response.status} ${response.statusText} (${endTime - startTime}ms)`);
+              console.log(`Response data: ${responseData.substring(0, 200)}...`);
+              
               sendExecutionUpdate(firebaseId, {
                 executionId: execution.id,
                 flowId,
-                status: 'completed',
-                message: 'Flow execution completed',
-                progress: 100
+                status: 'running',
+                message: `✅ HTTP ${response.status} ${response.statusText} (${endTime - startTime}ms)`,
+                progress,
+                responseData: responseData.substring(0, 500)
               });
-            }, 300);
+              
+            } catch (error: any) {
+              console.error(`HTTP request failed:`, error.message);
+              sendExecutionUpdate(firebaseId, {
+                executionId: execution.id,
+                flowId,
+                status: 'running',
+                message: `❌ Request failed: ${error.message}`,
+                progress
+              });
+            }
+          } else {
+            // For other node types, simulate execution
+            await new Promise(resolve => setTimeout(resolve, 200));
+            sendExecutionUpdate(firebaseId, {
+              executionId: execution.id,
+              flowId,
+              status: 'running',
+              message: `✅ ${node.type} node completed`,
+              progress
+            });
           }
-        }, 300);
+          
+          // Small delay between nodes
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Send completion message
+        sendExecutionUpdate(firebaseId, {
+          executionId: execution.id,
+          flowId,
+          status: 'completed',
+          message: '🎉 Flow execution completed successfully!',
+          progress: 100
+        });
       };
       
-      setTimeout(processNodes, 200);
+      setTimeout(executeNodes, 200);
       
       // Save execution to Firebase (simplified approach)
       console.log(`Saving execution ${execution.id} for flow ${flowId}`);

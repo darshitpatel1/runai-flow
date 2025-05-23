@@ -73,18 +73,30 @@ export function ExecutionProgress({
           setStatusMessage(executionData.message);
         }
         
-        // Add log entry
+        // Add log entry for execution status
         const newLog: LogMessage = {
           timestamp: new Date(executionData.timestamp) || new Date(),
-          type: executionData.status === 'failed' ? 'error' : 'info',
+          type: executionData.status === 'failed' ? 'error' : executionData.status === 'completed' ? 'success' : 'info',
           message: executionData.message || 'Execution update received',
           nodeId: executionData.currentNode ? `node_${executionData.currentNode}` : undefined
         };
         
+        // If there's API response data, add it as a separate detailed log
+        const logsToAdd = [newLog];
+        if (executionData.responseData) {
+          const responseLog: LogMessage = {
+            timestamp: new Date(),
+            type: 'response',
+            message: `API Response: ${executionData.responseData}`,
+            nodeId: executionData.currentNode ? `node_${executionData.currentNode}` : undefined
+          };
+          logsToAdd.push(responseLog);
+        }
+        
         setLogs(prevLogs => {
-          const updatedLogs = [...prevLogs, newLog];
+          const updatedLogs = [...prevLogs, ...logsToAdd];
           
-          // Notify parent component about log updates
+          // Notify parent component about log updates (THIS IS CRITICAL!)
           if (onLogsUpdate) {
             onLogsUpdate(updatedLogs);
           }

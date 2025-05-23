@@ -185,6 +185,7 @@ export function FlowBuilder({
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [contextMenuNodeId, setContextMenuNodeId] = useState<string | null>(null);
   const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number, y: number } | null>(null);
+  const [logs, setLogs] = useState<any[]>([]);
   const [isTestRunning, setIsTestRunning] = useState(false);
   const { toast } = useToast();
   
@@ -1276,7 +1277,7 @@ export function FlowBuilder({
       
       {/* Console Output */}
       <ConsoleOutput 
-        logs={parentLogs} 
+        logs={logs} 
         isRunning={isTestRunning} 
         onRunTest={runFlowTest} 
       />
