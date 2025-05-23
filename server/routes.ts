@@ -553,15 +553,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               try {
                 console.log('Flow execution completed successfully');
                 
-                // Send completion notification via WebSocket
-                sendExecutionUpdate(userId.toString(), {
-                  executionId: execution.id,
-                  flowId,
-                  status: 'completed',
-                  timestamp: new Date(),
-                  message: 'Flow execution completed successfully',
-                  progress: 100
-                });
+                // Flow completion logged to console
+                console.log('🎉 Flow execution completed successfully!');
               } catch (error) {
                 console.error('Error sending completion update:', error);
               }
