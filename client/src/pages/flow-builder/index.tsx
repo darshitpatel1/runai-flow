@@ -357,14 +357,12 @@ export default function FlowBuilderPage() {
         </div>
         
         {/* Main Console Panel at Bottom - Your 1000+ line API response will show here */}
-        <div className="border-t border-slate-200 dark:border-slate-700">
-          <ConsoleOutput
-            logs={logs}
-            isRunning={testing}
-            onRunTest={handleTestFlow}
-            flowId={id}
-          />
-        </div>
+        <ResizableConsole
+          logs={logs}
+          isRunning={testing}
+          onRunTest={handleTestFlow}
+          flowId={id}
+        />
       </div>
     </AppLayout>
   );
