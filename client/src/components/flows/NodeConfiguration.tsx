@@ -46,7 +46,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     setNodeData({ ...nodeData, [field]: value });
   };
   
-  // Function to get existing variables from all SetVariable nodes
+  // Function to get existing variables from all SetVariable nodes and tested HTTP nodes
   const getExistingVariables = () => {
     try {
       // Make sure we have allNodes data before attempting to use it
@@ -55,8 +55,20 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
         return [];
       }
       
-      // Find all SetVariable nodes and collect their variable keys
       const variables: string[] = [];
+      
+      // Add variables from tested HTTP nodes
+      node.data.allNodes.forEach((n: any) => {
+        if (n.type === 'httpRequest' && n.data?.testResult) {
+          const testVariables = generateVariablePaths(n.data.testResult, `${n.id}.result`);
+          variables.push(...testVariables);
+        }
+        if (n.data?.variables && Array.isArray(n.data.variables)) {
+          variables.push(...n.data.variables);
+        }
+      });
+      
+      // Find all SetVariable nodes and collect their variable keys
       node.data.allNodes.forEach((n: any) => {
         if (n && n.type === 'setVariable' && n.data?.variableKey && n.id !== node.id) {
           variables.push(n.data.variableKey);
@@ -160,10 +172,18 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
       setTestResult(result.data);
       setShowTestResult(true);
       
-      // Generate variables from the real response
+      // Generate variables from the real response with node prefix
       if (result.data && typeof result.data === 'object') {
-        const variables = generateVariablePaths(result.data);
+        const variables = generateVariablePaths(result.data, `${node.id}.result`);
         setAvailableVariables(variables);
+        
+        // Also update the node data with test results for variable access
+        const updatedNodeData = {
+          ...nodeData,
+          testResult: result.data,
+          variables: variables
+        };
+        updateNodeData(node.id, updatedNodeData);
       }
       
       toast({
@@ -188,34 +208,55 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     
     let paths: string[] = [];
     
-    for (const key in obj) {
-      if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        const newPrefix = prefix ? `${prefix}.${key}` : key;
-        paths.push(newPrefix);
+    const traverse = (current: any, path: string, depth = 0) => {
+      if (depth > 3) return; // Limit depth to prevent too many variables
+      
+      if (current === null || current === undefined) {
+        paths.push(`{{${path}}}`);
+        return;
+      }
+      
+      if (Array.isArray(current)) {
+        paths.push(`{{${path}}}`); // Add the array itself
+        paths.push(`{{${path}.length}}`); // Add length property
         
-        if (obj[key] && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
-          paths = [...paths, ...generateVariablePaths(obj[key], newPrefix)];
-        }
-        
-        // Handle arrays specifically
-        if (Array.isArray(obj[key])) {
-          paths.push(`${newPrefix}.length`);
+        if (current.length > 0) {
+          paths.push(`{{${path}[0]}}`); // Add first item access
           
-          // Add paths for the first few array items as examples
-          if (obj[key].length > 0) {
-            paths.push(`${newPrefix}[0]`);
-            
-            // If the first item is an object, also include its paths
-            if (typeof obj[key][0] === 'object' && obj[key][0] !== null) {
-              const itemPaths = generateVariablePaths(obj[key][0], `${newPrefix}[0]`);
-              paths = [...paths, ...itemPaths];
-            }
+          // If first item is object, add its useful properties
+          if (typeof current[0] === 'object' && current[0] !== null) {
+            const keys = Object.keys(current[0]).slice(0, 8); // Limit to 8 properties
+            keys.forEach(key => {
+              const value = current[0][key];
+              if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                paths.push(`{{${path}[0].${key}}}`);
+              }
+            });
           }
         }
+      } else if (typeof current === 'object') {
+        if (path) paths.push(`{{${path}}}`); // Add the object itself
+        
+        // Add useful scalar properties
+        Object.keys(current).slice(0, 15).forEach(key => {
+          const newPath = path ? `${path}.${key}` : key;
+          const value = current[key];
+          
+          if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+            paths.push(`{{${newPath}}}`);
+          } else if (value !== null && typeof value === 'object') {
+            traverse(value, newPath, depth + 1);
+          }
+        });
+      } else {
+        paths.push(`{{${path}}}`);
       }
-    }
+    };
     
-    return paths;
+    traverse(obj, prefix);
+    
+    // Remove duplicates and return limited set
+    return Array.from(new Set(paths)).slice(0, 25);
   };
   
   // Render different configuration fields based on node type
