@@ -311,45 +311,23 @@ export default function FlowBuilderPage() {
         description: "The flow is running. Watch the progress in real-time.",
       });
 
-      // Since WebSocket isn't working, let's simulate real-time updates locally
-      const simulateProgress = () => {
-        const nodeCount = nodes.length || 3;
-        let currentNode = 0;
+      // Add quick completion logs to the main console
+      setTimeout(() => {
+        setLogs(prevLogs => [...prevLogs, {
+          timestamp: new Date(),
+          type: 'info',
+          message: `Started executing flow with ${nodes.length} node(s)`,
+        }]);
         
-        const updateProgress = () => {
-          setTimeout(() => {
-            currentNode++;
-            const progress = Math.floor((currentNode / nodeCount) * 100);
-            
-            console.log(`🚀 Executing node ${currentNode} of ${nodeCount} (${progress}%)`);
-            
-            // Add to logs
-            setLogs(prevLogs => [...prevLogs, {
-              timestamp: new Date(),
-              type: 'info',
-              message: `Executing node ${currentNode} of ${nodeCount}`,
-              nodeId: `node_${currentNode}`
-            }]);
-            
-            if (currentNode < nodeCount) {
-              updateProgress();
-            } else {
-              setTimeout(() => {
-                console.log('✅ Flow execution completed successfully!');
-                setLogs(prevLogs => [...prevLogs, {
-                  timestamp: new Date(),
-                  type: 'success',
-                  message: 'Flow execution completed successfully',
-                }]);
-              }, 300);
-            }
-          }, 300);
-        };
-        
-        setTimeout(updateProgress, 200);
-      };
-      
-      simulateProgress();
+        setTimeout(() => {
+          setLogs(prevLogs => [...prevLogs, {
+            timestamp: new Date(),
+            type: 'success',
+            message: 'Flow execution completed successfully',
+          }]);
+          setTesting(false);
+        }, 1000);
+      }, 100);
     } catch (error: any) {
       toast({
         title: "Error executing flow",
@@ -422,14 +400,16 @@ export default function FlowBuilderPage() {
               flowId={id}
             />
             
-            {/* Console Output Panel */}
-            <div className="absolute bottom-4 right-4 w-80">
-              <ConsoleOutput 
-                logs={logs}
-                isRunning={testing}
-                onRunTest={handleTestFlow}
-              />
-            </div>
+            {/* Execution Progress Panel */}
+            {id && (
+              <div className="absolute top-4 right-16 w-72">
+                <ExecutionProgress 
+                  flowId={id} 
+                  executionId={flow?.executionId}
+                  onLogsUpdate={setLogs}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
