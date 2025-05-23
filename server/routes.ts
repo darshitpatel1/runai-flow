@@ -14,49 +14,8 @@ import { z } from "zod";
 
 // WebSocket completely removed - using direct API calls instead
 function sendExecutionUpdate(userId: string, executionData: any) {
-  const userConnections = connections.get(userId.toString());
-  
-  if (!userConnections || userConnections.length === 0) {
-    console.log(`No active connections for user ${userId}`);
-    return;
-  }
-  
-  // Filter out connections that are not in OPEN state
-  const activeConnections = userConnections.filter(ws => ws.readyState === WebSocket.OPEN);
-  
-  if (activeConnections.length === 0) {
-    console.log(`No open connections for user ${userId}`);
-    return;
-  }
-  
-  try {
-    const message = JSON.stringify({
-      type: 'execution_update',
-      data: executionData
-    });
-    
-    // Send message to all active connections
-    let successCount = 0;
-    
-    for (const ws of activeConnections) {
-      try {
-        ws.send(message);
-        successCount++;
-      } catch (error) {
-        console.error(`Error sending execution update to a client: ${error.message}`);
-        // Connection is likely broken - terminate it
-        try {
-          ws.terminate();
-        } catch (e) {
-          // Ignore error during termination
-        }
-      }
-    }
-    
-    console.log(`Successfully sent execution update to ${successCount}/${activeConnections.length} connection(s) for user ${userId}`);
-  } catch (error) {
-    console.error(`Error preparing execution update: ${error.message}`);
-  }
+  // WebSocket removed - execution updates now handled by direct API responses
+  console.log(`Flow execution update for user ${userId}:`, executionData.status);
 }
 
 // Middleware to ensure user is authenticated via Firebase
@@ -188,7 +147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdAt: new Date()
       };
       
-      // Send progress updates (use firebaseId for better connection matching)
+      // Flow execution progress logged to console
       sendExecutionUpdate(firebaseId, {
         executionId: execution.id,
         flowId,
