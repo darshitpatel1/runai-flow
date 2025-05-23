@@ -406,29 +406,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Flow Execution routes - Updated to handle Firebase document IDs
   app.post('/api/flows/:id/execute', async (req, res) => {
     try {
+      console.log('=== Flow Execution Request ===');
+      console.log('Flow ID from params:', req.params.id);
+      console.log('Firebase ID from query:', req.query.firebaseId);
+      console.log('Request body:', JSON.stringify(req.body, null, 2));
+      
       // Allow authentication via query parameter for easier testing
       let userId;
       
       if (req.query.firebaseId) {
+        console.log('Attempting to find user by Firebase UID:', req.query.firebaseId);
         // If firebaseId is provided in query, use it to look up the user
         const firebaseUser = await storage.getUserByFirebaseUid(req.query.firebaseId as string);
+        console.log('Found Firebase user:', firebaseUser);
         if (firebaseUser) {
           userId = firebaseUser.id;
+          console.log('Using user ID:', userId);
         } else {
-          return res.status(401).json({ error: 'Invalid authentication' });
+          console.log('Firebase user not found');
+          return res.status(401).json({ error: 'Invalid authentication - user not found' });
         }
       } else if ((req as any).user && (req as any).user.id) {
         // Fall back to the regular authentication middleware
         userId = (req as any).user.id;
+        console.log('Using middleware user ID:', userId);
       } else {
+        console.log('No authentication provided');
         return res.status(401).json({ error: 'Authentication required' });
       }
       
       const flowId = req.params.id;
+      console.log('Processing flow ID:', flowId);
       
       // For Firebase document IDs, we don't parse as integer
       if (!flowId || flowId.trim() === '') {
-        return res.status(400).json({ error: 'Invalid flow ID' });
+        console.log('Flow ID validation failed');
+        return res.status(400).json({ error: 'Invalid flow ID - empty or missing' });
       }
       
       console.log(`Executing flow ${flowId} for user ${userId}`);
