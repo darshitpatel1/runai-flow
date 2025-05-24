@@ -3,8 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, X } from 'lucide-react';
-import { useReactFlow } from 'reactflow';
-
 interface VariableSelectorNewProps {
   open: boolean;
   onClose: () => void;
@@ -25,13 +23,12 @@ type VariableEntry = {
 
 export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNodeId, manualNodes }: VariableSelectorNewProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const { getNodes } = useReactFlow();
   
   // Get all available variables from nodes
   const allVariables = useMemo(() => {
     console.log('🔍 NEW VARIABLE SELECTOR - Starting collection...');
     
-    const nodes = manualNodes || getNodes();
+    const nodes = manualNodes || [];
     console.log('📋 Nodes to check:', nodes.map(n => ({ 
       id: n.id, 
       type: n.type, 
@@ -116,7 +113,7 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
     
     console.log(`📊 NEW SELECTOR: Found ${variables.length} total variables:`, variables);
     return variables;
-  }, [getNodes, manualNodes]);
+  }, [manualNodes]);
   
   // Filter variables based on search
   const filteredVariables = useMemo(() => {
