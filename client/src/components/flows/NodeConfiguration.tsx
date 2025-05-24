@@ -443,6 +443,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
               <SelectValue placeholder="Select a connector" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="none">No Auth (Public API)</SelectItem>
               {connectors.map((connector) => (
                 <SelectItem key={connector.id} value={connector.name}>
                   {connector.name}

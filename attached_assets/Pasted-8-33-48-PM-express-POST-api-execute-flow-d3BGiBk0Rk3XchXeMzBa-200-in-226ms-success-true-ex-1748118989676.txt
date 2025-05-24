@@ -1,0 +1,181 @@
+8:33:48 PM [express] POST /api/execute-flow/d3BGiBk0Rk3XchXeMzBa 200 in 226ms :: {"success":true,"ex…
+8:33:55 PM [express] POST /api/auth/register 409 in 219ms :: {"error":"User already exists"}
+8:34:12 PM [express] POST /api/auth/register 409 in 211ms :: {"error":"User already exists"}
+🧪 Testing node: GET https://api.artic.edu/api/v1/artworks
+🔐 Connector: animals
+❌ Connector "animals" not found
+8:34:15 PM [express] POST /api/test-node 404 in 91ms :: {"error":"Connector \"animals\" not found"}
+=== FLOW EXECUTION ENDPOINT HIT ===
+Flow execution: flowId=d3BGiBk0Rk3XchXeMzBa, firebaseId=D95yn62H6FSy8xaafJmBF6rdEk93
+Full request body: {
+  "firebaseId": "D95yn62H6FSy8xaafJmBF6rdEk93",
+  "nodes": [
+    {
+      "id": "httpRequest_1748118564629",
+      "dragging": false,
+      "type": "httpRequest",
+      "position": {
+        "x": 330,
+        "y": 225
+      },
+      "data": {
+        "allNodes": [
+          {
+            "id": "httpRequest_1748118564629",
+            "type": "httpRequest",
+            "data": {
+              "label": "gergerger"
+            }
+          }
+        ],
+        "endpoint": "https://api.artic.edu/api/v1/artworks",
+        "label": "gergerger",
+        "method": "GET",
+        "connector": "animals"
+      },
+      "selected": true,
+      "width": 320,
+      "height": 132,
+      "positionAbsolute": {
+        "x": 330,
+        "y": 225
+      }
+    }
+  ]
+}
+Full request body: {
+  "firebaseId": "D95yn62H6FSy8xaafJmBF6rdEk93",
+  "nodes": [
+    {
+      "id": "httpRequest_1748118564629",
+      "dragging": false,
+      "type": "httpRequest",
+      "position": {
+        "x": 330,
+        "y": 225
+      },
+      "data": {
+        "allNodes": [
+          {
+            "id": "httpRequest_1748118564629",
+            "type": "httpRequest",
+            "data": {
+              "label": "gergerger"
+            }
+          }
+        ],
+        "endpoint": "https://api.artic.edu/api/v1/artworks",
+        "label": "gergerger",
+        "method": "GET",
+        "connector": "animals"
+      },
+      "selected": true,
+      "width": 320,
+      "height": 132,
+      "positionAbsolute": {
+        "x": 330,
+        "y": 225
+      }
+    }
+  ]
+}
+Executing flow with 1 nodes
+Received nodes: [
+  {
+    "id": "httpRequest_1748118564629",
+    "dragging": false,
+    "type": "httpRequest",
+    "position": {
+      "x": 330,
+      "y": 225
+    },
+    "data": {
+      "allNodes": [
+        {
+          "id": "httpRequest_1748118564629",
+          "type": "httpRequest",
+          "data": {
+            "label": "gergerger"
+          }
+        }
+      ],
+      "endpoint": "https://api.artic.edu/api/v1/artworks",
+      "label": "gergerger",
+      "method": "GET",
+      "connector": "animals"
+    },
+    "selected": true,
+    "width": 320,
+    "height": 132,
+    "positionAbsolute": {
+      "x": 330,
+      "y": 225
+    }
+  }
+]
+🚀 Flow execution started for d3BGiBk0Rk3XchXeMzBa
+Starting actual node execution with real API calls...
+Executing node 1/1: httpRequest
+Node data: {
+  "id": "httpRequest_1748118564629",
+  "dragging": false,
+  "type": "httpRequest",
+  "position": {
+    "x": 330,
+    "y": 225
+  },
+  "data": {
+    "allNodes": [
+      {
+        "id": "httpRequest_1748118564629",
+        "type": "httpRequest",
+        "data": {
+          "label": "gergerger"
+        }
+      }
+    ],
+    "endpoint": "https://api.artic.edu/api/v1/artworks",
+    "label": "gergerger",
+    "method": "GET",
+    "connector": "animals"
+  },
+  "selected": true,
+  "width": 320,
+  "height": 132,
+  "positionAbsolute": {
+    "x": 330,
+    "y": 225
+  }
+}
+⚡ Executing httpRequest node: gergerger
+Making HTTP GET request to: https://api.artic.edu/api/v1/artworks
+Node connector: animals
+❌ Connector "animals" not found - FAILING REQUEST
+❌ AUTHENTICATION ERROR: Connector "animals" not found
+❌ Node 1 FAILED: Connector "animals" not found
+🎉 Flow execution completed successfully!
+Failed to save execution to database: error: invalid input syntax for type integer: "NaN"
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async Object.createExecution (/home/runner/workspace/server/storage.ts:287:25)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:346:9) {
+  length: 146,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $1 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'numutils.c',
+  line: '617',
+  routine: 'pg_strtoint32_safe'
+}
+8:34:17 PM [express] POST /api/execute-flow/d3BGiBk0Rk3XchXeMzBa 200 in 91ms :: {"success":true,"exe…
