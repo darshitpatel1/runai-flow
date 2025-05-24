@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { XIcon, PlayIcon, Code2Icon, Variable, Eye } from "lucide-react";
-import { auth, db } from "@/lib/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,11 +21,12 @@ interface NodeConfigurationProps {
   connectors: any[];
   onTestNode?: (nodeId: string, data: any) => Promise<any>;
   allNodes?: any[]; // Add allNodes prop to pass all flow nodes
-  flowId?: string; // Flow ID for saving to Firestore
-  allFlowNodes?: any[]; // All nodes in the flow for Firestore saving
+  flowId?: string; // Flow ID for saving to database
+  allFlowNodes?: any[]; // All nodes in the flow for database saving
+  allFlowEdges?: any[]; // All edges in the flow for database saving
 }
 
-export function NodeConfiguration({ node, updateNodeData, onClose, connectors, onTestNode, allNodes, flowId, allFlowNodes }: NodeConfigurationProps) {
+export function NodeConfiguration({ node, updateNodeData, onClose, connectors, onTestNode, allNodes, flowId, allFlowNodes, allFlowEdges }: NodeConfigurationProps) {
   const { toast } = useToast();
   const [nodeData, setNodeData] = useState(node.data);
   const [testResult, setTestResult] = useState<any>(null);
@@ -113,7 +113,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     // Immediately save the change to the flow (local state)
     updateNodeData(node.id, updatedData);
     
-    // Also save directly to Firestore if we have flow info
+    // Also save directly to backend database if we have flow info
     if (flowId && allFlowNodes && auth.currentUser) {
       try {
         // Update the node in the all nodes array
@@ -121,16 +121,34 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           n.id === node.id ? { ...n, data: { ...n.data, ...updatedData } } : n
         );
         
-        // Save to Firestore immediately
-        const flowRef = doc(db, "users", auth.currentUser.uid, "flows", flowId);
-        await updateDoc(flowRef, {
-          nodes: updatedNodes,
-          updatedAt: new Date()
+        // Get Firebase auth token for authenticated request
+        const token = await auth.currentUser.getIdToken();
+        
+        // Save to backend database immediately
+        const response = await fetch(`/api/flows/${flowId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            nodes: updatedNodes,
+            edges: allFlowEdges || [] // Keep existing edges
+          }),
         });
         
-        console.log(`💾 Saved ${field} = ${value} for node ${node.id} to Firestore`);
+        if (!response.ok) {
+          throw new Error(`Failed to save: ${response.statusText}`);
+        }
+        
+        console.log(`💾 Saved ${field} = ${value} for node ${node.id} to database`);
       } catch (error) {
-        console.error("Error saving to Firestore:", error);
+        console.error("Error saving to database:", error);
+        toast({
+          title: "Save Error",
+          description: "Failed to save node configuration. Please try again.",
+          variant: "destructive",
+        });
       }
     }
     

@@ -1362,6 +1362,7 @@ export function FlowBuilder({
             allNodes={nodes}
             flowId={flowId}
             allFlowNodes={nodes}
+            allFlowEdges={edges}
           />
         )}
         
