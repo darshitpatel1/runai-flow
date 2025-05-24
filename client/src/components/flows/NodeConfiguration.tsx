@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { VariableSelector } from "./VariableSelector";
+import { VariableSelectorNew } from "./VariableSelectorNew";
 
 interface NodeConfigurationProps {
   node: any;
@@ -1508,7 +1508,7 @@ if (data.items) {
       
       {/* Only render the variable selector when shown to avoid ReactFlow context issues */}
       {showVariableSelector && (
-        <VariableSelector 
+        <VariableSelectorNew 
           open={showVariableSelector} 
           onClose={() => setShowVariableSelector(false)} 
           onSelectVariable={handleSelectVariable}

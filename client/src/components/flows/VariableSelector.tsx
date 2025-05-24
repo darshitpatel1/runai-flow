@@ -115,9 +115,9 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
     return paths;
   };
 
-  // Collect all available variables from nodes (optimized with no console logs)
+  // Simple, direct variable collection - find test results everywhere!
   const collectVariables = useCallback(() => {
-    console.log('🔍 Starting variable collection...');
+    console.log('🔍 SIMPLE variable collection starting...');
     
     // Get nodes from either manual nodes or ReactFlow
     const nodes = getNodes();
