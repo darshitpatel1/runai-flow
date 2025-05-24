@@ -1296,56 +1296,50 @@ return sourceData * 2;"
     console.log("=== Variable Transform Preview Debug ===");
     console.log("nodeData.variableValue:", nodeData.variableValue);
     
-    // Use the same logic as VariableSelectorNew to get the actual resolved value
+    // Use EXACT same logic as VariableSelectorNew to get rawValue
     let sourceValue = null;
     
     if (nodeData.variableValue && allNodes) {
+      // Find the actual test result from the node and extract the specific variable value
+      const nodes = allNodes || [];
       const variablePath = nodeData.variableValue.replace(/[{}]/g, '').trim();
-      console.log("Looking for variable path:", variablePath);
+      const pathParts = variablePath.split('.');
+      const nodeId = pathParts[0];
       
-      // Find nodes with pre-generated variables (like the variable selector does)
-      for (const node of allNodes) {
-        if (node.data?.variables && Array.isArray(node.data.variables)) {
-          // Check if this node has the variable we're looking for
-          const matchingVariable = node.data.variables.find(v => v === nodeData.variableValue);
-          if (matchingVariable) {
-            console.log("Found matching variable in node:", node.id);
+      const sourceNode = nodes.find(n => n.id === nodeId);
+      const testResult = sourceNode?.data?.testResult || sourceNode?.data?._lastTestResult || sourceNode?.data?._rawTestData;
+      
+      console.log("Found source node:", sourceNode?.id);
+      console.log("Test result available:", !!testResult);
+      
+      if (testResult) {
+        try {
+          // Extract the specific value from the path - EXACT same logic as VariableSelectorNew
+          let value = testResult;
+          // Navigate through the path (skip first part which is node ID)
+          for (let i = 1; i < pathParts.length; i++) {
+            const part = pathParts[i];
             
-            // Extract the value using the same logic as VariableSelectorNew
-            const pathParts = variablePath.split('.');
-            const testData = node.data.testResult || node.data._lastTestResult || node.data._rawTestData;
-            
-            if (testData) {
-              try {
-                let value = testData;
-                // Navigate through the path (skip first part which is node ID)
-                for (let i = 1; i < pathParts.length; i++) {
-                  const part = pathParts[i];
-                  
-                  if (part.includes('[') && part.includes(']')) {
-                    const arrayName = part.substring(0, part.indexOf('['));
-                    const indexStr = part.substring(part.indexOf('[') + 1, part.indexOf(']'));
-                    const index = parseInt(indexStr);
-                    
-                    if (arrayName) {
-                      value = value?.[arrayName];
-                    }
-                    if (!isNaN(index) && Array.isArray(value)) {
-                      value = value[index];
-                    }
-                  } else {
-                    value = value?.[part];
-                  }
-                }
-                
-                sourceValue = value;
-                console.log("Successfully extracted value:", sourceValue, typeof sourceValue);
-                break;
-              } catch (e) {
-                console.error("Error extracting value:", e);
+            if (part.includes('[') && part.includes(']')) {
+              const arrayName = part.substring(0, part.indexOf('['));
+              const indexStr = part.substring(part.indexOf('[') + 1, part.indexOf(']'));
+              const index = parseInt(indexStr);
+              
+              if (arrayName) {
+                value = value?.[arrayName];
               }
+              if (!isNaN(index) && Array.isArray(value)) {
+                value = value[index];
+              }
+            } else {
+              value = value?.[part];
             }
           }
+          
+          sourceValue = value;
+          console.log("Successfully extracted value:", sourceValue, typeof sourceValue);
+        } catch (e) {
+          console.error("Error extracting value:", e);
         }
       }
     }
