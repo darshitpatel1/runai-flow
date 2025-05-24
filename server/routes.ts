@@ -175,12 +175,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             try {
               console.log(`Making HTTP ${node.data?.method || 'GET'} request to: ${apiUrl}`);
+              console.log(`Node connector: ${node.data?.connector}`);
+              
+              // Get the connector authentication settings
+              let authHeaders = {};
+              const connectorName = node.data?.connector;
+              
+              if (connectorName && connectorName !== 'none') {
+                try {
+                  // Find the connector by name from the user's connectors
+                  const userConnectors = await storage.getConnectors(userId);
+                  const connector = userConnectors.find(c => c.name === connectorName);
+                  
+                  if (connector) {
+                    console.log(`Using connector: ${connector.name} (${connector.authType})`);
+                    
+                    // Apply authentication based on connector type
+                    if (connector.authType === 'basic' && connector.auth?.username && connector.auth?.password) {
+                      const credentials = Buffer.from(`${connector.auth.username}:${connector.auth.password}`).toString('base64');
+                      authHeaders['Authorization'] = `Basic ${credentials}`;
+                      console.log('Applied Basic Authentication');
+                    } else if (connector.authType === 'oauth2' && connector.auth?.accessToken) {
+                      authHeaders['Authorization'] = `Bearer ${connector.auth.accessToken}`;
+                      console.log('Applied OAuth2 Bearer token');
+                    } else if (connector.authType === 'api_key' && connector.auth?.apiKey) {
+                      if (connector.auth.keyLocation === 'header') {
+                        authHeaders[connector.auth.keyName || 'X-API-Key'] = connector.auth.apiKey;
+                      }
+                      console.log('Applied API Key authentication');
+                    }
+                    
+                    // Apply any custom headers from connector
+                    if (connector.headers) {
+                      try {
+                        const customHeaders = typeof connector.headers === 'string' 
+                          ? JSON.parse(connector.headers) 
+                          : connector.headers;
+                        Object.assign(authHeaders, customHeaders);
+                        console.log('Applied custom connector headers');
+                      } catch (e) {
+                        console.log('Failed to parse connector headers');
+                      }
+                    }
+                  } else {
+                    console.log(`⚠️ Connector "${connectorName}" not found - making unauthenticated request`);
+                  }
+                } catch (connectorError) {
+                  console.error('Error loading connector:', connectorError);
+                  console.log('⚠️ Failed to load connector - making unauthenticated request');
+                }
+              } else {
+                console.log('No connector specified - making unauthenticated request');
+              }
+              
               const startTime = Date.now();
+              
+              // Combine node headers with auth headers
+              const nodeHeaders = node.data?.headers ? JSON.parse(node.data.headers || '{}') : {};
+              const finalHeaders = { ...nodeHeaders, ...authHeaders };
+              
+              console.log('Final headers:', Object.keys(finalHeaders));
               
               const fetch = (await import('node-fetch')).default;
               const response = await fetch(apiUrl, {
                 method: node.data?.method || 'GET',
-                headers: node.data?.headers ? JSON.parse(node.data.headers || '{}') : {},
+                headers: finalHeaders,
                 body: node.data?.method !== 'GET' && node.data?.body ? node.data.body : undefined
               });
               
