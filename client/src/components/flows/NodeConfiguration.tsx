@@ -115,6 +115,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     updateNodeData(node.id, updatedData);
     
     // Also save directly to Firestore if we have flow info
+    console.log('🔍 Debug save data:', { flowId, allFlowNodes: !!allFlowNodes, hasUser: !!auth.currentUser });
+    
     if (flowId && allFlowNodes && auth.currentUser) {
       try {
         // Update the node in the all nodes array
@@ -122,22 +124,43 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           n.id === node.id ? { ...n, data: { ...n.data, ...updatedData } } : n
         );
         
+        console.log('💾 Attempting to save to Firestore:', { 
+          flowId, 
+          nodeId: node.id, 
+          field, 
+          value,
+          nodesCount: updatedNodes.length,
+          edgesCount: (allFlowEdges || []).length
+        });
+        
         // Save to Firestore immediately
         const flowRef = doc(db, "users", auth.currentUser.uid, "flows", flowId);
         await updateDoc(flowRef, {
           nodes: updatedNodes,
+          edges: allFlowEdges || [],
           updatedAt: new Date()
         });
         
-        console.log(`💾 Saved ${field} = ${value} for node ${node.id} to Firestore`);
+        console.log(`✅ Successfully saved ${field} = ${value} for node ${node.id} to Firestore`);
+        
+        toast({
+          title: "Saved",
+          description: `Node ${field} updated successfully`,
+        });
       } catch (error) {
-        console.error("Error saving to Firestore:", error);
+        console.error("❌ Error saving to Firestore:", error);
         toast({
           title: "Save Error",
           description: "Failed to save node configuration. Please try again.",
           variant: "destructive",
         });
       }
+    } else {
+      console.warn('⚠️ Cannot save to Firestore - missing data:', {
+        hasFlowId: !!flowId,
+        hasAllFlowNodes: !!allFlowNodes,
+        hasUser: !!auth.currentUser
+      });
     }
     
     console.log(`💾 Saved ${field} = ${value} for node ${node.id}`);
