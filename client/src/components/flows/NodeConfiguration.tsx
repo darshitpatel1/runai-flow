@@ -1293,22 +1293,53 @@ return sourceData * 2;"
 
   // Function to preview variable transformation
   const previewVariableTransformation = () => {
-    // SIMPLE APPROACH: Just use a test value if no variable is set
-    let sourceValue = "Test value from your API";
+    let sourceValue = null;
     
-    // If nodeData has variableValue, try to use that, otherwise use test value
-    if (nodeData.variableValue) {
-      console.log("Variable value exists:", nodeData.variableValue);
+    if (nodeData.variableValue && allNodes) {
+      // Use the EXACT same logic from VariableSelectorNew.tsx to resolve the variable
+      const variablePath = nodeData.variableValue.replace(/[{}]/g, '').trim();
+      const pathParts = variablePath.split('.');
+      const nodeId = pathParts[0];
       
-      // For now, let's just use the variable path as a test value
-      // This will at least show the transform working
-      if (nodeData.variableValue.includes('license_text')) {
-        sourceValue = "The `description` field in this response is licensed under a Creative Commons Attribution 4.0 Generic License (CC-By) and the Terms and Conditions of artic.edu. All other data in this response is licensed under a Creative Commons Zero (CC0) 1.0 designation and the Terms and Conditions of artic.edu.";
-      } else if (nodeData.variableValue.includes('is_boosted')) {
-        sourceValue = false;
-      } else {
-        sourceValue = "Sample API value";
+      const sourceNode = allNodes.find(n => n.id === nodeId);
+      if (sourceNode?.data) {
+        const testResult = sourceNode.data.testResult || sourceNode.data._lastTestResult || sourceNode.data._rawTestData;
+        
+        if (testResult) {
+          try {
+            let value = testResult;
+            // Navigate through the path (skip first part which is node ID)
+            for (let i = 1; i < pathParts.length; i++) {
+              const part = pathParts[i];
+              
+              if (part.includes('[') && part.includes(']')) {
+                // Handle array access like data[0]
+                const arrayName = part.substring(0, part.indexOf('['));
+                const indexStr = part.substring(part.indexOf('[') + 1, part.indexOf(']'));
+                const index = parseInt(indexStr);
+                
+                if (arrayName) {
+                  value = value?.[arrayName];
+                }
+                if (!isNaN(index) && Array.isArray(value)) {
+                  value = value[index];
+                }
+              } else {
+                value = value?.[part];
+              }
+            }
+            
+            sourceValue = value;
+          } catch (e) {
+            console.error("Error extracting variable value:", e);
+          }
+        }
       }
+    }
+    
+    // Fallback if no variable or value found
+    if (sourceValue === null || sourceValue === undefined) {
+      sourceValue = "No variable selected";
     }
     
     console.log("Using source value:", sourceValue, typeof sourceValue);
