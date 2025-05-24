@@ -1,0 +1,79 @@
+WebSocket constructor patched to fix Vite HMR connection issues
+react-dom.development.js:29895 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+AuthContext.tsx:18 
+            
+            
+            POST https://e6334639-bbf2-4413-9664-3ffe33fee481-00-3hhqhdfuv0okk.riker.replit.dev/api/auth/register 409 (Conflict)
+registerUserWithBackend @ AuthContext.tsx:18
+(anonymous) @ AuthContext.tsx:59
+(anonymous) @ auth_impl.ts:755
+Promise.then
+registerStateListener @ auth_impl.ts:751
+onAuthStateChanged @ auth_impl.ts:558
+onAuthStateChanged @ index.ts:198
+(anonymous) @ AuthContext.tsx:55
+commitHookEffectListMount @ react-dom.development.js:23189
+commitPassiveMountOnFiber @ react-dom.development.js:24965
+commitPassiveMountEffects_complete @ react-dom.development.js:24930
+commitPassiveMountEffects_begin @ react-dom.development.js:24917
+commitPassiveMountEffects @ react-dom.development.js:24905
+flushPassiveEffectsImpl @ react-dom.development.js:27078
+flushPassiveEffects @ react-dom.development.js:27023
+performSyncWorkOnRoot @ react-dom.development.js:26115
+flushSyncCallbacks @ react-dom.development.js:12042
+commitRootImpl @ react-dom.development.js:26998
+commitRoot @ react-dom.development.js:26721
+finishConcurrentRender @ react-dom.development.js:26020
+performConcurrentWorkOnRoot @ react-dom.development.js:25848
+workLoop @ scheduler.development.js:266
+flushWork @ scheduler.development.js:239
+performWorkUntilDeadline @ scheduler.development.js:533
+mpPs0hkOn9k5ryPJOfMv:90 User already exists in the database
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 No initial nodes to load or empty array received
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 🧪 Testing HTTP node: GET https://api.artic.edu/api/v1/artworks
+mpPs0hkOn9k5ryPJOfMv:90 ✅ Node test result: {data: {…}, status: 200, statusText: 'OK', responseTime: 106, success: true}
+mpPs0hkOn9k5ryPJOfMv:90 🔄 Sharing test results from node httpRequest_1747967479330 with all nodes
+mpPs0hkOn9k5ryPJOfMv:90 ✅ Generated variables: (25) ['{{httpRequest_1747967479330.result}}', '{{httpRequest_1747967479330.result.pagination}}', '{{httpRequest_1747967479330.result.pagination.total}}', '{{httpRequest_1747967479330.result.pagination.limit}}', '{{httpRequest_1747967479330.result.pagination.offset}}', '{{httpRequest_1747967479330.result.pagination.total_pages}}', '{{httpRequest_1747967479330.result.pagination.current_page}}', '{{httpRequest_1747967479330.result.pagination.next_url}}', '{{httpRequest_1747967479330.result.data}}', '{{httpRequest_1747967479330.result.data.length}}', '{{httpRequest_1747967479330.result.data[0]}}', '{{httpRequest_1747967479330.result.data[0].id}}', '{{httpRequest_1747967479330.result.data[0].api_model}}', '{{httpRequest_1747967479330.result.data[0].api_link}}', '{{httpRequest_1747967479330.result.data[0].is_boosted}}', '{{httpRequest_1747967479330.result.data[0].title}}', '{{httpRequest_1747967479330.result.data[0].main_reference_number}}', '{{httpRequest_1747967479330.result.info}}', '{{httpRequest_1747967479330.result.info.license_text}}', '{{httpRequest_1747967479330.result.info.license_links}}', '{{httpRequest_1747967479330.result.info.license_links.length}}', '{{httpRequest_1747967479330.result.info.license_links[0]}}', '{{httpRequest_1747967479330.result.info.version}}', '{{httpRequest_1747967479330.result.config}}', '{{httpRequest_1747967479330.result.config.iiif_url}}']
+mpPs0hkOn9k5ryPJOfMv:90 ✅ Test result stored: {pagination: {…}, data: Array(12), info: {…}, config: {…}}
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 No initial nodes to load or empty array received
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Starting variable collection...
+mpPs0hkOn9k5ryPJOfMv:90 📋 Got nodes for variable collection: 2 (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Processing node httpRequest_1747967479330 (httpRequest): {label: 'New HTTP Request'}
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Checking for test results in node httpRequest_1747967479330: {testResult: false, _lastTestResult: false, _rawTestData: false, variables: undefined, allData: {…}}
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Processing node setVariable_1748037790401 (setVariable): {label: 'New SET VARIABLE'}
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Checking for test results in node setVariable_1748037790401: {testResult: false, _lastTestResult: false, _rawTestData: false, variables: undefined, allData: {…}}
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Starting variable collection...
+mpPs0hkOn9k5ryPJOfMv:90 📋 Got nodes for variable collection: 2 (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Processing node httpRequest_1747967479330 (httpRequest): {label: 'New HTTP Request'}
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Checking for test results in node httpRequest_1747967479330: {testResult: false, _lastTestResult: false, _rawTestData: false, variables: undefined, allData: {…}}
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Processing node setVariable_1748037790401 (setVariable): {label: 'New SET VARIABLE'}
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Checking for test results in node setVariable_1748037790401: {testResult: false, _lastTestResult: false, _rawTestData: false, variables: undefined, allData: {…}}
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Starting variable collection...
+mpPs0hkOn9k5ryPJOfMv:90 📋 Got nodes for variable collection: 2 (2) [{…}, {…}]
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Processing node httpRequest_1747967479330 (httpRequest): {label: 'New HTTP Request'}
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Checking for test results in node httpRequest_1747967479330: {testResult: false, _lastTestResult: false, _rawTestData: false, variables: undefined, allData: {…}}
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Processing node setVariable_1748037790401 (setVariable): {label: 'New SET VARIABLE'}
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Checking for test results in node setVariable_1748037790401: {testResult: false, _lastTestResult: false, _rawTestData: false, variables: undefined, allData: {…}}
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Starting variable collection...
+mpPs0hkOn9k5ryPJOfMv:90 📋 Got nodes for variable collection: 2 (2) [{…}, {…}]

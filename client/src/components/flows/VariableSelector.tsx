@@ -166,8 +166,10 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
         }
       }
       
-      // Check for test results - look in multiple places
+      // Check for test results and variables from tested nodes
       const testResult = node.data?.testResult || node.data?._lastTestResult || node.data?._rawTestData;
+      const existingVariables = node.data?.variables;
+      
       console.log(`🔍 Checking for test results in node ${node.id}:`, {
         testResult: !!node.data?.testResult,
         _lastTestResult: !!node.data?._lastTestResult,
@@ -175,6 +177,38 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
         variables: node.data?.variables,
         allData: node.data
       });
+      
+      // If we have pre-generated variables, use those instead of regenerating
+      if (existingVariables && Array.isArray(existingVariables) && existingVariables.length > 0) {
+        console.log(`✅ Found pre-generated variables for ${node.id}:`, existingVariables);
+        
+        existingVariables.forEach((varPath: string) => {
+          // Clean up the variable path if it already has {{}}
+          const cleanPath = varPath.replace(/[{}]/g, '');
+          
+          // Create user-friendly display name
+          const pathParts = cleanPath.replace(`${node.id}.result.`, '').split('.');
+          const displayName = pathParts.map(part => {
+            if (part === 'pagination') return 'Page Info';
+            if (part === 'total') return 'Total Count';
+            if (part === 'data') return 'Artworks';
+            if (part.includes('[0]')) return part.replace('[0]', ' (First)');
+            return part.charAt(0).toUpperCase() + part.slice(1);
+          }).join(' → ');
+          
+          variableList.push({
+            nodeId: node.id,
+            nodeName: node.data?.label || `HTTP Request`,
+            nodeType: node.type || "unknown",
+            variableName: displayName,
+            path: varPath, // Use the original path with {{}}
+            source: "testResult",
+            preview: "Available from test",
+            rawValue: null
+          });
+        });
+        return; // Skip the rest if we found pre-generated variables
+      }
       
       if (testResult) {
         try {
