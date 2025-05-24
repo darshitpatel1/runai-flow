@@ -40,6 +40,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
   const [availableVariables, setAvailableVariables] = useState<string[]>([]);
   const [transformPreview, setTransformPreview] = useState<any>(null);
   const [transformError, setTransformError] = useState<string>("");
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Resizable sidebar state
   const [sidebarWidth, setSidebarWidth] = useState(400);
@@ -112,10 +113,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     updateNodeData(node.id, updatedData);
     
     // Debounced save to prevent too many saves
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    saveTimeoutRef.current = setTimeout(async () => {
+    let timeoutId: NodeJS.Timeout;
+    timeoutId = setTimeout(async () => {
       if (flowId && allFlowNodes && auth.currentUser) {
         try {
           // Get the current nodes from the flow builder
