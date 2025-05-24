@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { XIcon, PlayIcon, Code2Icon, Variable, Eye } from "lucide-react";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { doc, updateDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
