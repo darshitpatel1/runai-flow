@@ -20,9 +20,10 @@ interface NodeConfigurationProps {
   onClose: () => void;
   connectors: any[];
   onTestNode?: (nodeId: string, data: any) => Promise<any>;
+  allNodes?: any[]; // Add allNodes prop to pass all flow nodes
 }
 
-export function NodeConfiguration({ node, updateNodeData, onClose, connectors, onTestNode }: NodeConfigurationProps) {
+export function NodeConfiguration({ node, updateNodeData, onClose, connectors, onTestNode, allNodes }: NodeConfigurationProps) {
   const { toast } = useToast();
   const [nodeData, setNodeData] = useState(node.data);
   const [testResult, setTestResult] = useState<any>(null);
@@ -1514,8 +1515,8 @@ if (data.items) {
           onSelectVariable={handleSelectVariable}
           // Pass the current node being configured as a special property
           currentNodeId={node.id}
-          // If we're outside the FlowBuilder context, we need to pass nodes manually
-          manualNodes={node?.data?.allNodes || [node]} 
+          // Pass all nodes from the flow so variables from all tested nodes are available
+          manualNodes={allNodes || node?.data?.allNodes || [node]} 
         />
       )}
     </div>

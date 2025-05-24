@@ -1357,6 +1357,7 @@ export function FlowBuilder({
             onClose={closeNodeConfig}
             connectors={connectors}
             onTestNode={testNode}
+            allNodes={nodes}
           />
         )}
         
