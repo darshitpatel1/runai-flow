@@ -118,12 +118,16 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
       const testResult = node.data?.testResult || node.data?._lastTestResult || node.data?._rawTestData;
       const existingVariables = node.data?.variables;
       
-      console.log(`🔍 Checking for test results in node ${node.id}:`, {
+      console.log(`🔍 DETAILED CHECK for node ${node.id}:`, {
         testResult: !!node.data?.testResult,
         _lastTestResult: !!node.data?._lastTestResult,
         _rawTestData: !!node.data?._rawTestData,
         variables: node.data?.variables,
-        allData: node.data
+        variablesLength: node.data?.variables?.length,
+        hasAllNodes: !!node.data?.allNodes,
+        allNodesLength: node.data?.allNodes?.length,
+        nodeDataKeys: Object.keys(node.data || {}),
+        fullNodeData: node.data
       });
       
       // If we have pre-generated variables, use those instead of regenerating
