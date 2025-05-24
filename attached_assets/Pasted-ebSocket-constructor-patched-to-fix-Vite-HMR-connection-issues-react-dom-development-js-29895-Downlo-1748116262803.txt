@@ -1,0 +1,115 @@
+ebSocket constructor patched to fix Vite HMR connection issues
+react-dom.development.js:29895 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+/api/auth/register:1 
+            
+            
+            Failed to load resource: the server responded with a status of 409 (Conflict)
+gwzgO1TqSQxjtgIJ4Ujw:90 User already exists in the database
+gwzgO1TqSQxjtgIJ4Ujw:90 No initial nodes to load or empty array received
+gwzgO1TqSQxjtgIJ4Ujw:90 Loading flow data for: gwzgO1TqSQxjtgIJ4Ujw
+gwzgO1TqSQxjtgIJ4Ujw:90 Flow data loaded: Object
+gwzgO1TqSQxjtgIJ4Ujw:90 Loading saved nodes from Firestore: Array(1)
+gwzgO1TqSQxjtgIJ4Ujw:90 Initial nodes data received in Flow Builder: Array(1)
+gwzgO1TqSQxjtgIJ4Ujw:90 Setting processed nodes: Array(1)
+gwzgO1TqSQxjtgIJ4Ujw:90 Reporting regular node changes to parent
+gwzgO1TqSQxjtgIJ4Ujw:90 Initial nodes data received in Flow Builder: Array(1)
+gwzgO1TqSQxjtgIJ4Ujw:90 Setting processed nodes: Array(1)
+gwzgO1TqSQxjtgIJ4Ujw:90 Connectors loaded: 3
+gwzgO1TqSQxjtgIJ4Ujw:90 Reporting regular node changes to parent
+gwzgO1TqSQxjtgIJ4Ujw:90 Initial nodes data received in Flow Builder: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Setting processed nodes: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Reporting regular node changes to parent
+gwzgO1TqSQxjtgIJ4Ujw:90 Initial nodes data received in Flow Builder: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Setting processed nodes: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Reporting regular node changes to parent
+gwzgO1TqSQxjtgIJ4Ujw:90 Initial nodes data received in Flow Builder: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Setting processed nodes: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Reporting regular node changes to parent
+gwzgO1TqSQxjtgIJ4Ujw:90 Initial nodes data received in Flow Builder: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Setting processed nodes: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Reporting regular node changes to parent
+gwzgO1TqSQxjtgIJ4Ujw:90 Initial nodes data received in Flow Builder: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Setting processed nodes: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Reporting regular node changes to parent
+gwzgO1TqSQxjtgIJ4Ujw:90 Initial nodes data received in Flow Builder: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Setting processed nodes: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Reporting regular node changes to parent
+gwzgO1TqSQxjtgIJ4Ujw:90 Initial nodes data received in Flow Builder: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Setting processed nodes: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Reporting regular node changes to parent
+gwzgO1TqSQxjtgIJ4Ujw:90 Initial nodes data received in Flow Builder: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Setting processed nodes: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 No initial nodes to load or empty array received
+gwzgO1TqSQxjtgIJ4Ujw:90 Reporting regular node changes to parent
+gwzgO1TqSQxjtgIJ4Ujw:90 Initial nodes data received in Flow Builder: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Setting processed nodes: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Reporting regular node changes to parent
+gwzgO1TqSQxjtgIJ4Ujw:90 No initial nodes to load or empty array received
+gwzgO1TqSQxjtgIJ4Ujw:90 Reporting regular node changes to parent
+gwzgO1TqSQxjtgIJ4Ujw:90 Loading node data for configuration: {label: 'New HTTP Request', allNodes: Array(1)}
+gwzgO1TqSQxjtgIJ4Ujw:90 Node data updated externally: {label: 'New HTTP Request', allNodes: Array(1)}
+gwzgO1TqSQxjtgIJ4Ujw:90 Initial nodes data received in Flow Builder: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Setting processed nodes: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Initial nodes data received in Flow Builder: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 Setting processed nodes: [{…}]
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Updating node httpRequest_1748116081087 with data: {label: '', allNodes: Array(1)}
+gwzgO1TqSQxjtgIJ4Ujw:90 🔍 Debug save data: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', allFlowNodes: true, hasUser: true}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Attempting to save to Firestore: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', nodeId: 'httpRequest_1748116081087', field: 'label', value: '', nodesCount: 1, …}
+gwzgO1TqSQxjtgIJ4Ujw:90 ✅ Successfully saved label =  for node httpRequest_1748116081087 to Firestore
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Saved label =  for node httpRequest_1748116081087
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Updating node httpRequest_1748116081087 with data: {label: 'f', allNodes: Array(1)}
+gwzgO1TqSQxjtgIJ4Ujw:90 🔍 Debug save data: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', allFlowNodes: true, hasUser: true}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Attempting to save to Firestore: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', nodeId: 'httpRequest_1748116081087', field: 'label', value: 'f', nodesCount: 1, …}
+gwzgO1TqSQxjtgIJ4Ujw:90 ✅ Successfully saved label = f for node httpRequest_1748116081087 to Firestore
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Saved label = f for node httpRequest_1748116081087
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Updating node httpRequest_1748116081087 with data: {label: 'fw', allNodes: Array(1)}
+gwzgO1TqSQxjtgIJ4Ujw:90 🔍 Debug save data: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', allFlowNodes: true, hasUser: true}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Attempting to save to Firestore: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', nodeId: 'httpRequest_1748116081087', field: 'label', value: 'fw', nodesCount: 1, …}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Updating node httpRequest_1748116081087 with data: {label: 'fwe', allNodes: Array(1)}
+gwzgO1TqSQxjtgIJ4Ujw:90 🔍 Debug save data: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', allFlowNodes: true, hasUser: true}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Attempting to save to Firestore: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', nodeId: 'httpRequest_1748116081087', field: 'label', value: 'fwe', nodesCount: 1, …}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Updating node httpRequest_1748116081087 with data: {label: 'fwef', allNodes: Array(1)}
+gwzgO1TqSQxjtgIJ4Ujw:90 🔍 Debug save data: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', allFlowNodes: true, hasUser: true}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Attempting to save to Firestore: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', nodeId: 'httpRequest_1748116081087', field: 'label', value: 'fwef', nodesCount: 1, …}
+gwzgO1TqSQxjtgIJ4Ujw:90 ✅ Successfully saved label = fw for node httpRequest_1748116081087 to Firestore
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Saved label = fw for node httpRequest_1748116081087
+gwzgO1TqSQxjtgIJ4Ujw:90 ✅ Successfully saved label = fwe for node httpRequest_1748116081087 to Firestore
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Saved label = fwe for node httpRequest_1748116081087
+gwzgO1TqSQxjtgIJ4Ujw:90 ✅ Successfully saved label = fwef for node httpRequest_1748116081087 to Firestore
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Saved label = fwef for node httpRequest_1748116081087
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Updating node httpRequest_1748116081087 with data: {label: 'fwefw', allNodes: Array(1)}
+gwzgO1TqSQxjtgIJ4Ujw:90 🔍 Debug save data: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', allFlowNodes: true, hasUser: true}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Attempting to save to Firestore: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', nodeId: 'httpRequest_1748116081087', field: 'label', value: 'fwefw', nodesCount: 1, …}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Updating node httpRequest_1748116081087 with data: {label: 'fwefwe', allNodes: Array(1)}
+gwzgO1TqSQxjtgIJ4Ujw:90 🔍 Debug save data: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', allFlowNodes: true, hasUser: true}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Attempting to save to Firestore: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', nodeId: 'httpRequest_1748116081087', field: 'label', value: 'fwefwe', nodesCount: 1, …}
+gwzgO1TqSQxjtgIJ4Ujw:90 ✅ Successfully saved label = fwefw for node httpRequest_1748116081087 to Firestore
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Saved label = fwefw for node httpRequest_1748116081087
+gwzgO1TqSQxjtgIJ4Ujw:90 ✅ Successfully saved label = fwefwe for node httpRequest_1748116081087 to Firestore
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Saved label = fwefwe for node httpRequest_1748116081087
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Updating node httpRequest_1748116081087 with data: {label: 'fwefwew', allNodes: Array(1)}
+gwzgO1TqSQxjtgIJ4Ujw:90 🔍 Debug save data: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', allFlowNodes: true, hasUser: true}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Attempting to save to Firestore: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', nodeId: 'httpRequest_1748116081087', field: 'label', value: 'fwefwew', nodesCount: 1, …}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Updating node httpRequest_1748116081087 with data: {label: 'fwefwewe', allNodes: Array(1)}
+gwzgO1TqSQxjtgIJ4Ujw:90 🔍 Debug save data: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', allFlowNodes: true, hasUser: true}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Attempting to save to Firestore: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', nodeId: 'httpRequest_1748116081087', field: 'label', value: 'fwefwewe', nodesCount: 1, …}
+gwzgO1TqSQxjtgIJ4Ujw:90 ✅ Successfully saved label = fwefwew for node httpRequest_1748116081087 to Firestore
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Saved label = fwefwew for node httpRequest_1748116081087
+gwzgO1TqSQxjtgIJ4Ujw:90 ✅ Successfully saved label = fwefwewe for node httpRequest_1748116081087 to Firestore
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Saved label = fwefwewe for node httpRequest_1748116081087
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Updating node httpRequest_1748116081087 with data: {label: 'fwefwewew', allNodes: Array(1)}
+gwzgO1TqSQxjtgIJ4Ujw:90 🔍 Debug save data: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', allFlowNodes: true, hasUser: true}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Attempting to save to Firestore: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', nodeId: 'httpRequest_1748116081087', field: 'label', value: 'fwefwewew', nodesCount: 1, …}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Updating node httpRequest_1748116081087 with data: {label: 'fwefwewewe', allNodes: Array(1)}
+gwzgO1TqSQxjtgIJ4Ujw:90 🔍 Debug save data: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', allFlowNodes: true, hasUser: true}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Attempting to save to Firestore: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', nodeId: 'httpRequest_1748116081087', field: 'label', value: 'fwefwewewe', nodesCount: 1, …}
+gwzgO1TqSQxjtgIJ4Ujw:90 ✅ Successfully saved label = fwefwewew for node httpRequest_1748116081087 to Firestore
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Saved label = fwefwewew for node httpRequest_1748116081087
+gwzgO1TqSQxjtgIJ4Ujw:90 ✅ Successfully saved label = fwefwewewe for node httpRequest_1748116081087 to Firestore
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Saved label = fwefwewewe for node httpRequest_1748116081087
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Updating node httpRequest_1748116081087 with data: {label: 'fwefweweweq', allNodes: Array(1)}
+gwzgO1TqSQxjtgIJ4Ujw:90 🔍 Debug save data: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', allFlowNodes: true, hasUser: true}
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Attempting to save to Firestore: {flowId: 'gwzgO1TqSQxjtgIJ4Ujw', nodeId: 'httpRequest_1748116081087', field: 'label', value: 'fwefweweweq', nodesCount: 1, …}
+gwzgO1TqSQxjtgIJ4Ujw:90 ✅ Successfully saved label = fwefweweweq for node httpRequest_1748116081087 to Firestore
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Saved label = fwefweweweq for node httpRequest_1748116081087
+gwzgO1TqSQxjtgIJ4Ujw:90 💾 Updating node httpRequest_1748116081087 with data: {label: 'fwefweweweq', allNodes: Array(1)}
