@@ -1360,6 +1360,8 @@ export function FlowBuilder({
             connectors={connectors}
             onTestNode={testNode}
             allNodes={nodes}
+            flowId={flowId}
+            allFlowNodes={nodes}
           />
         )}
         

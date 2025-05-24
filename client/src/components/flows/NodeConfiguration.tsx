@@ -22,9 +22,11 @@ interface NodeConfigurationProps {
   connectors: any[];
   onTestNode?: (nodeId: string, data: any) => Promise<any>;
   allNodes?: any[]; // Add allNodes prop to pass all flow nodes
+  flowId?: string; // Flow ID for saving to Firestore
+  allFlowNodes?: any[]; // All nodes in the flow for Firestore saving
 }
 
-export function NodeConfiguration({ node, updateNodeData, onClose, connectors, onTestNode, allNodes }: NodeConfigurationProps) {
+export function NodeConfiguration({ node, updateNodeData, onClose, connectors, onTestNode, allNodes, flowId, allFlowNodes }: NodeConfigurationProps) {
   const { toast } = useToast();
   const [nodeData, setNodeData] = useState(node.data);
   const [testResult, setTestResult] = useState<any>(null);
@@ -91,7 +93,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     setIsDragging(true);
   };
   
-  const handleChange = (field: string, value: any) => {
+  const handleChange = async (field: string, value: any) => {
     const updatedData = { ...nodeData, [field]: value };
     setNodeData(updatedData);
     
@@ -105,8 +107,29 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
       updatedData.label = `Set: ${value}`;
     }
     
-    // Immediately save the change to the flow
+    // Immediately save the change to the flow (local state)
     updateNodeData(node.id, updatedData);
+    
+    // Also save directly to Firestore if we have flow info
+    if (flowId && allFlowNodes && auth.currentUser) {
+      try {
+        // Update the node in the all nodes array
+        const updatedNodes = allFlowNodes.map(n => 
+          n.id === node.id ? { ...n, data: { ...n.data, ...updatedData } } : n
+        );
+        
+        // Save to Firestore immediately
+        const flowRef = doc(db, "users", auth.currentUser.uid, "flows", flowId);
+        await updateDoc(flowRef, {
+          nodes: updatedNodes,
+          updatedAt: new Date()
+        });
+        
+        console.log(`💾 Saved ${field} = ${value} for node ${node.id} to Firestore`);
+      } catch (error) {
+        console.error("Error saving to Firestore:", error);
+      }
+    }
     
     console.log(`💾 Saved ${field} = ${value} for node ${node.id}`);
   };
