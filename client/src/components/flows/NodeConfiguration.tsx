@@ -101,10 +101,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     const updatedData = { ...nodeData, [field]: value };
     setNodeData(updatedData);
     
-    // For HTTP nodes, also update the label to show the URL
-    if (node.type === 'httpRequest' && (field === 'url' || field === 'endpoint') && value) {
-      updatedData.label = `HTTP: ${value}`;
-    }
+    // For HTTP nodes, only update the label when changing the actual label field, not the endpoint
+    // Remove automatic label updating for endpoint/url fields
     
     // For SetVariable nodes, also update the label to show the variable name
     if (node.type === 'setVariable' && field === 'variableKey' && value) {
@@ -155,16 +153,20 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
   // Function to get existing variables from all SetVariable nodes and tested HTTP nodes
   const getExistingVariables = () => {
     try {
-      // Make sure we have allNodes data before attempting to use it
-      if (!node?.data?.allNodes || !Array.isArray(node.data.allNodes)) {
-        console.log("No allNodes data available");
+      // Use allFlowNodes (the current flow nodes) instead of node.data.allNodes
+      const nodesToCheck = allFlowNodes || allNodes || [];
+      
+      if (!nodesToCheck || !Array.isArray(nodesToCheck) || nodesToCheck.length === 0) {
+        console.log("No flow nodes data available for variables");
         return [];
       }
       
       const variables: string[] = [];
       
+      console.log("🔍 Checking nodes for variables:", nodesToCheck.length, "nodes");
+      
       // Add variables from tested HTTP nodes
-      node.data.allNodes.forEach((n: any) => {
+      nodesToCheck.forEach((n: any) => {
         if (n.type === 'httpRequest' && n.data?.testResult) {
           const testVariables = generateVariablePaths(n.data.testResult, `${n.id}.result`);
           variables.push(...testVariables);
@@ -175,10 +177,11 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
       });
       
       // Find all SetVariable nodes and collect their variable keys (excluding current node)
-      node.data.allNodes.forEach((n: any) => {
+      nodesToCheck.forEach((n: any) => {
         if (n && n.type === 'setVariable' && n.data?.variableKey && n.id !== node.id) {
           // Only add if it's not empty and not the special __new__ value
           if (n.data.variableKey !== "__new__" && n.data.variableKey.trim()) {
+            console.log("🎯 Found SetVariable node:", n.id, "with variable:", n.data.variableKey);
             variables.push(n.data.variableKey);
           }
         }
@@ -187,7 +190,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
       // Remove duplicates and filter out empty values
       const uniqueVariables = Array.from(new Set(variables)).filter(v => v && v.trim() && v !== "__new__");
       
-      console.log("Available variables for node", node.id, ":", uniqueVariables);
+      console.log("✅ Available variables for node", node.id, ":", uniqueVariables);
       
       return uniqueVariables;
     } catch (error) {
