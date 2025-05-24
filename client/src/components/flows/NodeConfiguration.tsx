@@ -101,8 +101,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     const updatedData = { ...nodeData, [field]: value };
     setNodeData(updatedData);
     
-    // For HTTP nodes, only update the label when changing the actual label field, not the endpoint
-    // Remove automatic label updating for endpoint/url fields
+    // Allow manual label updates for all node types
     
     // For SetVariable nodes, also update the label to show the variable name
     if (node.type === 'setVariable' && field === 'variableKey' && value) {
@@ -176,13 +175,23 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
         }
       });
       
-      // Find all SetVariable nodes and collect their variable keys (excluding current node)
+      // Find all SetVariable nodes that come BEFORE the current node in the flow (above in Y position)
+      const currentNodeY = node.position?.y || 0;
+      console.log("🎯 Current node Y position:", currentNodeY);
+      
       nodesToCheck.forEach((n: any) => {
         if (n && n.type === 'setVariable' && n.data?.variableKey && n.id !== node.id) {
-          // Only add if it's not empty and not the special __new__ value
-          if (n.data.variableKey !== "__new__" && n.data.variableKey.trim()) {
-            console.log("🎯 Found SetVariable node:", n.id, "with variable:", n.data.variableKey);
-            variables.push(n.data.variableKey);
+          const nodeY = n.position?.y || 0;
+          
+          // Only include variables from nodes that are positioned ABOVE (lower Y value) the current node
+          if (nodeY < currentNodeY) {
+            // Only add if it's not empty and not the special __new__ value
+            if (n.data.variableKey !== "__new__" && n.data.variableKey.trim()) {
+              console.log("🎯 Found SetVariable node ABOVE current:", n.id, "Y:", nodeY, "with variable:", n.data.variableKey);
+              variables.push(n.data.variableKey);
+            }
+          } else {
+            console.log("⬇️ Skipping SetVariable node BELOW current:", n.id, "Y:", nodeY, "variable:", n.data.variableKey);
           }
         }
       });
