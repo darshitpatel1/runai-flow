@@ -200,7 +200,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           url: url,
           method: method,
           headers: nodeData.headers || {},
-          body: nodeData.body || null
+          body: nodeData.body || null,
+          connector: nodeData.connector || 'none'  // Include connector for authentication
         })
       });
 

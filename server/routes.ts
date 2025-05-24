@@ -190,19 +190,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   if (connector) {
                     console.log(`Using connector: ${connector.name} (${connector.authType})`);
                     
-                    // Apply authentication based on connector type
-                    if (connector.authType === 'basic' && connector.auth?.username && connector.auth?.password) {
-                      const credentials = Buffer.from(`${connector.auth.username}:${connector.auth.password}`).toString('base64');
-                      authHeaders['Authorization'] = `Basic ${credentials}`;
-                      console.log('Applied Basic Authentication');
-                    } else if (connector.authType === 'oauth2' && connector.auth?.accessToken) {
-                      authHeaders['Authorization'] = `Bearer ${connector.auth.accessToken}`;
-                      console.log('Applied OAuth2 Bearer token');
-                    } else if (connector.authType === 'api_key' && connector.auth?.apiKey) {
-                      if (connector.auth.keyLocation === 'header') {
-                        authHeaders[connector.auth.keyName || 'X-API-Key'] = connector.auth.apiKey;
+                    // STRICT AUTHENTICATION VALIDATION
+                    const authConfig = connector.authConfig as any;
+                    
+                    if (connector.authType === 'basic') {
+                      if (!authConfig?.username || !authConfig?.password) {
+                        console.log('❌ Basic Auth connector missing credentials - FAILING REQUEST');
+                        throw new Error(`Basic Authentication required but credentials missing for connector "${connector.name}"`);
                       }
-                      console.log('Applied API Key authentication');
+                      const credentials = Buffer.from(`${authConfig.username}:${authConfig.password}`).toString('base64');
+                      (authHeaders as any)['Authorization'] = `Basic ${credentials}`;
+                      console.log('✅ Applied Basic Authentication');
+                      
+                    } else if (connector.authType === 'oauth2') {
+                      if (!authConfig?.accessToken) {
+                        console.log('❌ OAuth2 connector missing access token - FAILING REQUEST');
+                        throw new Error(`OAuth2 Authentication required but access token missing for connector "${connector.name}"`);
+                      }
+                      (authHeaders as any)['Authorization'] = `Bearer ${authConfig.accessToken}`;
+                      console.log('✅ Applied OAuth2 Bearer token');
+                      
+                    } else if (connector.authType === 'api_key') {
+                      if (!authConfig?.apiKey) {
+                        console.log('❌ API Key connector missing key - FAILING REQUEST');
+                        throw new Error(`API Key Authentication required but key missing for connector "${connector.name}"`);
+                      }
+                      if (authConfig.keyLocation === 'header') {
+                        (authHeaders as any)[authConfig.keyName || 'X-API-Key'] = authConfig.apiKey;
+                      }
+                      console.log('✅ Applied API Key authentication');
+                      
+                    } else if (connector.authType !== 'none') {
+                      console.log(`❌ Unknown auth type: ${connector.authType} - FAILING REQUEST`);
+                      throw new Error(`Unknown authentication type "${connector.authType}" for connector "${connector.name}"`);
                     }
                     
                     // Apply any custom headers from connector
@@ -212,17 +232,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
                           ? JSON.parse(connector.headers) 
                           : connector.headers;
                         Object.assign(authHeaders, customHeaders);
-                        console.log('Applied custom connector headers');
+                        console.log('✅ Applied custom connector headers');
                       } catch (e) {
-                        console.log('Failed to parse connector headers');
+                        console.log('⚠️ Failed to parse connector headers');
                       }
                     }
                   } else {
-                    console.log(`⚠️ Connector "${connectorName}" not found - making unauthenticated request`);
+                    console.log(`❌ Connector "${connectorName}" not found - FAILING REQUEST`);
+                    throw new Error(`Connector "${connectorName}" not found`);
                   }
                 } catch (connectorError) {
-                  console.error('Error loading connector:', connectorError);
-                  console.log('⚠️ Failed to load connector - making unauthenticated request');
+                  console.error('❌ AUTHENTICATION ERROR:', connectorError.message);
+                  // FAIL THE ENTIRE REQUEST - don't continue with unauthenticated request
+                  const errorInfo = {
+                    nodeId: node.id,
+                    url: apiUrl,
+                    method: node.data?.method || 'GET',
+                    status: 401,
+                    statusText: 'Authentication Failed',
+                    responseTime: 0,
+                    data: null,
+                    error: connectorError.message
+                  };
+                  
+                  allResponses.push(errorInfo);
+                  console.log(`❌ Node ${i + 1} FAILED: ${connectorError.message}`);
+                  continue; // Skip to next node but record the failure
                 }
               } else {
                 console.log('No connector specified - making unauthenticated request');
@@ -357,20 +392,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Test single node endpoint for real API responses
   app.post("/api/test-node", requireAuth, async (req: Request, res: Response) => {
     try {
-      const { url, method = 'GET', headers = {}, body } = req.body;
+      const { url, method = 'GET', headers = {}, body, connector } = req.body;
       
       if (!url) {
         return res.status(400).json({ error: 'URL is required' });
       }
 
       console.log(`🧪 Testing node: ${method} ${url}`);
+      console.log(`🔐 Connector: ${connector || 'none'}`);
+      
+      // ENFORCE CONNECTOR AUTHENTICATION FOR NODE TESTING TOO
+      let authHeaders = {};
+      const userId = (req as any).user.id;
+      
+      if (connector && connector !== 'none') {
+        try {
+          const userConnectors = await storage.getConnectors(userId);
+          const connectorConfig = userConnectors.find(c => c.name === connector);
+          
+          if (connectorConfig) {
+            console.log(`Using connector: ${connectorConfig.name} (${connectorConfig.authType})`);
+            const authConfig = connectorConfig.authConfig as any;
+            
+            // STRICT VALIDATION - same as flow execution
+            if (connectorConfig.authType === 'basic') {
+              if (!authConfig?.username || !authConfig?.password) {
+                console.log('❌ Basic Auth connector missing credentials');
+                return res.status(401).json({ 
+                  error: `Basic Authentication required but credentials missing for connector "${connectorConfig.name}"` 
+                });
+              }
+              const credentials = Buffer.from(`${authConfig.username}:${authConfig.password}`).toString('base64');
+              (authHeaders as any)['Authorization'] = `Basic ${credentials}`;
+              console.log('✅ Applied Basic Authentication');
+              
+            } else if (connectorConfig.authType === 'oauth2') {
+              if (!authConfig?.accessToken) {
+                console.log('❌ OAuth2 connector missing access token');
+                return res.status(401).json({ 
+                  error: `OAuth2 Authentication required but access token missing for connector "${connectorConfig.name}"` 
+                });
+              }
+              (authHeaders as any)['Authorization'] = `Bearer ${authConfig.accessToken}`;
+              console.log('✅ Applied OAuth2 Bearer token');
+              
+            } else if (connectorConfig.authType === 'api_key') {
+              if (!authConfig?.apiKey) {
+                console.log('❌ API Key connector missing key');
+                return res.status(401).json({ 
+                  error: `API Key Authentication required but key missing for connector "${connectorConfig.name}"` 
+                });
+              }
+              if (authConfig.keyLocation === 'header') {
+                (authHeaders as any)[authConfig.keyName || 'X-API-Key'] = authConfig.apiKey;
+              }
+              console.log('✅ Applied API Key authentication');
+            }
+          } else {
+            console.log(`❌ Connector "${connector}" not found`);
+            return res.status(404).json({ error: `Connector "${connector}" not found` });
+          }
+        } catch (connectorError) {
+          console.error('❌ Connector authentication error:', connectorError);
+          return res.status(401).json({ error: `Authentication failed: ${connectorError.message}` });
+        }
+      } else {
+        console.log('No connector specified - making unauthenticated request');
+      }
+
       const startTime = Date.now();
 
       const fetchOptions: RequestInit = {
         method,
         headers: {
           'Content-Type': 'application/json',
-          ...headers
+          ...headers,
+          ...authHeaders  // Apply authentication headers
         }
       };
 
@@ -378,6 +475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
       }
 
+      console.log('Making request with headers:', Object.keys(fetchOptions.headers || {}));
       const response = await fetch(url, fetchOptions);
       const responseTime = Date.now() - startTime;
       
