@@ -137,6 +137,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
       console.log('💾 Attempting to save node configuration to Firestore:', { 
         flowId, 
         nodeId: node.id, 
+        nodeData: nodeData,
+        updatedNodes: updatedNodes,
         nodesCount: updatedNodes.length,
         edgesCount: (allFlowEdges || []).length
       });
@@ -162,12 +164,17 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
 
   // Debounced save effect - only save to Firestore after user stops typing
   useEffect(() => {
+    // Don't save if nodeData is empty or only has initial data
+    if (!nodeData || Object.keys(nodeData).length === 0) return;
+    
+    console.log('🔄 Node data changed, scheduling save:', nodeData);
+    
     const saveTimer = setTimeout(() => {
       saveToFirestore(nodeData);
     }, 1000); // Wait 1 second after last change before saving
 
     return () => clearTimeout(saveTimer);
-  }, [nodeData]);
+  }, [nodeData, flowId, allFlowNodes, auth.currentUser]);
   
   // Function to get existing variables from all SetVariable nodes and tested HTTP nodes
   const getExistingVariables = () => {
