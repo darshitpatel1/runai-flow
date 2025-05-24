@@ -1293,19 +1293,31 @@ return sourceData * 2;"
 
   // Function to preview variable transformation
   const previewVariableTransformation = () => {
+    console.log("=== Variable Transform Preview Debug ===");
+    console.log("nodeData:", nodeData);
+    console.log("nodeData.variableValue:", nodeData.variableValue);
+    console.log("allNodes:", allNodes?.map(n => ({ id: n.id, hasTestResult: !!n.data?.testResult })));
+    
     // For variable nodes, we need to look at the actual variable value from the preview
     let sourceValue = null;
     
     // First try to get the resolved variable value from the current node data
     if (nodeData.variableValue) {
+      console.log("Variable value exists:", nodeData.variableValue);
+      
       // Check if we have nodes to resolve the variable from
       if (allNodes && nodeData.variableValue.includes('{{') && nodeData.variableValue.includes('}}')) {
+        console.log("Trying to resolve variable path...");
         sourceValue = getVariableSourceData();
+        console.log("Resolved source value:", sourceValue);
       } else {
+        console.log("Using raw variable value...");
         // Use the raw value if it's not a variable reference
         sourceValue = nodeData.variableValue;
       }
     }
+    
+    console.log("Final source value:", sourceValue);
     
     if (sourceValue === null || sourceValue === undefined) {
       setTransformError("No source data available. Set a variable value first.");
