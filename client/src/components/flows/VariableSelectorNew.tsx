@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, X, Eye, Database, Code, Hash, Calendar, Type, List, FileText, Activity } from 'lucide-react';
+import { Search, X, Eye, Database, Code, Hash, Calendar, Type, List, FileText, Activity, ChevronDown, ChevronRight } from 'lucide-react';
 interface VariableSelectorNewProps {
   open: boolean;
   onClose: () => void;
@@ -26,6 +26,7 @@ type VariableEntry = {
 export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNodeId, manualNodes }: VariableSelectorNewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [previewVariable, setPreviewVariable] = useState<VariableEntry | null>(null);
+  const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
   
   // Helper function to get icon based on data type
   const getDataTypeIcon = (dataType: string, variableName: string) => {
@@ -358,14 +359,54 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
   
   const handleSelectVariable = (variable: VariableEntry) => {
     onSelectVariable(variable.path);
-    setPreviewVariable(null); // Close preview panel first
-    onClose(); // Then close main sidebar
+    setPreviewVariable(null); // Close preview panel only
+    // Don't close the main sidebar - keep it open for easy variable selection
   };
 
   const handlePreviewVariable = (variable: VariableEntry, event: React.MouseEvent) => {
     event.stopPropagation();
     setPreviewVariable(variable);
   };
+
+  const toggleNodeCollapse = (nodeId: string) => {
+    const newCollapsed = new Set(collapsedNodes);
+    if (newCollapsed.has(nodeId)) {
+      newCollapsed.delete(nodeId);
+    } else {
+      newCollapsed.add(nodeId);
+    }
+    setCollapsedNodes(newCollapsed);
+  };
+
+  // Filter variables to only show from nodes above the current node
+  const filteredVariablesFromAboveNodes = useMemo(() => {
+    if (!currentNodeId || !manualNodes) return filteredVariables;
+    
+    // Find the position of current node
+    const currentNodeIndex = manualNodes.findIndex(node => node.id === currentNodeId);
+    if (currentNodeIndex === -1) return filteredVariables;
+    
+    // Get nodes that come before the current node (above nodes)
+    const aboveNodes = manualNodes.slice(0, currentNodeIndex);
+    const aboveNodeIds = new Set(aboveNodes.map(node => node.id));
+    
+    // Filter variables to only include those from above nodes
+    return filteredVariables.filter(variable => aboveNodeIds.has(variable.nodeId));
+  }, [filteredVariables, currentNodeId, manualNodes]);
+
+  // Group variables by node
+  const groupedVariables = useMemo(() => {
+    const groups = new Map<string, VariableEntry[]>();
+    
+    filteredVariablesFromAboveNodes.forEach(variable => {
+      if (!groups.has(variable.nodeId)) {
+        groups.set(variable.nodeId, []);
+      }
+      groups.get(variable.nodeId)!.push(variable);
+    });
+    
+    return groups;
+  }, [filteredVariablesFromAboveNodes]);
   
   if (!open) return null;
   
@@ -401,16 +442,22 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
           </div>
         </div>
         
-        {/* Variables List - Fixed height with proper scrolling */}
+        {/* Variables List - Grouped by Node with Fixed height and proper scrolling */}
         <div className="flex-1 overflow-y-auto" style={{ height: 'calc(100vh - 120px)' }}>
-          <div className="p-2 space-y-1">
-            {filteredVariables.length === 0 ? (
+          <div className="p-2 space-y-2">
+            {groupedVariables.size === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 {allVariables.length === 0 ? (
                   <div>
                     <Database className="h-8 w-8 mx-auto mb-2 text-gray-300" />
                     <p className="text-xs">No variables available</p>
                     <p className="text-xs mt-1 text-gray-400">Test API nodes first</p>
+                  </div>
+                ) : currentNodeId ? (
+                  <div>
+                    <Activity className="h-6 w-6 mx-auto mb-1 text-gray-300" />
+                    <p className="text-xs">No variables from above nodes</p>
+                    <p className="text-xs mt-1 text-gray-400">Variables only show from nodes above</p>
                   </div>
                 ) : (
                   <div>
@@ -420,44 +467,75 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
                 )}
               </div>
             ) : (
-              filteredVariables.map((variable, index) => (
-                <div
-                  key={`${variable.nodeId}-${index}`}
-                  className="group p-2 border border-gray-600 rounded-lg hover:bg-gray-800 hover:border-blue-500 cursor-pointer transition-all duration-200"
-                  onClick={() => handleSelectVariable(variable)}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className="flex-shrink-0">
-                      {getDataTypeIcon(variable.dataType || 'string', variable.variableName)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-xs text-white truncate">
-                        {variable.variableName}
-                      </p>
-                    </div>
-                    <button
-                      onClick={(e) => handlePreviewVariable(variable, e)}
-                      className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-gray-700 transition-all"
-                      title="Preview data"
+              Array.from(groupedVariables.entries()).map(([nodeId, variables]) => {
+                const isCollapsed = collapsedNodes.has(nodeId);
+                const firstVariable = variables[0];
+                
+                return (
+                  <div key={nodeId} className="border border-gray-600 rounded-lg overflow-hidden">
+                    {/* Node Header - Collapsible */}
+                    <div 
+                      className="flex items-center justify-between p-2 bg-gray-800 hover:bg-gray-700 cursor-pointer transition-colors"
+                      onClick={() => toggleNodeCollapse(nodeId)}
                     >
-                      <Eye className="h-3 w-3 text-blue-400" />
-                    </button>
+                      <div className="flex items-center gap-2">
+                        {isCollapsed ? (
+                          <ChevronRight className="h-3 w-3 text-gray-400" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3 text-gray-400" />
+                        )}
+                        <Activity className="h-3 w-3 text-blue-400" />
+                        <span className="text-xs font-medium text-white truncate">
+                          {firstVariable.nodeName}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400">
+                          {variables.length} var{variables.length !== 1 ? 's' : ''}
+                        </span>
+                        <span className={`px-1 py-0.5 text-xs rounded ${
+                          firstVariable.source === 'testResult' 
+                            ? 'bg-emerald-900 text-emerald-300'
+                            : 'bg-blue-900 text-blue-300'
+                        }`}>
+                          {firstVariable.source === 'testResult' ? 'API' : 'Var'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Variables List - Collapsible */}
+                    {!isCollapsed && (
+                      <div className="bg-gray-900">
+                        {variables.map((variable, index) => (
+                          <div
+                            key={`${variable.nodeId}-${index}`}
+                            className="group p-2 border-t border-gray-600 hover:bg-gray-800 cursor-pointer transition-all duration-200"
+                            onClick={() => handleSelectVariable(variable)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="flex-shrink-0 ml-4">
+                                {getDataTypeIcon(variable.dataType || 'string', variable.variableName)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-xs text-white truncate">
+                                  {variable.variableName}
+                                </p>
+                              </div>
+                              <button
+                                onClick={(e) => handlePreviewVariable(variable, e)}
+                                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-gray-700 transition-all"
+                                title="Preview data"
+                              >
+                                <Eye className="h-3 w-3 text-blue-400" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-400 truncate">
-                      {variable.nodeName}
-                    </p>
-                    <span className={`px-1 py-0.5 text-xs rounded ${
-                      variable.source === 'testResult' 
-                        ? 'bg-emerald-900 text-emerald-300'
-                        : 'bg-blue-900 text-blue-300'
-                    }`}>
-                      {variable.source === 'testResult' ? 'API' : 'Var'}
-                    </span>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
