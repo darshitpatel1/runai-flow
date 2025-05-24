@@ -577,16 +577,24 @@ export function FlowBuilder({
                 currentNodes.map((n) => {
                   if (n.id !== nodeId) {
                     // Add current nodes list including the updated test results
-                    const allNodesWithTestData = currentNodes.map(cn => ({
-                      id: cn.id,
-                      type: cn.type,
-                      data: {
-                        label: cn.data?.label || cn.type || "Node",
-                        testResult: cn.data?.testResult,
-                        variables: cn.data?.variables,
-                        _rawTestData: cn.data?._rawTestData
-                      }
-                    }));
+                    const allNodesWithTestData = currentNodes.map(cn => {
+                      console.log(`🔄 Sharing data from node ${cn.id}:`, {
+                        hasTestResult: !!cn.data?.testResult,
+                        hasVariables: !!cn.data?.variables,
+                        variablesCount: cn.data?.variables?.length || 0
+                      });
+                      
+                      return {
+                        id: cn.id,
+                        type: cn.type,
+                        data: {
+                          label: cn.data?.label || cn.type || "Node",
+                          testResult: cn.data?.testResult,
+                          variables: cn.data?.variables,
+                          _rawTestData: cn.data?._rawTestData
+                        }
+                      };
+                    });
                     
                     return {
                       ...n,
