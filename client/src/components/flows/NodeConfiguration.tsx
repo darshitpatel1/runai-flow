@@ -1311,28 +1311,39 @@ return sourceData * 2;"
       
       console.log("Found source node:", sourceNode?.id);
       console.log("Test result available:", !!testResult);
+      console.log("Test result structure:", Object.keys(testResult || {}));
+      console.log("Variable path parts:", pathParts);
       
       if (testResult) {
         try {
           // Extract the specific value from the path - EXACT same logic as VariableSelectorNew
           let value = testResult;
+          console.log("Starting with testResult:", value);
+          
           // Navigate through the path (skip first part which is node ID)
           for (let i = 1; i < pathParts.length; i++) {
             const part = pathParts[i];
+            console.log(`Processing part ${i}: "${part}"`);
+            console.log("Current value before processing:", value);
             
             if (part.includes('[') && part.includes(']')) {
               const arrayName = part.substring(0, part.indexOf('['));
               const indexStr = part.substring(part.indexOf('[') + 1, part.indexOf(']'));
               const index = parseInt(indexStr);
               
+              console.log("Array access - name:", arrayName, "index:", index);
+              
               if (arrayName) {
                 value = value?.[arrayName];
+                console.log("After array name access:", value);
               }
               if (!isNaN(index) && Array.isArray(value)) {
                 value = value[index];
+                console.log("After array index access:", value);
               }
             } else {
               value = value?.[part];
+              console.log(`After accessing "${part}":`, value);
             }
           }
           
