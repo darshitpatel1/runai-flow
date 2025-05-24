@@ -559,13 +559,50 @@ export function FlowBuilder({
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === nodeId) {
-          return {
+          const updatedNode = {
             ...node,
             data: {
               ...node.data,
               ...newData,
             },
           };
+          
+          // If this node has test results, share them with all other nodes for variable access
+          if (newData.testResult || newData.variables) {
+            console.log(`🔄 Sharing test results from node ${nodeId} with all nodes`);
+            
+            // Update all other nodes to include this node's test data
+            setTimeout(() => {
+              setNodes((currentNodes) => 
+                currentNodes.map((n) => {
+                  if (n.id !== nodeId) {
+                    // Add current nodes list including the updated test results
+                    const allNodesWithTestData = currentNodes.map(cn => ({
+                      id: cn.id,
+                      type: cn.type,
+                      data: {
+                        label: cn.data?.label || cn.type || "Node",
+                        testResult: cn.data?.testResult,
+                        variables: cn.data?.variables,
+                        _rawTestData: cn.data?._rawTestData
+                      }
+                    }));
+                    
+                    return {
+                      ...n,
+                      data: {
+                        ...n.data,
+                        allNodes: allNodesWithTestData
+                      }
+                    };
+                  }
+                  return n;
+                })
+              );
+            }, 100);
+          }
+          
+          return updatedNode;
         }
         return node;
       })
