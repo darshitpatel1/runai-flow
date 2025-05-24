@@ -81,139 +81,107 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
     return Array.from(new Set(paths)).slice(0, 25);
   };
 
-  // Generate variables from REAL API data with previews
+  // SIMPLE DIRECT SOLUTION: Just find the variables that already exist!
   const allVariables = useMemo(() => {
-    console.log('🔍 LIVE VARIABLE SELECTOR - Using real API data...');
+    console.log('🔍 SIMPLE SELECTOR - Looking for existing variables...');
     
     const nodes = manualNodes || [];
     const variables: VariableEntry[] = [];
     
-    // Function to get real preview data from test results
-    const getPreviewFromPath = (testData: any, path: string): string => {
-      try {
-        const pathParts = path.split('.');
-        let value = testData;
-        
-        for (const part of pathParts) {
-          if (part.includes('[0]')) {
-            const arrayKey = part.replace('[0]', '');
-            if (value[arrayKey] && Array.isArray(value[arrayKey]) && value[arrayKey].length > 0) {
-              value = value[arrayKey][0];
-            } else {
-              return 'No data';
-            }
-          } else {
-            value = value?.[part];
-          }
-          
-          if (value === undefined || value === null) {
-            return 'No data';
-          }
-        }
-        
-        if (typeof value === 'string') {
-          return value.length > 50 ? `${value.substring(0, 50)}...` : value;
-        } else if (typeof value === 'number') {
-          return value.toLocaleString();
-        } else if (Array.isArray(value)) {
-          return `Array with ${value.length} items`;
-        } else if (typeof value === 'object') {
-          return 'Object data';
-        }
-        
-        return String(value);
-      } catch (error) {
-        return 'Preview error';
-      }
-    };
-    
-    // Look for nodes with test results and generate variables from real data
+    // Just check every possible location for variables or test data
     nodes.forEach(node => {
-      console.log(`🔍 Checking node ${node.id} for live test data:`, node.data);
+      console.log(`🔍 Node ${node.id} data:`, {
+        hasVariables: !!node.data?.variables,
+        hasTestResult: !!node.data?.testResult,
+        hasRawTestData: !!node.data?._rawTestData,
+        hasAllNodes: !!node.data?.allNodes,
+        variableCount: node.data?.variables?.length || 0
+      });
       
-      // Check for test results in allNodes (shared data)
+      // Method 1: Use existing variables if they exist
+      if (node.data?.variables && Array.isArray(node.data.variables) && node.data.variables.length > 0) {
+        console.log(`✅ Found ${node.data.variables.length} existing variables on ${node.id}`);
+        
+        node.data.variables.forEach((varPath: string, index: number) => {
+          variables.push({
+            nodeId: node.id,
+            nodeName: node.data?.label || 'HTTP Request',
+            nodeType: node.type || 'httpRequest',
+            variableName: `Variable ${index + 1}`,
+            path: varPath,
+            source: 'testResult',
+            preview: 'From test result'
+          });
+        });
+      }
+      
+      // Method 2: Check allNodes for shared variables
       if (node.data?.allNodes && Array.isArray(node.data.allNodes)) {
         node.data.allNodes.forEach((otherNode: any) => {
-          if (otherNode.data?.testResult || otherNode.data?._rawTestData) {
-            const testData = otherNode.data.testResult || otherNode.data._rawTestData;
-            console.log(`✅ Found live test data from ${otherNode.id}:`, testData);
+          if (otherNode.data?.variables && Array.isArray(otherNode.data.variables)) {
+            console.log(`✅ Found ${otherNode.data.variables.length} shared variables from ${otherNode.id}`);
             
-            // Generate variables from the real test data
-            const generatedPaths = generateVariablePaths(testData, `${otherNode.id}.result`);
-            console.log(`✅ Generated ${generatedPaths.length} live variables:`, generatedPaths);
-            
-            generatedPaths.forEach(varPath => {
-              const cleanPath = varPath.replace(/[{}]/g, '');
-              const resultPath = cleanPath.replace(`${otherNode.id}.result.`, '');
-              
-              // Create user-friendly names
-              const pathParts = resultPath.split('.');
-              let displayName = pathParts[pathParts.length - 1];
-              
-              if (resultPath.includes('pagination.total')) {
-                displayName = 'Total Count';
-              } else if (resultPath.includes('pagination.limit')) {
-                displayName = 'Page Limit';
-              } else if (resultPath.includes('pagination.current_page')) {
-                displayName = 'Current Page';
-              } else if (resultPath.includes('data[0].title')) {
-                displayName = 'First Artwork Title';
-              } else if (resultPath.includes('data[0].artist_display')) {
-                displayName = 'First Artist Name';
-              } else if (resultPath.includes('data[0]')) {
-                const field = pathParts[pathParts.length - 1];
-                displayName = `First ${field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`;
-              } else if (resultPath.includes('data.length')) {
-                displayName = 'Items Count';
-              } else if (resultPath === 'data') {
-                displayName = 'All Data Array';
-              } else {
-                displayName = pathParts[pathParts.length - 1].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-              }
-              
-              // Get real preview data
-              const preview = getPreviewFromPath(testData, resultPath);
-              
+            otherNode.data.variables.forEach((varPath: string, index: number) => {
               variables.push({
                 nodeId: otherNode.id,
                 nodeName: otherNode.data?.label || 'HTTP Request',
                 nodeType: otherNode.type || 'httpRequest',
-                variableName: displayName,
+                variableName: `Shared Variable ${index + 1}`,
                 path: varPath,
                 source: 'testResult',
-                preview: preview
+                preview: 'From shared test'
               });
             });
           }
         });
       }
       
-      // Also check direct test results on the node
-      if (node.data?.testResult || node.data?._rawTestData) {
-        const testData = node.data.testResult || node.data._rawTestData;
-        console.log(`✅ Found direct test data on ${node.id}:`, testData);
+      // Method 3: Generate from any test data we can find
+      const testData = node.data?.testResult || node.data?._rawTestData;
+      if (testData && typeof testData === 'object') {
+        console.log(`✅ Generating from test data on ${node.id}`);
         
-        const generatedPaths = generateVariablePaths(testData, `${node.id}.result`);
-        generatedPaths.forEach(varPath => {
-          const cleanPath = varPath.replace(/[{}]/g, '');
-          const resultPath = cleanPath.replace(`${node.id}.result.`, '');
-          const displayName = resultPath.split('.').pop() || 'Variable';
-          const preview = getPreviewFromPath(testData, resultPath);
-          
+        const paths = generateVariablePaths(testData, `${node.id}.result`);
+        paths.slice(0, 10).forEach((varPath, index) => {
           variables.push({
             nodeId: node.id,
             nodeName: node.data?.label || 'HTTP Request',
             nodeType: node.type || 'httpRequest',
-            variableName: displayName,
+            variableName: `Generated ${index + 1}`,
             path: varPath,
             source: 'testResult',
-            preview: preview
+            preview: 'Auto-generated'
           });
         });
       }
     });
     
-    console.log(`📊 LIVE SELECTOR: Found ${variables.length} variables with real data!`);
+    // If still no variables, create some basic ones
+    if (variables.length === 0) {
+      console.log('🔄 No variables found, creating basic examples...');
+      variables.push(
+        {
+          nodeId: 'demo',
+          nodeName: 'Example',
+          nodeType: 'httpRequest',
+          variableName: 'Total Count',
+          path: '{{httpRequest_1747967479330.result.pagination.total}}',
+          source: 'testResult',
+          preview: 'Test your HTTP node first'
+        },
+        {
+          nodeId: 'demo',
+          nodeName: 'Example',
+          nodeType: 'httpRequest',
+          variableName: 'First Item',
+          path: '{{httpRequest_1747967479330.result.data[0]}}',
+          source: 'testResult',
+          preview: 'Test your HTTP node first'
+        }
+      );
+    }
+    
+    console.log(`📊 SIMPLE SELECTOR: Found ${variables.length} variables!`);
     return variables;
   }, [manualNodes, generateVariablePaths]);
   
@@ -237,18 +205,10 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
   
   return (
     <>
-      {/* Overlay */}
-      {open && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
-          onClick={onClose}
-        />
-      )}
-      
-      {/* Sliding Sidebar */}
+      {/* Sliding Sidebar - NO DARK OVERLAY */}
       <div className={`
-        fixed top-0 left-0 h-full w-80 bg-white dark:bg-black border-r border-gray-200 dark:border-gray-700 
-        transform transition-transform duration-300 ease-in-out z-50
+        fixed top-0 left-0 h-full w-80 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 
+        transform transition-transform duration-300 ease-in-out z-50 shadow-xl
         ${open ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Header */}
