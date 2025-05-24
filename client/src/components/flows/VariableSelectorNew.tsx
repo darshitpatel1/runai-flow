@@ -81,47 +81,141 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
     return Array.from(new Set(paths)).slice(0, 25);
   };
 
-  // WORKING SOLUTION: Create the exact variables that we know exist
+  // Generate variables from REAL API data with previews
   const allVariables = useMemo(() => {
-    console.log('🔍 WORKING VARIABLE SELECTOR - Creating known Art Institute variables...');
+    console.log('🔍 LIVE VARIABLE SELECTOR - Using real API data...');
     
-    // Since we know the API is working and generating 25 variables, 
-    // let's create them based on the Art Institute API structure
-    const variables: VariableEntry[] = [
-      // Pagination variables
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'Total Artworks', path: '{{httpRequest_1747967479330.result.pagination.total}}', source: 'testResult', preview: '128,370 total' },
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'Page Limit', path: '{{httpRequest_1747967479330.result.pagination.limit}}', source: 'testResult', preview: '12 per page' },
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'Current Page', path: '{{httpRequest_1747967479330.result.pagination.current_page}}', source: 'testResult', preview: 'Page number' },
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'Total Pages', path: '{{httpRequest_1747967479330.result.pagination.total_pages}}', source: 'testResult', preview: 'Total pages' },
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'Page Offset', path: '{{httpRequest_1747967479330.result.pagination.offset}}', source: 'testResult', preview: 'Page offset' },
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'Next URL', path: '{{httpRequest_1747967479330.result.pagination.next_url}}', source: 'testResult', preview: 'Next page URL' },
-      
-      // Data array variables
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'All Artworks', path: '{{httpRequest_1747967479330.result.data}}', source: 'testResult', preview: 'Array of artworks' },
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'Artworks Count', path: '{{httpRequest_1747967479330.result.data.length}}', source: 'testResult', preview: '12 artworks' },
-      
-      // First artwork variables
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'First Artwork', path: '{{httpRequest_1747967479330.result.data[0]}}', source: 'testResult', preview: 'First artwork object' },
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'First Artwork ID', path: '{{httpRequest_1747967479330.result.data[0].id}}', source: 'testResult', preview: 'Artwork ID' },
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'First Artwork Title', path: '{{httpRequest_1747967479330.result.data[0].title}}', source: 'testResult', preview: 'Artwork title' },
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'First Artwork Artist', path: '{{httpRequest_1747967479330.result.data[0].artist_display}}', source: 'testResult', preview: 'Artist name' },
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'First Artwork Date', path: '{{httpRequest_1747967479330.result.data[0].date_display}}', source: 'testResult', preview: 'Date created' },
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'First Artwork Medium', path: '{{httpRequest_1747967479330.result.data[0].medium_display}}', source: 'testResult', preview: 'Medium/materials' },
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'First Artwork Dimensions', path: '{{httpRequest_1747967479330.result.data[0].dimensions}}', source: 'testResult', preview: 'Size dimensions' },
-      
-      // Info variables
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'API Info', path: '{{httpRequest_1747967479330.result.info}}', source: 'testResult', preview: 'API information' },
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'API Version', path: '{{httpRequest_1747967479330.result.info.version}}', source: 'testResult', preview: 'API version' },
-      
-      // Config variables
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'Config', path: '{{httpRequest_1747967479330.result.config}}', source: 'testResult', preview: 'API config' },
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'IIIF URL', path: '{{httpRequest_1747967479330.result.config.iiif_url}}', source: 'testResult', preview: 'Image server URL' },
-      { nodeId: 'httpRequest_1747967479330', nodeName: 'Art Institute API', nodeType: 'httpRequest', variableName: 'Website URL', path: '{{httpRequest_1747967479330.result.config.website_url}}', source: 'testResult', preview: 'Museum website' }
-    ];
+    const nodes = manualNodes || [];
+    const variables: VariableEntry[] = [];
     
-    console.log(`📊 WORKING SELECTOR: Created ${variables.length} Art Institute variables!`);
+    // Function to get real preview data from test results
+    const getPreviewFromPath = (testData: any, path: string): string => {
+      try {
+        const pathParts = path.split('.');
+        let value = testData;
+        
+        for (const part of pathParts) {
+          if (part.includes('[0]')) {
+            const arrayKey = part.replace('[0]', '');
+            if (value[arrayKey] && Array.isArray(value[arrayKey]) && value[arrayKey].length > 0) {
+              value = value[arrayKey][0];
+            } else {
+              return 'No data';
+            }
+          } else {
+            value = value?.[part];
+          }
+          
+          if (value === undefined || value === null) {
+            return 'No data';
+          }
+        }
+        
+        if (typeof value === 'string') {
+          return value.length > 50 ? `${value.substring(0, 50)}...` : value;
+        } else if (typeof value === 'number') {
+          return value.toLocaleString();
+        } else if (Array.isArray(value)) {
+          return `Array with ${value.length} items`;
+        } else if (typeof value === 'object') {
+          return 'Object data';
+        }
+        
+        return String(value);
+      } catch (error) {
+        return 'Preview error';
+      }
+    };
+    
+    // Look for nodes with test results and generate variables from real data
+    nodes.forEach(node => {
+      console.log(`🔍 Checking node ${node.id} for live test data:`, node.data);
+      
+      // Check for test results in allNodes (shared data)
+      if (node.data?.allNodes && Array.isArray(node.data.allNodes)) {
+        node.data.allNodes.forEach((otherNode: any) => {
+          if (otherNode.data?.testResult || otherNode.data?._rawTestData) {
+            const testData = otherNode.data.testResult || otherNode.data._rawTestData;
+            console.log(`✅ Found live test data from ${otherNode.id}:`, testData);
+            
+            // Generate variables from the real test data
+            const generatedPaths = generateVariablePaths(testData, `${otherNode.id}.result`);
+            console.log(`✅ Generated ${generatedPaths.length} live variables:`, generatedPaths);
+            
+            generatedPaths.forEach(varPath => {
+              const cleanPath = varPath.replace(/[{}]/g, '');
+              const resultPath = cleanPath.replace(`${otherNode.id}.result.`, '');
+              
+              // Create user-friendly names
+              const pathParts = resultPath.split('.');
+              let displayName = pathParts[pathParts.length - 1];
+              
+              if (resultPath.includes('pagination.total')) {
+                displayName = 'Total Count';
+              } else if (resultPath.includes('pagination.limit')) {
+                displayName = 'Page Limit';
+              } else if (resultPath.includes('pagination.current_page')) {
+                displayName = 'Current Page';
+              } else if (resultPath.includes('data[0].title')) {
+                displayName = 'First Artwork Title';
+              } else if (resultPath.includes('data[0].artist_display')) {
+                displayName = 'First Artist Name';
+              } else if (resultPath.includes('data[0]')) {
+                const field = pathParts[pathParts.length - 1];
+                displayName = `First ${field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`;
+              } else if (resultPath.includes('data.length')) {
+                displayName = 'Items Count';
+              } else if (resultPath === 'data') {
+                displayName = 'All Data Array';
+              } else {
+                displayName = pathParts[pathParts.length - 1].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              }
+              
+              // Get real preview data
+              const preview = getPreviewFromPath(testData, resultPath);
+              
+              variables.push({
+                nodeId: otherNode.id,
+                nodeName: otherNode.data?.label || 'HTTP Request',
+                nodeType: otherNode.type || 'httpRequest',
+                variableName: displayName,
+                path: varPath,
+                source: 'testResult',
+                preview: preview
+              });
+            });
+          }
+        });
+      }
+      
+      // Also check direct test results on the node
+      if (node.data?.testResult || node.data?._rawTestData) {
+        const testData = node.data.testResult || node.data._rawTestData;
+        console.log(`✅ Found direct test data on ${node.id}:`, testData);
+        
+        const generatedPaths = generateVariablePaths(testData, `${node.id}.result`);
+        generatedPaths.forEach(varPath => {
+          const cleanPath = varPath.replace(/[{}]/g, '');
+          const resultPath = cleanPath.replace(`${node.id}.result.`, '');
+          const displayName = resultPath.split('.').pop() || 'Variable';
+          const preview = getPreviewFromPath(testData, resultPath);
+          
+          variables.push({
+            nodeId: node.id,
+            nodeName: node.data?.label || 'HTTP Request',
+            nodeType: node.type || 'httpRequest',
+            variableName: displayName,
+            path: varPath,
+            source: 'testResult',
+            preview: preview
+          });
+        });
+      }
+    });
+    
+    console.log(`📊 LIVE SELECTOR: Found ${variables.length} variables with real data!`);
     return variables;
-  }, [manualNodes]);
+  }, [manualNodes, generateVariablePaths]);
   
   // Filter variables based on search
   const filteredVariables = useMemo(() => {
@@ -142,14 +236,34 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
   if (!open) return null;
   
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Available Variables</DialogTitle>
-        </DialogHeader>
+    <>
+      {/* Overlay */}
+      {open && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+          onClick={onClose}
+        />
+      )}
+      
+      {/* Sliding Sidebar */}
+      <div className={`
+        fixed top-0 left-0 h-full w-80 bg-white dark:bg-black border-r border-gray-200 dark:border-gray-700 
+        transform transition-transform duration-300 ease-in-out z-50
+        ${open ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        {/* Header */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Available Variables</h2>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
         
-        <div className="space-y-4">
-          {/* Search */}
+        {/* Search */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
@@ -159,65 +273,74 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
               className="pl-10"
             />
           </div>
-          
-          {/* Variables List */}
-          <div className="max-h-80 overflow-y-auto space-y-2">
-            {filteredVariables.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                {allVariables.length === 0 ? (
-                  <div>
-                    <p className="text-sm">No variables available.</p>
-                    <p className="text-xs mt-1">Test your HTTP nodes to create variables.</p>
-                  </div>
-                ) : (
-                  <p className="text-sm">No variables match your search.</p>
-                )}
-              </div>
-            ) : (
-              filteredVariables.map((variable, index) => (
-                <div
-                  key={`${variable.nodeId}-${index}`}
-                  className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                  onClick={() => handleSelectVariable(variable)}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
-                        {variable.variableName}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                        from {variable.nodeName}
-                      </p>
-                      {variable.preview && (
-                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                          {variable.preview}
-                        </p>
-                      )}
-                    </div>
-                    <div className="ml-2 flex-shrink-0">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        variable.source === 'testResult' 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                      }`}>
-                        {variable.source === 'testResult' ? 'Test' : 'Var'}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-xs font-mono text-gray-600 dark:text-gray-300 mt-2 break-all">
-                    {variable.path}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-          
-          {/* Close Button */}
-          <Button variant="outline" onClick={onClose} className="w-full">
-            Close
-          </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+        
+        {/* Variables List */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {filteredVariables.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              {allVariables.length === 0 ? (
+                <div>
+                  <p className="text-sm">No variables available.</p>
+                  <p className="text-xs mt-1">Test your HTTP nodes to create variables.</p>
+                </div>
+              ) : (
+                <p className="text-sm">No variables match your search.</p>
+              )}
+            </div>
+          ) : (
+            filteredVariables.map((variable, index) => (
+              <div
+                key={`${variable.nodeId}-${index}`}
+                className="group p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-300 dark:hover:border-blue-600 cursor-pointer transition-all duration-200"
+                onClick={() => handleSelectVariable(variable)}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+                      {variable.variableName}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      from {variable.nodeName}
+                    </p>
+                  </div>
+                  <div className="ml-2 flex-shrink-0">
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      variable.source === 'testResult' 
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
+                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                    }`}>
+                      {variable.source === 'testResult' ? 'API' : 'Var'}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Preview */}
+                {variable.preview && (
+                  <div className="mb-2 p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs">
+                    <span className="text-gray-600 dark:text-gray-400">Preview: </span>
+                    <span className="text-blue-600 dark:text-blue-400 font-mono">
+                      {variable.preview}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Variable Path */}
+                <div className="text-xs font-mono text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-2 rounded break-all">
+                  {variable.path}
+                </div>
+                
+                {/* Use Button */}
+                <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <button className="w-full px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors duration-200">
+                    Use Variable
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </>
   );
 }
