@@ -166,9 +166,16 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
         }
       }
       
-      // Check for test results - only include actual test results
-      // that were explicitly generated (not placeholder suggestions)
-      const testResult = node.data?.testResult || node.data?._lastTestResult;
+      // Check for test results - look in multiple places
+      const testResult = node.data?.testResult || node.data?._lastTestResult || node.data?._rawTestData;
+      console.log(`🔍 Checking for test results in node ${node.id}:`, {
+        testResult: !!node.data?.testResult,
+        _lastTestResult: !!node.data?._lastTestResult,
+        _rawTestData: !!node.data?._rawTestData,
+        variables: node.data?.variables,
+        allData: node.data
+      });
+      
       if (testResult) {
         try {
           console.log(`🎯 Processing test results for node ${node.id}:`, testResult);
