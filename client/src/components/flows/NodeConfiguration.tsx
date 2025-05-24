@@ -971,6 +971,52 @@ return sourceData * 2;"
                 The source data is available as <code>source</code>.
                 Return the transformed value.
               </p>
+              
+              {/* Transform Preview for Variable Node */}
+              <div className="flex gap-2 mt-2">
+                <Button 
+                  onClick={() => previewVariableTransformation()}
+                  variant="outline" 
+                  size="sm" 
+                  className="flex items-center gap-1"
+                >
+                  <Eye className="h-3 w-3" />
+                  Preview Transform
+                </Button>
+                <Button 
+                  onClick={() => applyVariableTransformation()}
+                  variant="default" 
+                  size="sm" 
+                  className="flex items-center gap-1"
+                >
+                  <Code2Icon className="h-3 w-3" />
+                  Apply Transform
+                </Button>
+              </div>
+
+              {/* Transform Preview Console for Variable Node */}
+              {(transformPreview || transformError) && (
+                <div className="mt-4 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 dark:bg-gray-800 px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+                    <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      <Eye className="h-3 w-3" />
+                      Variable Transform Preview
+                    </h4>
+                  </div>
+                  <div className="p-3 bg-black max-h-60 overflow-y-auto">
+                    {transformError ? (
+                      <div className="text-red-400 text-xs font-mono">
+                        <div className="text-red-300 mb-1">❌ Transform Error:</div>
+                        {transformError}
+                      </div>
+                    ) : (
+                      <pre className="text-green-400 text-xs font-mono whitespace-pre-wrap break-words">
+                        {JSON.stringify(transformPreview, null, 2)}
+                      </pre>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>
@@ -1243,6 +1289,118 @@ return sourceData * 2;"
       setTransformError(error.message || "Transform script error");
       setTransformPreview(null);
     }
+  };
+
+  // Function to preview variable transformation
+  const previewVariableTransformation = () => {
+    const sourceValue = getVariableSourceData();
+    if (!sourceValue) {
+      setTransformError("No source data available. Set a variable value first.");
+      return;
+    }
+    
+    const transformScript = nodeData.transformScript || '';
+    if (!transformScript.trim()) {
+      setTransformError("No transformation script provided.");
+      return;
+    }
+    
+    try {
+      // Create a safe function from the transform script
+      const transformFn = new Function('source', `
+        try {
+          ${transformScript}
+        } catch (error) {
+          throw error;
+        }
+      `);
+      
+      // Execute the transformation on a copy of the source data
+      const sourceDataCopy = JSON.parse(JSON.stringify(sourceValue));
+      const transformedResult = transformFn(sourceDataCopy);
+      
+      setTransformPreview(transformedResult);
+      setTransformError("");
+      
+      toast({
+        title: "Variable Transform Preview Generated",
+        description: "See the preview below to check your variable transformation.",
+      });
+    } catch (error: any) {
+      setTransformError(error.message || "Transform script error");
+      setTransformPreview(null);
+    }
+  };
+
+  // Function to apply variable transformation
+  const applyVariableTransformation = () => {
+    const sourceValue = getVariableSourceData();
+    if (!sourceValue) return;
+    
+    const transformScript = nodeData.transformScript || '';
+    if (!transformScript.trim()) return;
+    
+    try {
+      const transformFn = new Function('source', `
+        try {
+          ${transformScript}
+        } catch (error) {
+          throw error;
+        }
+      `);
+      
+      const transformedResult = transformFn(sourceValue);
+      
+      // Update the node data with transformed result
+      handleChange('_transformedValue', transformedResult);
+      
+      toast({
+        title: "Variable Transformation Applied",
+        description: "The variable transformation has been applied successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Variable Transformation Error",
+        description: error.message || "An error occurred in the transformation script",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Helper function to get source data for variable transformation
+  const getVariableSourceData = () => {
+    // Get source data from the variable value field or from referenced variables
+    const variableValue = nodeData.variableValue;
+    if (!variableValue) return null;
+    
+    // If it's a variable reference, try to resolve it
+    if (variableValue.includes('{{') && variableValue.includes('}}')) {
+      // Extract variable path and try to find the actual data
+      const variablePath = variableValue.replace(/[{}]/g, '').trim();
+      
+      // Try to find the source node data
+      if (allNodes) {
+        for (const node of allNodes) {
+          if (node.data?.testResult || node.data?._lastTestResult) {
+            const testData = node.data.testResult || node.data._lastTestResult;
+            try {
+              // Try to extract the referenced data
+              const pathParts = variablePath.split('.');
+              let value = testData;
+              for (const part of pathParts.slice(1)) { // Skip the first part (node name)
+                value = value?.[part];
+              }
+              if (value !== undefined) return value;
+            } catch (e) {
+              // Continue searching other nodes
+            }
+          }
+        }
+      }
+    }
+    
+    // Return the raw variable value as fallback
+    return variableValue;
   };
 
   // Function to handle variable transformation through JavaScript
