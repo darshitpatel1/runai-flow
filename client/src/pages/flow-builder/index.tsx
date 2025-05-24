@@ -99,44 +99,8 @@ export default function FlowBuilderPage() {
     loadData();
   }, [user, id]);
 
-  // Auto-save flow changes with longer debounce to avoid conflicts with node config saves
-  useEffect(() => {
-    if (!user || !id || !flow || loading || saving || autoSaving) return;
-    
-    // Check if there are unsaved changes
-    const hasChanges = JSON.stringify({ nodes, edges }) !== JSON.stringify(lastSavedState);
-    if (!hasChanges) return;
-    
-    // Debounce auto-save with longer delay to prevent conflicts
-    const autoSaveTimer = setTimeout(async () => {
-      setAutoSaving(true);
-      
-      try {
-        console.log('🔄 Auto-saving flow with nodes:', nodes.length, 'edges:', edges.length);
-        
-        const serializedNodes = JSON.parse(JSON.stringify(nodes));
-        const serializedEdges = JSON.parse(JSON.stringify(edges));
-        
-        const flowData = {
-          nodes: serializedNodes,
-          edges: serializedEdges,
-          updatedAt: new Date()
-        };
-        
-        const flowRef = doc(db, "users", user.uid, "flows", id);
-        await updateDoc(flowRef, flowData);
-        
-        console.log('✅ Auto-save completed successfully');
-        setLastSavedState({ nodes, edges });
-      } catch (error: any) {
-        console.error("❌ Error auto-saving flow:", error);
-      } finally {
-        setAutoSaving(false);
-      }
-    }, 2000); // Increased from 500ms to 2000ms to reduce conflicts
-    
-    return () => clearTimeout(autoSaveTimer);
-  }, [nodes, edges, user, id, flow, loading, saving, autoSaving, lastSavedState]);
+  // Manual save only - remove auto-save to prevent conflicts with node config saves
+  // Auto-save disabled to prevent overwriting node configuration changes
 
   const handleSaveFlow = async () => {
     if (!user) return;
