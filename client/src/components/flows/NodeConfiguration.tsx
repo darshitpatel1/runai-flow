@@ -102,7 +102,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     setNodeData(updatedData);
     
     // For HTTP nodes, also update the label to show the URL
-    if (node.type === 'httpRequest' && field === 'url' && value) {
+    if (node.type === 'httpRequest' && (field === 'url' || field === 'endpoint') && value) {
       updatedData.label = `HTTP: ${value}`;
     }
     
@@ -130,7 +130,9 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           value,
           nodeId: node.id,
           updatedData,
-          updatedNodeDataInArray: updatedNodes.find(n => n.id === node.id)?.data
+          updatedNodeDataInArray: updatedNodes.find(n => n.id === node.id)?.data,
+          isEndpointField: field === 'endpoint',
+          endpointValue: field === 'endpoint' ? value : 'not endpoint field'
         });
         
         // Save directly to Firestore immediately
