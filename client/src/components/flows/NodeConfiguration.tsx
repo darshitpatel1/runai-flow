@@ -94,6 +94,11 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     const updatedData = { ...nodeData, [field]: value };
     setNodeData(updatedData);
     
+    // For HTTP nodes, also update the label to show the URL
+    if (node.type === 'httpRequest' && field === 'url' && value) {
+      updatedData.label = `HTTP: ${value}`;
+    }
+    
     // For SetVariable nodes, also update the label to show the variable name
     if (node.type === 'setVariable' && field === 'variableKey' && value) {
       updatedData.label = `Set: ${value}`;
@@ -127,14 +132,22 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
         }
       });
       
-      // Find all SetVariable nodes and collect their variable keys
+      // Find all SetVariable nodes and collect their variable keys (excluding current node)
       node.data.allNodes.forEach((n: any) => {
         if (n && n.type === 'setVariable' && n.data?.variableKey && n.id !== node.id) {
-          variables.push(n.data.variableKey);
+          // Only add if it's not empty and not the special __new__ value
+          if (n.data.variableKey !== "__new__" && n.data.variableKey.trim()) {
+            variables.push(n.data.variableKey);
+          }
         }
       });
       
-      return variables;
+      // Remove duplicates and filter out empty values
+      const uniqueVariables = Array.from(new Set(variables)).filter(v => v && v.trim() && v !== "__new__");
+      
+      console.log("Available variables for node", node.id, ":", uniqueVariables);
+      
+      return uniqueVariables;
     } catch (error) {
       console.error("Failed to get existing variables", error);
       return [];

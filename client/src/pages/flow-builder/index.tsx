@@ -126,7 +126,7 @@ export default function FlowBuilderPage() {
       } finally {
         setAutoSaving(false);
       }
-    }, 2000);
+    }, 500);
     
     return () => clearTimeout(autoSaveTimer);
   }, [nodes, edges, user, id, flow, loading, saving, autoSaving, lastSavedState]);
