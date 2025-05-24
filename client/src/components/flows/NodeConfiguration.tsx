@@ -1314,41 +1314,28 @@ return sourceData * 2;"
         
         if (testResult) {
           try {
+            // Use EXACT same logic as VariableSelectorNew preview
+            const pathParts = nodeData.variableValue.replace(/[{}]/g, '').replace(`${nodeId}.result.`, '').split('.');
             let value = testResult;
-            console.log("Starting with test result, navigating path:", pathParts);
             
-            // Navigate through the path (skip first part which is node ID)
-            for (let i = 1; i < pathParts.length; i++) {
-              const part = pathParts[i];
-              console.log(`Accessing part ${i}: "${part}" on:`, typeof value, Array.isArray(value) ? 'array' : 'object');
-              
+            console.log("Using VariableSelectorNew logic - pathParts after removing nodeId.result:", pathParts);
+            console.log("Starting with testResult:", testResult);
+            
+            for (const part of pathParts) {
+              console.log(`Processing part: "${part}"`);
               if (part.includes('[') && part.includes(']')) {
-                // Handle array access like data[0]
-                const arrayName = part.substring(0, part.indexOf('['));
-                const indexStr = part.substring(part.indexOf('[') + 1, part.indexOf(']'));
-                const index = parseInt(indexStr);
-                
-                if (arrayName) {
-                  value = value?.[arrayName];
-                  console.log(`After accessing array "${arrayName}":`, Array.isArray(value) ? `array length ${value.length}` : typeof value);
-                }
-                if (!isNaN(index) && Array.isArray(value)) {
-                  value = value[index];
-                  console.log(`After accessing index [${index}]:`, typeof value);
-                }
+                const arrayName = part.split('[')[0];
+                const index = parseInt(part.split('[')[1].split(']')[0]);
+                console.log(`Array access: ${arrayName}[${index}]`);
+                value = value[arrayName][index];
               } else {
-                value = value?.[part];
-                console.log(`After accessing "${part}":`, typeof value);
+                value = value[part];
               }
-              
-              if (value === undefined) {
-                console.log(`Value became undefined at part "${part}"`);
-                break;
-              }
+              console.log(`After accessing "${part}":`, value);
             }
             
             sourceValue = value;
-            console.log("Final extracted value:", sourceValue);
+            console.log("Final extracted value using VariableSelectorNew logic:", sourceValue);
           } catch (e) {
             console.error("Error extracting variable value:", e);
           }
