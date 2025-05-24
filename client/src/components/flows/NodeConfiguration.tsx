@@ -1296,21 +1296,31 @@ return sourceData * 2;"
     let sourceValue = null;
     
     if (nodeData.variableValue && allNodes) {
-      // Use the EXACT same logic from VariableSelectorNew.tsx to resolve the variable
+      console.log("Variable to resolve:", nodeData.variableValue);
+      
+      // Use EXACT same approach as VariableSelectorNew - check pre-generated variables first
       const variablePath = nodeData.variableValue.replace(/[{}]/g, '').trim();
       const pathParts = variablePath.split('.');
       const nodeId = pathParts[0];
       
       const sourceNode = allNodes.find(n => n.id === nodeId);
+      console.log("Source node found:", !!sourceNode);
+      console.log("Source node data keys:", sourceNode?.data ? Object.keys(sourceNode.data) : 'no data');
+      
       if (sourceNode?.data) {
-        const testResult = sourceNode.data.testResult || sourceNode.data._lastTestResult || sourceNode.data._rawTestData;
+        // First try the same testResult access as VariableSelectorNew
+        const testResult = sourceNode.data.testResult;
+        console.log("Test result found:", !!testResult);
         
         if (testResult) {
           try {
             let value = testResult;
+            console.log("Starting with test result, navigating path:", pathParts);
+            
             // Navigate through the path (skip first part which is node ID)
             for (let i = 1; i < pathParts.length; i++) {
               const part = pathParts[i];
+              console.log(`Accessing part ${i}: "${part}" on:`, typeof value, Array.isArray(value) ? 'array' : 'object');
               
               if (part.includes('[') && part.includes(']')) {
                 // Handle array access like data[0]
@@ -1320,16 +1330,25 @@ return sourceData * 2;"
                 
                 if (arrayName) {
                   value = value?.[arrayName];
+                  console.log(`After accessing array "${arrayName}":`, Array.isArray(value) ? `array length ${value.length}` : typeof value);
                 }
                 if (!isNaN(index) && Array.isArray(value)) {
                   value = value[index];
+                  console.log(`After accessing index [${index}]:`, typeof value);
                 }
               } else {
                 value = value?.[part];
+                console.log(`After accessing "${part}":`, typeof value);
+              }
+              
+              if (value === undefined) {
+                console.log(`Value became undefined at part "${part}"`);
+                break;
               }
             }
             
             sourceValue = value;
+            console.log("Final extracted value:", sourceValue);
           } catch (e) {
             console.error("Error extracting variable value:", e);
           }
@@ -1342,7 +1361,7 @@ return sourceData * 2;"
       sourceValue = "No variable selected";
     }
     
-    console.log("Using source value:", sourceValue, typeof sourceValue);
+    console.log("Using source value for transform:", sourceValue, typeof sourceValue);
     
     const transformScript = nodeData.transformScript || '';
     if (!transformScript.trim()) {
