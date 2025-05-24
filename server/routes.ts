@@ -131,8 +131,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     try {
-      const userId = 1; // Simplified for testing
-      console.log('Full request body:', JSON.stringify(req.body, null, 2));
+      // Get the actual user ID from Firebase ID for connector lookup
+      const user = await storage.getUserByFirebaseUid(firebaseId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      const userId = user.id;
+      console.log(`Found user ID ${userId} for Firebase ID ${firebaseId}`);
       
       const flowNodes = req.body.nodes || [];
       const nodeCount = flowNodes.length || 1;
