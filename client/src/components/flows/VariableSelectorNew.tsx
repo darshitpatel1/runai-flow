@@ -81,108 +81,185 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
     return Array.from(new Set(paths)).slice(0, 25);
   };
 
-  // SIMPLE DIRECT SOLUTION: Just find the variables that already exist!
+  // Copy exact collectVariables logic from working popup
   const allVariables = useMemo(() => {
-    console.log('🔍 SIMPLE SELECTOR - Looking for existing variables...');
+    console.log('🔍 WORKING LOGIC - Using exact popup variable collection...');
     
     const nodes = manualNodes || [];
-    const variables: VariableEntry[] = [];
+    const variableList: VariableEntry[] = [];
     
-    // Just check every possible location for variables or test data
-    nodes.forEach(node => {
-      console.log(`🔍 Node ${node.id} data:`, {
-        hasVariables: !!node.data?.variables,
-        hasTestResult: !!node.data?.testResult,
-        hasRawTestData: !!node.data?._rawTestData,
-        hasAllNodes: !!node.data?.allNodes,
-        variableCount: node.data?.variables?.length || 0
+    // Helper function to process a node's variables (exact copy from popup)
+    const processNodeVariables = (node: any) => {
+      // Skip invalid nodes
+      if (!node || !node.id) return;
+      
+      console.log(`🔍 Processing node ${node.id} (${node.type}):`, node.data);
+      
+      // Check if it's a SetVariable node with a variableKey
+      if (node.type === 'setVariable' && node.data?.variableKey) {
+        const exists = variableList.some(v => 
+          v.source === "variable" && v.path === `vars.${node.data.variableKey}`
+        );
+        
+        if (!exists) {
+          console.log(`✅ Adding SetVariable: ${node.data.variableKey}`);
+          variableList.push({
+            nodeId: node.id,
+            nodeName: node.data.label || "Set Variable",
+            nodeType: "setVariable",
+            variableName: node.data.variableKey || "variable",
+            path: `vars.${node.data.variableKey}`,
+            source: "variable"
+          });
+        }
+      }
+      
+      // Check for test results and variables from tested nodes
+      const testResult = node.data?.testResult || node.data?._lastTestResult || node.data?._rawTestData;
+      const existingVariables = node.data?.variables;
+      
+      console.log(`🔍 Checking for test results in node ${node.id}:`, {
+        testResult: !!node.data?.testResult,
+        _lastTestResult: !!node.data?._lastTestResult,
+        _rawTestData: !!node.data?._rawTestData,
+        variables: node.data?.variables,
+        allData: node.data
       });
       
-      // Method 1: Use existing variables if they exist
-      if (node.data?.variables && Array.isArray(node.data.variables) && node.data.variables.length > 0) {
-        console.log(`✅ Found ${node.data.variables.length} existing variables on ${node.id}`);
+      // If we have pre-generated variables, use those instead of regenerating
+      if (existingVariables && Array.isArray(existingVariables) && existingVariables.length > 0) {
+        console.log(`✅ Found pre-generated variables for ${node.id}:`, existingVariables);
         
-        node.data.variables.forEach((varPath: string, index: number) => {
-          variables.push({
+        existingVariables.forEach((varPath: string) => {
+          // Clean up the variable path if it already has {{}}
+          const cleanPath = varPath.replace(/[{}]/g, '');
+          
+          // Create user-friendly display name
+          const pathParts = cleanPath.replace(`${node.id}.result.`, '').split('.');
+          const displayName = pathParts.map(part => {
+            if (part === 'pagination') return 'Page Info';
+            if (part === 'total') return 'Total Count';
+            if (part === 'data') return 'Artworks';
+            if (part.includes('[0]')) return part.replace('[0]', ' (First)');
+            return part.charAt(0).toUpperCase() + part.slice(1);
+          }).join(' → ');
+          
+          variableList.push({
             nodeId: node.id,
-            nodeName: node.data?.label || 'HTTP Request',
-            nodeType: node.type || 'httpRequest',
-            variableName: `Variable ${index + 1}`,
-            path: varPath,
-            source: 'testResult',
-            preview: 'From test result'
+            nodeName: node.data?.label || `HTTP Request`,
+            nodeType: node.type || "unknown",
+            variableName: displayName,
+            path: varPath, // Use the original path with {{}}
+            source: "testResult",
+            preview: "Available from test"
           });
         });
+        return; // Skip the rest if we found pre-generated variables
       }
       
-      // Method 2: Check allNodes for shared variables
-      if (node.data?.allNodes && Array.isArray(node.data.allNodes)) {
-        node.data.allNodes.forEach((otherNode: any) => {
-          if (otherNode.data?.variables && Array.isArray(otherNode.data.variables)) {
-            console.log(`✅ Found ${otherNode.data.variables.length} shared variables from ${otherNode.id}`);
+      if (testResult) {
+        try {
+          console.log(`🎯 Processing test results for node ${node.id}:`, testResult);
+          
+          // For each test result, generate variables for its properties
+          const paths = generateVariablePaths(testResult);
+          console.log(`📋 Generated ${paths.length} variable paths:`, paths);
+          
+          paths.forEach(path => {
+            // Create user-friendly display name
+            const displayName = path.split('.').map(part => {
+              if (part === 'length') return 'Count';
+              if (part === 'data') return 'Artworks';
+              if (part === 'pagination') return 'Page Info';
+              if (part.includes('[0]')) return part.replace('[0]', ' (First)');
+              if (part === 'title') return 'Title';
+              if (part === 'artist_title') return 'Artist';
+              if (part === 'date_display') return 'Date';
+              if (part === 'total') return 'Total Count';
+              if (part === 'limit') return 'Items Per Page';
+              if (part === 'offset') return 'Page Offset';
+              
+              // Convert snake_case to readable
+              return part.replace(/_/g, ' ')
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+            }).join(' → ');
             
-            otherNode.data.variables.forEach((varPath: string, index: number) => {
-              variables.push({
-                nodeId: otherNode.id,
-                nodeName: otherNode.data?.label || 'HTTP Request',
-                nodeType: otherNode.type || 'httpRequest',
-                variableName: `Shared Variable ${index + 1}`,
-                path: varPath,
-                source: 'testResult',
-                preview: 'From shared test'
+            // Check if this test result path is already in the list
+            const fullPath = `${node.id}.result.${path}`;
+            const exists = variableList.some(v => 
+              v.source === "testResult" && v.path === fullPath
+            );
+            
+            if (!exists) {
+              // Get preview value from test result
+              let preview = 'No preview';
+              try {
+                const pathParts = path.split('.');
+                let value = testResult;
+                for (const part of pathParts) {
+                  if (part.includes('[') && part.includes(']')) {
+                    const arrayName = part.split('[')[0];
+                    const index = parseInt(part.split('[')[1].split(']')[0]);
+                    value = value[arrayName][index];
+                  } else {
+                    value = value[part];
+                  }
+                }
+                if (typeof value === 'string') {
+                  preview = value.length > 50 ? `"${value.substring(0, 50)}..."` : `"${value}"`;
+                } else if (typeof value === 'number') {
+                  preview = value.toLocaleString();
+                } else if (typeof value === 'boolean') {
+                  preview = value ? 'true' : 'false';
+                } else if (Array.isArray(value)) {
+                  preview = `Array (${value.length} items)`;
+                } else if (value && typeof value === 'object') {
+                  preview = `Object (${Object.keys(value).length} properties)`;
+                } else {
+                  preview = String(value);
+                }
+              } catch (error) {
+                preview = 'Preview unavailable';
+              }
+              
+              console.log(`✅ Creating variable: ${displayName} = ${preview}`);
+              
+              variableList.push({
+                nodeId: node.id,
+                nodeName: node.data?.label || `HTTP Request`,
+                nodeType: node.type || "unknown",
+                variableName: displayName,
+                path: `{{${fullPath}}}`,
+                source: "testResult",
+                preview: preview
               });
-            });
-          }
-        });
-      }
-      
-      // Method 3: Generate from any test data we can find
-      const testData = node.data?.testResult || node.data?._rawTestData;
-      if (testData && typeof testData === 'object') {
-        console.log(`✅ Generating from test data on ${node.id}`);
-        
-        const paths = generateVariablePaths(testData, `${node.id}.result`);
-        paths.slice(0, 10).forEach((varPath, index) => {
-          variables.push({
-            nodeId: node.id,
-            nodeName: node.data?.label || 'HTTP Request',
-            nodeType: node.type || 'httpRequest',
-            variableName: `Generated ${index + 1}`,
-            path: varPath,
-            source: 'testResult',
-            preview: 'Auto-generated'
+            }
           });
+        } catch (error) {
+          // Silent error handling
+        }
+      }
+    };
+    
+    // First process all the direct nodes
+    nodes.forEach(processNodeVariables);
+    
+    // Then check if any node contains allNodes data (which has other nodes)
+    nodes.forEach((node: any) => {
+      if (node.data?.allNodes && Array.isArray(node.data.allNodes)) {
+        // Process other nodes saved in this node's data
+        node.data.allNodes.forEach((otherNode: any) => {
+          // Skip the current node to avoid duplicates
+          if (otherNode.id === node.id) return;
+          processNodeVariables(otherNode);
         });
       }
     });
     
-    // If still no variables, create some basic ones
-    if (variables.length === 0) {
-      console.log('🔄 No variables found, creating basic examples...');
-      variables.push(
-        {
-          nodeId: 'demo',
-          nodeName: 'Example',
-          nodeType: 'httpRequest',
-          variableName: 'Total Count',
-          path: '{{httpRequest_1747967479330.result.pagination.total}}',
-          source: 'testResult',
-          preview: 'Test your HTTP node first'
-        },
-        {
-          nodeId: 'demo',
-          nodeName: 'Example',
-          nodeType: 'httpRequest',
-          variableName: 'First Item',
-          path: '{{httpRequest_1747967479330.result.data[0]}}',
-          source: 'testResult',
-          preview: 'Test your HTTP node first'
-        }
-      );
-    }
-    
-    console.log(`📊 SIMPLE SELECTOR: Found ${variables.length} variables!`);
-    return variables;
+    console.log(`📊 WORKING LOGIC: Found ${variableList.length} variables!`);
+    return variableList;
   }, [manualNodes, generateVariablePaths]);
   
   // Filter variables based on search
