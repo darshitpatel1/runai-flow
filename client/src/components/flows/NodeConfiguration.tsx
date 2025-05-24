@@ -34,6 +34,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
   const [activeInputField, setActiveInputField] = useState<string>("");
   const [transformScript, setTransformScript] = useState("");
   const [availableVariables, setAvailableVariables] = useState<string[]>([]);
+  const [transformPreview, setTransformPreview] = useState<any>(null);
+  const [transformError, setTransformError] = useState<string>("");
   
   // Resizable sidebar state
   const [sidebarWidth, setSidebarWidth] = useState(400);
@@ -1203,6 +1205,46 @@ return sourceData * 2;"
     );
   };
   
+  // Function to preview transformation without applying it
+  const previewTransformation = () => {
+    if (!testResult) {
+      setTransformError("No test data available. Run a test first.");
+      return;
+    }
+    
+    if (!transformScript.trim()) {
+      setTransformError("No transformation script provided.");
+      return;
+    }
+    
+    try {
+      // Create a safe function from the transform script
+      const transformFn = new Function('data', `
+        try {
+          ${transformScript}
+          return data;
+        } catch (error) {
+          throw error;
+        }
+      `);
+      
+      // Execute the transformation on a copy of the data
+      const testDataCopy = JSON.parse(JSON.stringify(testResult));
+      const transformedResult = transformFn(testDataCopy);
+      
+      setTransformPreview(transformedResult);
+      setTransformError("");
+      
+      toast({
+        title: "Transform Preview Generated",
+        description: "See the preview below to check your transformation.",
+      });
+    } catch (error: any) {
+      setTransformError(error.message || "Transform script error");
+      setTransformPreview(null);
+    }
+  };
+
   // Function to handle variable transformation through JavaScript
   const applyTransformation = () => {
     if (!testResult) return;
@@ -1299,7 +1341,8 @@ return sourceData * 2;"
     } else {
       console.log('❌ No active input field set!');
     }
-    setShowVariableSelector(false);
+    // Don't close the variable selector - let user select multiple variables
+    // setShowVariableSelector(false);
   };
   
   return (
@@ -1413,15 +1456,50 @@ if (data.items) {
                     <p className="text-xs text-muted-foreground mt-1">
                       Use JavaScript to transform the response data. The original data is available as <code>data</code>.
                     </p>
-                    <Button 
-                      onClick={applyTransformation} 
-                      variant="outline" 
-                      size="sm" 
-                      className="mt-2 flex items-center gap-1"
-                    >
-                      <Code2Icon className="h-3 w-3" />
-                      Apply Transformation
-                    </Button>
+                    <div className="flex gap-2 mt-2">
+                      <Button 
+                        onClick={previewTransformation} 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex items-center gap-1"
+                      >
+                        <Eye className="h-3 w-3" />
+                        Preview Transform
+                      </Button>
+                      <Button 
+                        onClick={applyTransformation} 
+                        variant="default" 
+                        size="sm" 
+                        className="flex items-center gap-1"
+                      >
+                        <Code2Icon className="h-3 w-3" />
+                        Apply Transformation
+                      </Button>
+                    </div>
+
+                    {/* Transform Preview Console */}
+                    {(transformPreview || transformError) && (
+                      <div className="mt-4 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        <div className="bg-gray-50 dark:bg-gray-800 px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                            <Eye className="h-3 w-3" />
+                            Transform Preview
+                          </h4>
+                        </div>
+                        <div className="p-3 bg-black max-h-60 overflow-y-auto">
+                          {transformError ? (
+                            <div className="text-red-400 text-xs font-mono">
+                              <div className="text-red-300 mb-1">❌ Transform Error:</div>
+                              {transformError}
+                            </div>
+                          ) : (
+                            <pre className="text-green-400 text-xs font-mono whitespace-pre-wrap break-words">
+                              {JSON.stringify(transformPreview, null, 2)}
+                            </pre>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
