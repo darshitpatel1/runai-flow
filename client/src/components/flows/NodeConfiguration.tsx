@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { XIcon, PlayIcon, Code2Icon, Variable, Eye } from "lucide-react";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { doc, updateDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -113,7 +114,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     // Immediately save the change to the flow (local state)
     updateNodeData(node.id, updatedData);
     
-    // Also save directly to backend database if we have flow info
+    // Also save directly to Firestore if we have flow info
     if (flowId && allFlowNodes && auth.currentUser) {
       try {
         // Update the node in the all nodes array
@@ -121,29 +122,16 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
           n.id === node.id ? { ...n, data: { ...n.data, ...updatedData } } : n
         );
         
-        // Get Firebase auth token for authenticated request
-        const token = await auth.currentUser.getIdToken();
-        
-        // Save to backend database immediately
-        const response = await fetch(`/api/flows/${flowId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            nodes: updatedNodes,
-            edges: allFlowEdges || [] // Keep existing edges
-          }),
+        // Save to Firestore immediately
+        const flowRef = doc(db, "users", auth.currentUser.uid, "flows", flowId);
+        await updateDoc(flowRef, {
+          nodes: updatedNodes,
+          updatedAt: new Date()
         });
         
-        if (!response.ok) {
-          throw new Error(`Failed to save: ${response.statusText}`);
-        }
-        
-        console.log(`💾 Saved ${field} = ${value} for node ${node.id} to database`);
+        console.log(`💾 Saved ${field} = ${value} for node ${node.id} to Firestore`);
       } catch (error) {
-        console.error("Error saving to database:", error);
+        console.error("Error saving to Firestore:", error);
         toast({
           title: "Save Error",
           description: "Failed to save node configuration. Please try again.",
