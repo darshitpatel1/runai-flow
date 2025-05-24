@@ -25,6 +25,7 @@ type VariableEntry = {
 
 export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNodeId, manualNodes }: VariableSelectorNewProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [previewVariable, setPreviewVariable] = useState<VariableEntry | null>(null);
   
   // Helper function to get icon based on data type
   const getDataTypeIcon = (dataType: string, variableName: string) => {
@@ -359,131 +360,184 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
     onSelectVariable(variable.path);
     onClose();
   };
+
+  const handlePreviewVariable = (variable: VariableEntry, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setPreviewVariable(variable);
+  };
   
   if (!open) return null;
   
   return (
     <>
-      {/* Sliding Sidebar - NO DARK OVERLAY */}
+      {/* Main Variable Selector Sidebar */}
       <div className={`
-        fixed top-0 left-0 h-full w-80 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 
+        fixed top-0 left-0 h-full w-72 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 
         transform transition-transform duration-300 ease-in-out z-50 shadow-xl
         ${open ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Available Variables</h2>
+        <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Variables</h2>
           <button
             onClick={onClose}
             className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
-            <X className="h-5 w-5 text-gray-500" />
+            <X className="h-4 w-4 text-gray-500" />
           </button>
         </div>
         
         {/* Search */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3" />
             <Input
-              placeholder="Search variables..."
+              placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-7 h-8 text-xs"
             />
           </div>
         </div>
         
-        {/* Variables List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {filteredVariables.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              {allVariables.length === 0 ? (
-                <div>
-                  <Database className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p className="text-sm font-medium">No variables available</p>
-                  <p className="text-xs mt-1 text-gray-400">Test your API nodes to generate variables from real data</p>
-                </div>
-              ) : (
-                <div>
-                  <Search className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                  <p className="text-sm">No variables match your search</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            filteredVariables.map((variable, index) => (
-              <div
-                key={`${variable.nodeId}-${index}`}
-                className="group p-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950/20 dark:hover:to-indigo-950/20 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md cursor-pointer transition-all duration-300 transform hover:scale-[1.02]"
-                onClick={() => handleSelectVariable(variable)}
-              >
-                {/* Header with Icon, Name and Source Badge */}
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="flex-shrink-0 mt-0.5">
-                    {getDataTypeIcon(variable.dataType || 'string', variable.variableName)}
+        {/* Variables List - Fixed height with proper scrolling */}
+        <div className="flex-1 overflow-y-auto" style={{ height: 'calc(100vh - 120px)' }}>
+          <div className="p-2 space-y-1">
+            {filteredVariables.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                {allVariables.length === 0 ? (
+                  <div>
+                    <Database className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                    <p className="text-xs">No variables available</p>
+                    <p className="text-xs mt-1 text-gray-400">Test API nodes first</p>
                   </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
-                        {variable.variableName}
-                      </h3>
-                      <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
-                        variable.source === 'testResult' 
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
-                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
-                      }`}>
-                        {variable.source === 'testResult' ? 'Live API Data' : 'Variable'}
-                      </span>
-                    </div>
-                    
-                    <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                      <Activity className="h-3 w-3" />
-                      from {variable.nodeName}
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Enhanced Preview with Real Data */}
-                {variable.preview && (
-                  <div className="mb-3 p-3 bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-blue-900/20 rounded-lg border border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Eye className="h-3 w-3 text-blue-500" />
-                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Live Preview</span>
-                      <span className="text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded">
-                        {variable.dataType || 'string'}
-                      </span>
-                    </div>
-                    <div className="text-sm font-mono text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900 p-2 rounded border break-all">
-                      {variable.preview}
-                    </div>
+                ) : (
+                  <div>
+                    <Search className="h-6 w-6 mx-auto mb-1 text-gray-300" />
+                    <p className="text-xs">No matches</p>
                   </div>
                 )}
-                
-                {/* Variable Path */}
-                <div className="mb-3 p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Code className="h-3 w-3 text-gray-500" />
-                    <span className="text-xs text-gray-600 dark:text-gray-400">Variable Path</span>
-                  </div>
-                  <div className="text-xs font-mono text-gray-700 dark:text-gray-300 break-all">
-                    {variable.path}
-                  </div>
-                </div>
-                
-                {/* Use Button with Enhanced Styling */}
-                <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0">
-                  <button className="w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2">
-                    <Database className="h-4 w-4" />
-                    Use This Variable
-                  </button>
-                </div>
               </div>
-            ))
-          )}
+            ) : (
+              filteredVariables.map((variable, index) => (
+                <div
+                  key={`${variable.nodeId}-${index}`}
+                  className="group p-2 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:border-blue-300 dark:hover:border-blue-600 cursor-pointer transition-all duration-200"
+                  onClick={() => handleSelectVariable(variable)}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="flex-shrink-0">
+                      {getDataTypeIcon(variable.dataType || 'string', variable.variableName)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-xs text-gray-900 dark:text-gray-100 truncate">
+                        {variable.variableName}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => handlePreviewVariable(variable, e)}
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900 transition-all"
+                      title="Preview data"
+                    >
+                      <Eye className="h-3 w-3 text-blue-500" />
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {variable.nodeName}
+                    </p>
+                    <span className={`px-1 py-0.5 text-xs rounded ${
+                      variable.source === 'testResult' 
+                        ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-300'
+                        : 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300'
+                    }`}>
+                      {variable.source === 'testResult' ? 'API' : 'Var'}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Preview Panel - Slides out from the right of variable selector */}
+      {previewVariable && (
+        <div className={`
+          fixed top-0 left-72 h-full w-80 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 
+          transform transition-transform duration-300 ease-in-out z-40 shadow-xl
+          ${open ? 'translate-x-0' : '-translate-x-full'}
+        `}>
+          {/* Preview Header */}
+          <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-blue-500" />
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Preview</h3>
+            </div>
+            <button
+              onClick={() => setPreviewVariable(null)}
+              className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <X className="h-4 w-4 text-gray-500" />
+            </button>
+          </div>
+          
+          {/* Preview Content */}
+          <div className="flex-1 overflow-y-auto p-3" style={{ height: 'calc(100vh - 60px)' }}>
+            <div className="space-y-3">
+              {/* Variable Info */}
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100 mb-2">
+                  {previewVariable.variableName}
+                </h4>
+                <div className="flex items-center gap-2 mb-2">
+                  {getDataTypeIcon(previewVariable.dataType || 'string', previewVariable.variableName)}
+                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                    {previewVariable.dataType || 'string'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  from {previewVariable.nodeName}
+                </p>
+              </div>
+
+              {/* Actual Data Preview */}
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <h5 className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-2">
+                  Actual API Response
+                </h5>
+                <div className="bg-white dark:bg-gray-900 p-3 rounded border text-xs font-mono">
+                  <pre className="whitespace-pre-wrap break-words text-gray-800 dark:text-gray-200">
+                    {previewVariable.rawValue !== undefined 
+                      ? JSON.stringify(previewVariable.rawValue, null, 2)
+                      : previewVariable.preview || 'No data available'
+                    }
+                  </pre>
+                </div>
+              </div>
+
+              {/* Variable Path */}
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <h5 className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Variable Path
+                </h5>
+                <code className="text-xs bg-white dark:bg-gray-900 p-2 rounded border block break-all">
+                  {previewVariable.path}
+                </code>
+              </div>
+
+              {/* Use Button */}
+              <button 
+                onClick={() => handleSelectVariable(previewVariable)}
+                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Use This Variable
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
