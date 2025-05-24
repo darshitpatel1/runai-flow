@@ -32,15 +32,21 @@ export default function FlowBuilderPage() {
   // Load flow and connectors
   useEffect(() => {
     const loadData = async () => {
-      if (!user || !id) return;
+      if (!user || !id) {
+        setLoading(false);
+        return;
+      }
 
       try {
+        console.log('Loading flow data for:', id);
+        
         // Load flow
         const flowRef = doc(db, "users", user.uid, "flows", id);
         const flowSnap = await getDoc(flowRef);
         
         if (flowSnap.exists()) {
           const flowData = flowSnap.data();
+          console.log('Flow data loaded:', flowData);
           setFlow(flowData);
           setFlowName(flowData.name || "");
           setFlowDescription(flowData.description || "");
@@ -51,6 +57,14 @@ export default function FlowBuilderPage() {
             nodes: flowData.nodes || [],
             edges: flowData.edges || []
           });
+        } else {
+          console.log('Flow not found, creating new flow');
+          // Create empty flow if it doesn't exist
+          setFlow({ id, name: "New Flow", nodes: [], edges: [] });
+          setFlowName("New Flow");
+          setFlowDescription("");
+          setNodes([]);
+          setEdges([]);
         }
 
         // Load connectors
@@ -61,6 +75,7 @@ export default function FlowBuilderPage() {
           ...doc.data()
         }));
         setConnectors(connectorsData);
+        console.log('Connectors loaded:', connectorsData.length);
 
       } catch (error) {
         console.error("Error loading data:", error);
@@ -69,9 +84,12 @@ export default function FlowBuilderPage() {
           description: "Failed to load flow data",
           variant: "destructive",
         });
-      } finally {
+        // Still set loading to false even on error
         setLoading(false);
       }
+      
+      // Always set loading to false at the end
+      setLoading(false);
     };
 
     loadData();
