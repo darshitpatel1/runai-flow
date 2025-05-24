@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { XIcon, PlayIcon, Code2Icon, Variable, Eye } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
@@ -111,40 +111,41 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     // Immediately save the change to the flow (local state)
     updateNodeData(node.id, updatedData);
     
-    // IMMEDIATE SAVE TO FIRESTORE - no debouncing, direct save
-    if (flowId && allFlowNodes && auth.currentUser) {
-      try {
-        // Get the current nodes from the flow builder
-        const updatedNodes = allFlowNodes.map(n => 
-          n.id === node.id ? { 
-            ...n, 
-            data: updatedData  // Use the complete updated data
-          } : n
-        );
-        
-        console.log('🔥 IMMEDIATE SAVE - Saving to Firestore:', {
-          field,
-          value,
-          nodeId: node.id,
-          updatedData,
-          updatedNodeDataInArray: updatedNodes.find(n => n.id === node.id)?.data,
-          isEndpointField: field === 'endpoint',
-          endpointValue: field === 'endpoint' ? value : 'not endpoint field'
-        });
-        
-        // Save directly to Firestore immediately
-        const flowRef = doc(db, "users", auth.currentUser.uid, "flows", flowId);
-        await updateDoc(flowRef, {
-          nodes: updatedNodes,
-          edges: allFlowEdges || [],
-          updatedAt: new Date()
-        });
-        
-        console.log(`✅ IMMEDIATE SAVE SUCCESS: ${field} = ${value} saved to Firestore`);
-      } catch (error) {
-        console.error("❌ IMMEDIATE SAVE FAILED:", error);
-      }
+    // Debounced save to prevent too many saves
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
+    saveTimeoutRef.current = setTimeout(async () => {
+      if (flowId && allFlowNodes && auth.currentUser) {
+        try {
+          // Get the current nodes from the flow builder
+          const updatedNodes = allFlowNodes.map(n => 
+            n.id === node.id ? { 
+              ...n, 
+              data: updatedData  // Use the complete updated data
+            } : n
+          );
+          
+          console.log('💾 DEBOUNCED SAVE - Saving to Firestore:', {
+            field,
+            value,
+            nodeId: node.id
+          });
+          
+          // Save directly to Firestore
+          const flowRef = doc(db, "users", auth.currentUser.uid, "flows", flowId);
+          await updateDoc(flowRef, {
+            nodes: updatedNodes,
+            edges: allFlowEdges || [],
+            updatedAt: new Date()
+          });
+          
+          console.log(`✅ SAVE SUCCESS: ${field} = ${value} saved to Firestore`);
+        } catch (error) {
+          console.error("❌ SAVE FAILED:", error);
+        }
+      }
+    }, 800); // Wait 800ms after last change
     
     console.log(`💾 Saved ${field} = ${value} for node ${node.id}`);
   };
@@ -180,18 +181,26 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
       console.log("🎯 Current node Y position:", currentNodeY);
       
       nodesToCheck.forEach((n: any) => {
-        if (n && n.type === 'setVariable' && n.data?.variableKey && n.id !== node.id) {
+        if (n && n.type === 'setVariable' && n.id !== node.id) {
           const nodeY = n.position?.y || 0;
           
           // Only include variables from nodes that are positioned ABOVE (lower Y value) the current node
           if (nodeY < currentNodeY) {
+            // Check for variable key in data or newVariableKey field
+            let variableKey = n.data?.variableKey;
+            
+            // If variableKey is "__new__", check for newVariableKey
+            if (variableKey === "__new__" && n.data?.newVariableKey) {
+              variableKey = n.data.newVariableKey;
+            }
+            
             // Only add if it's not empty and not the special __new__ value
-            if (n.data.variableKey !== "__new__" && n.data.variableKey.trim()) {
-              console.log("🎯 Found SetVariable node ABOVE current:", n.id, "Y:", nodeY, "with variable:", n.data.variableKey);
-              variables.push(n.data.variableKey);
+            if (variableKey && variableKey !== "__new__" && variableKey.trim()) {
+              console.log("🎯 Found SetVariable node ABOVE current:", n.id, "Y:", nodeY, "with variable:", variableKey);
+              variables.push(variableKey);
             }
           } else {
-            console.log("⬇️ Skipping SetVariable node BELOW current:", n.id, "Y:", nodeY, "variable:", n.data.variableKey);
+            console.log("⬇️ Skipping SetVariable node BELOW current:", n.id, "Y:", nodeY);
           }
         }
       });
