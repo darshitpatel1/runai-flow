@@ -1293,8 +1293,21 @@ return sourceData * 2;"
 
   // Function to preview variable transformation
   const previewVariableTransformation = () => {
-    const sourceValue = getVariableSourceData();
-    if (!sourceValue) {
+    // For variable nodes, we need to look at the actual variable value from the preview
+    let sourceValue = null;
+    
+    // First try to get the resolved variable value from the current node data
+    if (nodeData.variableValue) {
+      // Check if we have nodes to resolve the variable from
+      if (allNodes && nodeData.variableValue.includes('{{') && nodeData.variableValue.includes('}}')) {
+        sourceValue = getVariableSourceData();
+      } else {
+        // Use the raw value if it's not a variable reference
+        sourceValue = nodeData.variableValue;
+      }
+    }
+    
+    if (sourceValue === null || sourceValue === undefined) {
       setTransformError("No source data available. Set a variable value first.");
       return;
     }
@@ -1334,8 +1347,18 @@ return sourceData * 2;"
 
   // Function to apply variable transformation
   const applyVariableTransformation = () => {
-    const sourceValue = getVariableSourceData();
-    if (!sourceValue) return;
+    // Use the same logic as preview to get source value
+    let sourceValue = null;
+    
+    if (nodeData.variableValue) {
+      if (allNodes && nodeData.variableValue.includes('{{') && nodeData.variableValue.includes('}}')) {
+        sourceValue = getVariableSourceData();
+      } else {
+        sourceValue = nodeData.variableValue;
+      }
+    }
+    
+    if (sourceValue === null || sourceValue === undefined) return;
     
     const transformScript = nodeData.transformScript || '';
     if (!transformScript.trim()) return;
