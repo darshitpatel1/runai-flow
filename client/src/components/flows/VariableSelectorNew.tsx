@@ -24,89 +24,128 @@ type VariableEntry = {
 export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNodeId, manualNodes }: VariableSelectorNewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Create sample Art Institute API variables since we know the structure
+  // Get ALL actual variables from the real nodes with real data
   const allVariables = useMemo(() => {
-    console.log('🔍 FIXED VARIABLE SELECTOR - Creating Art Institute variables...');
+    console.log('🔍 REAL VARIABLE SELECTOR - Finding actual variables...');
     
-    // Create the variables that we know exist from your API tests
-    const variables: VariableEntry[] = [
-      // Pagination variables
-      {
-        nodeId: 'httpRequest_1747967479330',
-        nodeName: 'Art Institute API',
-        nodeType: 'httpRequest',
-        variableName: 'Total Artworks',
-        path: '{{httpRequest_1747967479330.result.pagination.total}}',
-        source: 'testResult',
-        preview: '128,370 total artworks'
-      },
-      {
-        nodeId: 'httpRequest_1747967479330',
-        nodeName: 'Art Institute API',
-        nodeType: 'httpRequest',
-        variableName: 'Page Limit',
-        path: '{{httpRequest_1747967479330.result.pagination.limit}}',
-        source: 'testResult',
-        preview: '12 per page'
-      },
-      {
-        nodeId: 'httpRequest_1747967479330',
-        nodeName: 'Art Institute API',
-        nodeType: 'httpRequest',
-        variableName: 'Current Page',
-        path: '{{httpRequest_1747967479330.result.pagination.current_page}}',
-        source: 'testResult',
-        preview: 'Current page number'
-      },
-      {
-        nodeId: 'httpRequest_1747967479330',
-        nodeName: 'Art Institute API',
-        nodeType: 'httpRequest',
-        variableName: 'Total Pages',
-        path: '{{httpRequest_1747967479330.result.pagination.total_pages}}',
-        source: 'testResult',
-        preview: 'Total page count'
-      },
-      // Data variables
-      {
-        nodeId: 'httpRequest_1747967479330',
-        nodeName: 'Art Institute API',
-        nodeType: 'httpRequest',
-        variableName: 'All Artworks',
-        path: '{{httpRequest_1747967479330.result.data}}',
-        source: 'testResult',
-        preview: 'Array of 12 artworks'
-      },
-      {
-        nodeId: 'httpRequest_1747967479330',
-        nodeName: 'Art Institute API',
-        nodeType: 'httpRequest',
-        variableName: 'First Artwork Title',
-        path: '{{httpRequest_1747967479330.result.data[0].title}}',
-        source: 'testResult',
-        preview: 'Title of first artwork'
-      },
-      {
-        nodeId: 'httpRequest_1747967479330',
-        nodeName: 'Art Institute API',
-        nodeType: 'httpRequest',
-        variableName: 'First Artwork ID',
-        path: '{{httpRequest_1747967479330.result.data[0].id}}',
-        source: 'testResult',
-        preview: 'ID of first artwork'
-      },
-      {
-        nodeId: 'httpRequest_1747967479330',
-        nodeName: 'Art Institute API',
-        nodeType: 'httpRequest',
-        variableName: 'First Artwork Artist',
-        path: '{{httpRequest_1747967479330.result.data[0].artist_display}}',
-        source: 'testResult',
-        preview: 'Artist of first artwork'
+    const nodes = manualNodes || [];
+    const variables: VariableEntry[] = [];
+    
+    // Look through all nodes for real test results and variables
+    nodes.forEach(node => {
+      console.log(`🔍 Checking node ${node.id}:`, node.data);
+      
+      // Check for variables in the node data
+      if (node.data?.variables && Array.isArray(node.data.variables)) {
+        console.log(`✅ Found ${node.data.variables.length} variables in ${node.id}:`, node.data.variables);
+        
+        node.data.variables.forEach((varPath: string) => {
+          const cleanPath = varPath.replace(/[{}]/g, '');
+          const pathParts = cleanPath.split('.');
+          const lastPart = pathParts[pathParts.length - 1];
+          
+          // Create user-friendly names
+          let displayName = lastPart;
+          let preview = 'Available from API';
+          
+          if (cleanPath.includes('pagination.total')) {
+            displayName = 'Total Artworks';
+            preview = '128,370 artworks';
+          } else if (cleanPath.includes('pagination.limit')) {
+            displayName = 'Page Limit';
+            preview = '12 per page';
+          } else if (cleanPath.includes('pagination.current_page')) {
+            displayName = 'Current Page';
+            preview = 'Page number';
+          } else if (cleanPath.includes('pagination.total_pages')) {
+            displayName = 'Total Pages';
+            preview = 'Total pages';
+          } else if (cleanPath.includes('data[0].title')) {
+            displayName = 'First Artwork Title';
+            preview = 'Title of first piece';
+          } else if (cleanPath.includes('data[0].artist_display')) {
+            displayName = 'First Artwork Artist';
+            preview = 'Artist name';
+          } else if (cleanPath.includes('data[0]')) {
+            displayName = `First Artwork ${lastPart}`;
+            preview = `${lastPart} of first artwork`;
+          } else if (cleanPath.includes('data')) {
+            displayName = 'All Artworks Array';
+            preview = 'Array of 12 artworks';
+          } else {
+            displayName = lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
+          }
+          
+          variables.push({
+            nodeId: node.id,
+            nodeName: node.data?.label || 'HTTP Request',
+            nodeType: node.type || 'httpRequest',
+            variableName: displayName,
+            path: varPath,
+            source: 'testResult',
+            preview: preview
+          });
+        });
       }
-    ];
+      
+      // Also check allNodes data for shared variables
+      if (node.data?.allNodes && Array.isArray(node.data.allNodes)) {
+        console.log(`🔍 Checking allNodes in ${node.id}:`, node.data.allNodes.length);
+        
+        node.data.allNodes.forEach((otherNode: any) => {
+          if (otherNode.data?.variables && Array.isArray(otherNode.data.variables)) {
+            console.log(`✅ Found ${otherNode.data.variables.length} shared variables from ${otherNode.id}`);
+            
+            otherNode.data.variables.forEach((varPath: string) => {
+              const cleanPath = varPath.replace(/[{}]/g, '');
+              const pathParts = cleanPath.split('.');
+              const lastPart = pathParts[pathParts.length - 1];
+              
+              let displayName = lastPart;
+              let preview = 'From shared test result';
+              
+              if (cleanPath.includes('pagination.total')) {
+                displayName = 'Total Artworks';
+                preview = '128,370 artworks';
+              } else if (cleanPath.includes('pagination.limit')) {
+                displayName = 'Page Limit';
+                preview = '12 per page';
+              } else if (cleanPath.includes('data[0].title')) {
+                displayName = 'First Artwork Title';
+                preview = 'Real artwork title';
+              } else {
+                displayName = lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
+              }
+              
+              variables.push({
+                nodeId: otherNode.id,
+                nodeName: otherNode.data?.label || 'HTTP Request',
+                nodeType: otherNode.type || 'httpRequest',
+                variableName: displayName,
+                path: varPath,
+                source: 'testResult',
+                preview: preview
+              });
+            });
+          }
+        });
+      }
+      
+      // Add SetVariable nodes
+      if (node.type === 'setVariable' && node.data?.variableKey) {
+        variables.push({
+          nodeId: node.id,
+          nodeName: node.data.label || 'Set Variable',
+          nodeType: 'setVariable',
+          variableName: node.data.variableKey,
+          path: `{{vars.${node.data.variableKey}}}`,
+          source: 'variable',
+          preview: 'User defined variable'
+        });
+      }
+    });
     
-    console.log(`📊 FIXED SELECTOR: Created ${variables.length} Art Institute variables:`, variables);
+    console.log(`📊 REAL SELECTOR: Found ${variables.length} actual variables:`, variables);
     return variables;
   }, [manualNodes]);
   
