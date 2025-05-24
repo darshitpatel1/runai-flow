@@ -24,128 +24,146 @@ type VariableEntry = {
 export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNodeId, manualNodes }: VariableSelectorNewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Copy the exact working generateVariablePaths function from NodeConfiguration
+  const generateVariablePaths = (obj: any, prefix = ""): string[] => {
+    if (!obj || typeof obj !== 'object') return [];
+    
+    let paths: string[] = [];
+    
+    const traverse = (current: any, path: string, depth = 0) => {
+      if (depth > 3) return; // Limit depth to prevent too many variables
+      
+      if (current === null || current === undefined) {
+        paths.push(`{{${path}}}`);
+        return;
+      }
+      
+      if (Array.isArray(current)) {
+        paths.push(`{{${path}}}`); // Add the array itself
+        paths.push(`{{${path}.length}}`); // Add length property
+        
+        if (current.length > 0) {
+          paths.push(`{{${path}[0]}}`); // Add first item access
+          
+          // If first item is object, add its useful properties
+          if (typeof current[0] === 'object' && current[0] !== null) {
+            const keys = Object.keys(current[0]).slice(0, 8); // Limit to 8 properties
+            keys.forEach(key => {
+              const value = current[0][key];
+              if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                paths.push(`{{${path}[0].${key}}}`);
+              }
+            });
+          }
+        }
+      } else if (typeof current === 'object') {
+        if (path) paths.push(`{{${path}}}`); // Add the object itself
+        
+        // Add useful scalar properties
+        Object.keys(current).slice(0, 15).forEach(key => {
+          const newPath = path ? `${path}.${key}` : key;
+          const value = current[key];
+          
+          if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+            paths.push(`{{${newPath}}}`);
+          } else if (value !== null && typeof value === 'object') {
+            traverse(value, newPath, depth + 1);
+          }
+        });
+      } else {
+        paths.push(`{{${path}}}`);
+      }
+    };
+    
+    traverse(obj, prefix);
+    
+    // Remove duplicates and return limited set
+    return Array.from(new Set(paths)).slice(0, 25);
+  };
+
   // Get ALL actual variables from the real nodes with real data
   const allVariables = useMemo(() => {
-    console.log('🔍 REAL VARIABLE SELECTOR - Finding actual variables...');
+    console.log('🔍 DIRECT VARIABLE SELECTOR - Using existing test data...');
     
     const nodes = manualNodes || [];
     const variables: VariableEntry[] = [];
     
-    // Look through all nodes for real test results and variables
+    // Look for nodes with test results and generate variables directly
     nodes.forEach(node => {
-      console.log(`🔍 Checking node ${node.id}:`, node.data);
+      console.log(`🔍 Checking node ${node.id} for test results:`, node.data);
       
-      // Check for variables in the node data
+      // Check for existing generated variables first
       if (node.data?.variables && Array.isArray(node.data.variables)) {
-        console.log(`✅ Found ${node.data.variables.length} variables in ${node.id}:`, node.data.variables);
+        console.log(`✅ Using pre-generated variables from ${node.id}:`, node.data.variables);
         
         node.data.variables.forEach((varPath: string) => {
           const cleanPath = varPath.replace(/[{}]/g, '');
-          const pathParts = cleanPath.split('.');
-          const lastPart = pathParts[pathParts.length - 1];
-          
-          // Create user-friendly names
-          let displayName = lastPart;
-          let preview = 'Available from API';
-          
-          if (cleanPath.includes('pagination.total')) {
-            displayName = 'Total Artworks';
-            preview = '128,370 artworks';
-          } else if (cleanPath.includes('pagination.limit')) {
-            displayName = 'Page Limit';
-            preview = '12 per page';
-          } else if (cleanPath.includes('pagination.current_page')) {
-            displayName = 'Current Page';
-            preview = 'Page number';
-          } else if (cleanPath.includes('pagination.total_pages')) {
-            displayName = 'Total Pages';
-            preview = 'Total pages';
-          } else if (cleanPath.includes('data[0].title')) {
-            displayName = 'First Artwork Title';
-            preview = 'Title of first piece';
-          } else if (cleanPath.includes('data[0].artist_display')) {
-            displayName = 'First Artwork Artist';
-            preview = 'Artist name';
-          } else if (cleanPath.includes('data[0]')) {
-            displayName = `First Artwork ${lastPart}`;
-            preview = `${lastPart} of first artwork`;
-          } else if (cleanPath.includes('data')) {
-            displayName = 'All Artworks Array';
-            preview = 'Array of 12 artworks';
-          } else {
-            displayName = lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
-          }
+          const lastPart = cleanPath.split('.').pop() || 'Variable';
           
           variables.push({
             nodeId: node.id,
             nodeName: node.data?.label || 'HTTP Request',
             nodeType: node.type || 'httpRequest',
-            variableName: displayName,
+            variableName: lastPart,
             path: varPath,
             source: 'testResult',
-            preview: preview
+            preview: 'From test result'
           });
         });
       }
       
-      // Also check allNodes data for shared variables
-      if (node.data?.allNodes && Array.isArray(node.data.allNodes)) {
-        console.log(`🔍 Checking allNodes in ${node.id}:`, node.data.allNodes.length);
+      // Also generate fresh variables from test results
+      if (node.data?.testResult || node.data?._rawTestData) {
+        const testData = node.data.testResult || node.data._rawTestData;
+        console.log(`✅ Generating fresh variables from test data for ${node.id}:`, testData);
         
+        const freshVariables = generateVariablePaths(testData, `${node.id}.result`);
+        console.log(`✅ Generated ${freshVariables.length} fresh variables:`, freshVariables);
+        
+        freshVariables.forEach(varPath => {
+          const cleanPath = varPath.replace(/[{}]/g, '');
+          const lastPart = cleanPath.split('.').pop() || 'Variable';
+          
+          variables.push({
+            nodeId: node.id,
+            nodeName: node.data?.label || 'HTTP Request',
+            nodeType: node.type || 'httpRequest',
+            variableName: lastPart,
+            path: varPath,
+            source: 'testResult',
+            preview: 'Fresh from API'
+          });
+        });
+      }
+      
+      // Check allNodes for shared test results
+      if (node.data?.allNodes && Array.isArray(node.data.allNodes)) {
         node.data.allNodes.forEach((otherNode: any) => {
-          if (otherNode.data?.variables && Array.isArray(otherNode.data.variables)) {
-            console.log(`✅ Found ${otherNode.data.variables.length} shared variables from ${otherNode.id}`);
+          if (otherNode.data?.testResult || otherNode.data?._rawTestData) {
+            const testData = otherNode.data.testResult || otherNode.data._rawTestData;
+            console.log(`✅ Found shared test data from ${otherNode.id}`);
             
-            otherNode.data.variables.forEach((varPath: string) => {
+            const sharedVariables = generateVariablePaths(testData, `${otherNode.id}.result`);
+            sharedVariables.forEach(varPath => {
               const cleanPath = varPath.replace(/[{}]/g, '');
-              const pathParts = cleanPath.split('.');
-              const lastPart = pathParts[pathParts.length - 1];
-              
-              let displayName = lastPart;
-              let preview = 'From shared test result';
-              
-              if (cleanPath.includes('pagination.total')) {
-                displayName = 'Total Artworks';
-                preview = '128,370 artworks';
-              } else if (cleanPath.includes('pagination.limit')) {
-                displayName = 'Page Limit';
-                preview = '12 per page';
-              } else if (cleanPath.includes('data[0].title')) {
-                displayName = 'First Artwork Title';
-                preview = 'Real artwork title';
-              } else {
-                displayName = lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
-              }
+              const lastPart = cleanPath.split('.').pop() || 'Variable';
               
               variables.push({
                 nodeId: otherNode.id,
                 nodeName: otherNode.data?.label || 'HTTP Request',
                 nodeType: otherNode.type || 'httpRequest',
-                variableName: displayName,
+                variableName: lastPart,
                 path: varPath,
                 source: 'testResult',
-                preview: preview
+                preview: 'From shared test'
               });
             });
           }
         });
       }
-      
-      // Add SetVariable nodes
-      if (node.type === 'setVariable' && node.data?.variableKey) {
-        variables.push({
-          nodeId: node.id,
-          nodeName: node.data.label || 'Set Variable',
-          nodeType: 'setVariable',
-          variableName: node.data.variableKey,
-          path: `{{vars.${node.data.variableKey}}}`,
-          source: 'variable',
-          preview: 'User defined variable'
-        });
-      }
     });
     
-    console.log(`📊 REAL SELECTOR: Found ${variables.length} actual variables:`, variables);
+    console.log(`📊 DIRECT SELECTOR: Found ${variables.length} total variables:`, variables);
     return variables;
   }, [manualNodes]);
   
