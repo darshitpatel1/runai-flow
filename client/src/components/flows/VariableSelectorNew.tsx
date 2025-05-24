@@ -372,30 +372,30 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
     <>
       {/* Main Variable Selector Sidebar */}
       <div className={`
-        fixed top-0 left-0 h-full w-72 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 
+        fixed top-0 left-0 h-full w-72 bg-black border-r border-gray-600 
         transform transition-transform duration-300 ease-in-out z-50 shadow-xl
         ${open ? 'translate-x-0' : '-translate-x-full'}
       `}>
         {/* Header */}
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Variables</h2>
+        <div className="p-3 border-b border-gray-600 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-white">Variables</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="p-1 rounded-md hover:bg-gray-700 transition-colors"
           >
-            <X className="h-4 w-4 text-gray-500" />
+            <X className="h-4 w-4 text-gray-400" />
           </button>
         </div>
         
         {/* Search */}
-        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+        <div className="p-3 border-b border-gray-600">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3" />
             <Input
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-7 h-8 text-xs"
+              className="pl-7 h-8 text-xs bg-gray-800 border-gray-600 text-white placeholder-gray-400"
             />
           </div>
         </div>
@@ -422,7 +422,7 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
               filteredVariables.map((variable, index) => (
                 <div
                   key={`${variable.nodeId}-${index}`}
-                  className="group p-2 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:border-blue-300 dark:hover:border-blue-600 cursor-pointer transition-all duration-200"
+                  className="group p-2 border border-gray-600 rounded-lg hover:bg-gray-800 hover:border-blue-500 cursor-pointer transition-all duration-200"
                   onClick={() => handleSelectVariable(variable)}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -430,27 +430,27 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
                       {getDataTypeIcon(variable.dataType || 'string', variable.variableName)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-xs text-gray-900 dark:text-gray-100 truncate">
+                      <p className="font-medium text-xs text-white truncate">
                         {variable.variableName}
                       </p>
                     </div>
                     <button
                       onClick={(e) => handlePreviewVariable(variable, e)}
-                      className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-blue-100 dark:hover:bg-blue-900 transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-gray-700 transition-all"
                       title="Preview data"
                     >
-                      <Eye className="h-3 w-3 text-blue-500" />
+                      <Eye className="h-3 w-3 text-blue-400" />
                     </button>
                   </div>
                   
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    <p className="text-xs text-gray-400 truncate">
                       {variable.nodeName}
                     </p>
                     <span className={`px-1 py-0.5 text-xs rounded ${
                       variable.source === 'testResult' 
-                        ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-300'
-                        : 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300'
+                        ? 'bg-emerald-900 text-emerald-300'
+                        : 'bg-blue-900 text-blue-300'
                     }`}>
                       {variable.source === 'testResult' ? 'API' : 'Var'}
                     </span>
@@ -465,21 +465,21 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
       {/* Preview Panel - Slides out from the right of variable selector */}
       {previewVariable && (
         <div className={`
-          fixed top-0 left-72 h-full w-80 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 
+          fixed top-0 left-72 h-full w-80 bg-black border-r border-gray-600 
           transform transition-transform duration-300 ease-in-out z-40 shadow-xl
           ${open ? 'translate-x-0' : '-translate-x-full'}
         `}>
           {/* Preview Header */}
-          <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="p-3 border-b border-gray-600 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-blue-500" />
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Preview</h3>
+              <Eye className="h-4 w-4 text-blue-400" />
+              <h3 className="text-sm font-semibold text-white">Preview</h3>
             </div>
             <button
               onClick={() => setPreviewVariable(null)}
-              className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="p-1 rounded-md hover:bg-gray-700 transition-colors"
             >
-              <X className="h-4 w-4 text-gray-500" />
+              <X className="h-4 w-4 text-gray-400" />
             </button>
           </div>
           
@@ -487,42 +487,51 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
           <div className="flex-1 overflow-y-auto p-3" style={{ height: 'calc(100vh - 60px)' }}>
             <div className="space-y-3">
               {/* Variable Info */}
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <h4 className="font-medium text-sm text-gray-900 dark:text-gray-100 mb-2">
+              <div className="p-3 bg-gray-800 rounded-lg border border-gray-600">
+                <h4 className="font-medium text-sm text-white mb-2">
                   {previewVariable.variableName}
                 </h4>
                 <div className="flex items-center gap-2 mb-2">
                   {getDataTypeIcon(previewVariable.dataType || 'string', previewVariable.variableName)}
-                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                  <span className="text-xs text-gray-300">
                     {previewVariable.dataType || 'string'}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-gray-400">
                   from {previewVariable.nodeName}
                 </p>
               </div>
 
-              {/* Actual Data Preview */}
-              <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <h5 className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-2">
-                  Actual API Response
+              {/* Complete API Response - Show the full raw test result */}
+              <div className="p-3 bg-gray-900 rounded-lg border border-gray-600">
+                <h5 className="text-xs font-medium text-blue-400 mb-2 flex items-center gap-2">
+                  <Database className="h-3 w-3" />
+                  Complete API Response Data
                 </h5>
-                <div className="bg-white dark:bg-gray-900 p-3 rounded border text-xs font-mono">
-                  <pre className="whitespace-pre-wrap break-words text-gray-800 dark:text-gray-200">
-                    {previewVariable.rawValue !== undefined 
-                      ? JSON.stringify(previewVariable.rawValue, null, 2)
-                      : previewVariable.preview || 'No data available'
-                    }
+                <div className="bg-black p-3 rounded border border-gray-700 text-xs font-mono max-h-96 overflow-y-auto">
+                  <pre className="whitespace-pre-wrap break-words text-green-400">
+                    {(() => {
+                      // Find the actual test result from the node
+                      const nodes = manualNodes || [];
+                      const sourceNode = nodes.find(n => n.id === previewVariable.nodeId);
+                      const testResult = sourceNode?.data?.testResult || sourceNode?.data?._lastTestResult || sourceNode?.data?._rawTestData;
+                      
+                      if (testResult) {
+                        return JSON.stringify(testResult, null, 2);
+                      } else {
+                        return 'No API test data available. Please test the node first to see the complete response.';
+                      }
+                    })()}
                   </pre>
                 </div>
               </div>
 
               {/* Variable Path */}
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <h5 className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <div className="p-3 bg-gray-800 rounded-lg border border-gray-600">
+                <h5 className="text-xs font-medium text-gray-300 mb-2">
                   Variable Path
                 </h5>
-                <code className="text-xs bg-white dark:bg-gray-900 p-2 rounded border block break-all">
+                <code className="text-xs bg-black text-green-400 p-2 rounded border border-gray-700 block break-all">
                   {previewVariable.path}
                 </code>
               </div>
