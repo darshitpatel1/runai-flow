@@ -1278,6 +1278,8 @@ return sourceData * 2;"
   };
   
   const handleSelectVariable = (variablePath: string) => {
+    console.log('🔥 Selecting variable:', variablePath, 'for field:', activeInputField);
+    
     if (activeInputField) {
       // Check if this is a query param field
       if (activeInputField.startsWith('queryParams-')) {
@@ -1291,8 +1293,11 @@ return sourceData * 2;"
         }
       } else {
         // Regular field update
+        console.log('🔥 Updating field:', activeInputField, 'with value:', variablePath);
         handleChange(activeInputField, variablePath);
       }
+    } else {
+      console.log('❌ No active input field set!');
     }
     setShowVariableSelector(false);
   };

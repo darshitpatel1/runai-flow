@@ -358,7 +358,8 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
   
   const handleSelectVariable = (variable: VariableEntry) => {
     onSelectVariable(variable.path);
-    onClose();
+    setPreviewVariable(null); // Close preview panel first
+    onClose(); // Then close main sidebar
   };
 
   const handlePreviewVariable = (variable: VariableEntry, event: React.MouseEvent) => {
@@ -502,24 +503,46 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
                 </p>
               </div>
 
-              {/* Complete API Response - Show the full raw test result */}
+              {/* Specific Variable Value */}
               <div className="p-3 bg-gray-900 rounded-lg border border-gray-600">
                 <h5 className="text-xs font-medium text-blue-400 mb-2 flex items-center gap-2">
                   <Database className="h-3 w-3" />
-                  Complete API Response Data
+                  Variable Value
                 </h5>
                 <div className="bg-black p-3 rounded border border-gray-700 text-xs font-mono max-h-96 overflow-y-auto">
                   <pre className="whitespace-pre-wrap break-words text-green-400">
                     {(() => {
-                      // Find the actual test result from the node
+                      // Find the actual test result from the node and extract the specific variable value
                       const nodes = manualNodes || [];
                       const sourceNode = nodes.find(n => n.id === previewVariable.nodeId);
                       const testResult = sourceNode?.data?.testResult || sourceNode?.data?._lastTestResult || sourceNode?.data?._rawTestData;
                       
-                      if (testResult) {
-                        return JSON.stringify(testResult, null, 2);
+                      if (testResult && previewVariable.rawValue !== undefined) {
+                        // Show the specific value for this variable
+                        return JSON.stringify(previewVariable.rawValue, null, 2);
+                      } else if (testResult) {
+                        // Extract the specific value from the path
+                        try {
+                          // Remove the node id and "result" from the path to get the actual field path
+                          const pathParts = previewVariable.path.replace(/[{}]/g, '').replace(`${previewVariable.nodeId}.result.`, '').split('.');
+                          let value = testResult;
+                          
+                          for (const part of pathParts) {
+                            if (part.includes('[') && part.includes(']')) {
+                              const arrayName = part.split('[')[0];
+                              const index = parseInt(part.split('[')[1].split(']')[0]);
+                              value = value[arrayName][index];
+                            } else {
+                              value = value[part];
+                            }
+                          }
+                          
+                          return JSON.stringify(value, null, 2);
+                        } catch (error) {
+                          return 'Unable to extract specific value. Raw response:\n\n' + JSON.stringify(testResult, null, 2);
+                        }
                       } else {
-                        return 'No API test data available. Please test the node first to see the complete response.';
+                        return 'No API test data available. Please test the node first to see the variable value.';
                       }
                     })()}
                   </pre>
