@@ -1294,65 +1294,11 @@ return sourceData * 2;"
   // Function to preview variable transformation
   const previewVariableTransformation = () => {
     console.log("=== Variable Transform Preview Debug ===");
-    console.log("nodeData.variableValue:", nodeData.variableValue);
+    console.log("nodeData:", nodeData);
     
-    // Use the same logic as the variable selector to resolve ANY variable path
-    let sourceValue = null;
-    
-    if (nodeData.variableValue && nodeData.variableValue.includes('{{') && nodeData.variableValue.includes('}}')) {
-      // Extract the variable path
-      const variablePath = nodeData.variableValue.replace(/[{}]/g, '').trim();
-      console.log("Variable path to resolve:", variablePath);
-      
-      // Parse the path: nodeId.result.path.to.value
-      const pathParts = variablePath.split('.');
-      if (pathParts.length > 0) {
-        const nodeId = pathParts[0];
-        console.log("Looking for node:", nodeId);
-        
-        // Find the source node
-        if (allNodes) {
-          const sourceNode = allNodes.find(node => node.id === nodeId);
-          
-          if (sourceNode && (sourceNode.data?.testResult || sourceNode.data?._lastTestResult || sourceNode.data?._rawTestData)) {
-            const testData = sourceNode.data.testResult || sourceNode.data._lastTestResult || sourceNode.data._rawTestData;
-            console.log("Found source node with test data");
-            
-            try {
-              // Navigate through the path to get the value (skip first part which is node ID)
-              let value = testData;
-              for (let i = 1; i < pathParts.length; i++) {
-                const part = pathParts[i];
-                
-                // Handle array notation like data[0]
-                if (part.includes('[') && part.includes(']')) {
-                  const arrayName = part.substring(0, part.indexOf('['));
-                  const indexStr = part.substring(part.indexOf('[') + 1, part.indexOf(']'));
-                  const index = parseInt(indexStr);
-                  
-                  if (arrayName) {
-                    value = value?.[arrayName];
-                  }
-                  if (!isNaN(index) && Array.isArray(value)) {
-                    value = value[index];
-                  }
-                } else {
-                  // Regular property access
-                  value = value?.[part];
-                }
-              }
-              
-              sourceValue = value;
-              console.log("Successfully resolved variable value:", sourceValue);
-            } catch (e) {
-              console.error("Error resolving variable path:", e);
-            }
-          }
-        }
-      }
-    }
-    
-    console.log("Final source value:", sourceValue, typeof sourceValue);
+    // Simple approach: just use getVariableSourceData which already works
+    const sourceValue = getVariableSourceData();
+    console.log("Source value from getVariableSourceData:", sourceValue, typeof sourceValue);
     
     if (sourceValue === null || sourceValue === undefined) {
       setTransformError("No source data available. Set a variable value first.");
