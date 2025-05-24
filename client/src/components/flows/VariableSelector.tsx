@@ -117,8 +117,11 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
 
   // Collect all available variables from nodes (optimized with no console logs)
   const collectVariables = useCallback(() => {
+    console.log('🔍 Starting variable collection...');
+    
     // Get nodes from either manual nodes or ReactFlow
     const nodes = getNodes();
+    console.log('📋 Got nodes for variable collection:', nodes.length, nodes);
     
     // Check if we're inside a SetVariable node configuration
     let isInSetVariableConfig = false;
@@ -129,6 +132,7 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
       if (node?.data?.allNodes && Array.isArray(node.data.allNodes) && node.data.allNodes.length > 0) {
         currentConfigNodeId = node.id;
         isInSetVariableConfig = node.type === 'setVariable';
+        console.log(`📝 Found config node: ${node.id}, type: ${node.type}`);
         break;
       }
     }
@@ -140,6 +144,8 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
       // Skip invalid nodes
       if (!node || !node.id) return;
       
+      console.log(`🔍 Processing node ${node.id} (${node.type}):`, node.data);
+      
       // Check if it's a SetVariable node with a variableKey
       if (node.type === 'setVariable' && node.data?.variableKey) {
         // Check if this variable is already in the list
@@ -148,6 +154,7 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
         );
         
         if (!exists) {
+          console.log(`✅ Adding SetVariable: ${node.data.variableKey}`);
           variableList.push({
             nodeId: node.id,
             nodeName: node.data.label || "Set Variable",
