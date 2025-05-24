@@ -1373,53 +1373,70 @@ return sourceData * 2;"
     const variableValue = nodeData.variableValue;
     if (!variableValue) return null;
     
-    // If it's a variable reference, try to resolve it
+    let variablePath = '';
+    
+    // Extract variable path - handle both {{path}} and plain path formats
     if (variableValue.includes('{{') && variableValue.includes('}}')) {
-      // Extract variable path and try to find the actual data
-      const variablePath = variableValue.replace(/[{}]/g, '').trim();
+      variablePath = variableValue.replace(/[{}]/g, '').trim();
+    } else if (variableValue.includes('.')) {
+      variablePath = variableValue.trim();
+    } else {
+      // Return the raw variable value if it's not a path
+      return variableValue;
+    }
+    
+    console.log("Extracting variable path:", variablePath);
+    
+    // Parse the variable path (e.g., "httpRequest_1747967479330.result.data[0].is_boosted")
+    const pathParts = variablePath.split('.');
+    
+    if (pathParts.length > 0) {
+      const nodeId = pathParts[0]; // Get the node ID
+      console.log("Looking for node ID:", nodeId);
       
-      // Parse the variable path (e.g., "httpRequest_1747967479330.result.data[0].is_boosted")
-      const pathParts = variablePath.split('.');
-      
-      if (pathParts.length > 0) {
-        const nodeId = pathParts[0]; // Get the node ID
+      // Find the source node by ID
+      if (allNodes) {
+        const sourceNode = allNodes.find(node => node.id === nodeId);
+        console.log("Found source node:", sourceNode?.id);
         
-        // Find the source node by ID
-        if (allNodes) {
-          const sourceNode = allNodes.find(node => node.id === nodeId);
-          if (sourceNode && (sourceNode.data?.testResult || sourceNode.data?._lastTestResult)) {
-            const testData = sourceNode.data.testResult || sourceNode.data._lastTestResult;
+        if (sourceNode && (sourceNode.data?.testResult || sourceNode.data?._lastTestResult)) {
+          const testData = sourceNode.data.testResult || sourceNode.data._lastTestResult;
+          console.log("Test data available:", !!testData);
+          
+          try {
+            // Navigate through the path to get the actual value
+            let value = testData;
             
-            try {
-              // Navigate through the path to get the actual value
-              let value = testData;
+            // Process each part of the path after the node ID
+            for (let i = 1; i < pathParts.length; i++) {
+              const part = pathParts[i];
+              console.log("Processing path part:", part);
               
-              // Process each part of the path after the node ID
-              for (let i = 1; i < pathParts.length; i++) {
-                const part = pathParts[i];
+              // Handle array access like "data[0]"
+              if (part.includes('[') && part.includes(']')) {
+                const arrayName = part.substring(0, part.indexOf('['));
+                const indexStr = part.substring(part.indexOf('[') + 1, part.indexOf(']'));
+                const index = parseInt(indexStr);
                 
-                // Handle array access like "data[0]"
-                if (part.includes('[') && part.includes(']')) {
-                  const arrayName = part.substring(0, part.indexOf('['));
-                  const indexStr = part.substring(part.indexOf('[') + 1, part.indexOf(']'));
-                  const index = parseInt(indexStr);
-                  
-                  if (arrayName) {
-                    value = value?.[arrayName];
-                  }
-                  if (!isNaN(index) && Array.isArray(value)) {
-                    value = value[index];
-                  }
-                } else {
-                  // Regular property access
-                  value = value?.[part];
+                if (arrayName) {
+                  value = value?.[arrayName];
+                  console.log("After array name access:", arrayName, value);
                 }
+                if (!isNaN(index) && Array.isArray(value)) {
+                  value = value[index];
+                  console.log("After array index access:", index, value);
+                }
+              } else {
+                // Regular property access
+                value = value?.[part];
+                console.log("After property access:", part, value);
               }
-              
-              return value;
-            } catch (e) {
-              console.error("Error extracting variable value:", e);
             }
+            
+            console.log("Final extracted value:", value);
+            return value;
+          } catch (e) {
+            console.error("Error extracting variable value:", e);
           }
         }
       }
