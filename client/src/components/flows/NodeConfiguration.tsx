@@ -45,6 +45,8 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
   const [isDragging, setIsDragging] = useState(false);
   
   useEffect(() => {
+    // Properly load all saved node data including URL, method, connector, etc.
+    console.log('Loading node data for configuration:', node.data);
     setNodeData(node.data);
     // Clear test result when switching to a different node
     setTestResult(null);
@@ -54,6 +56,7 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
 
   // Sync local state when node.data changes from external updates
   useEffect(() => {
+    console.log('Node data updated externally:', node.data);
     setNodeData(node.data);
   }, [node.data]);
 

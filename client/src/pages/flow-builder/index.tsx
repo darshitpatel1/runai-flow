@@ -50,7 +50,11 @@ export default function FlowBuilderPage() {
           setFlow(flowData);
           setFlowName(flowData.name || "");
           setFlowDescription(flowData.description || "");
-          setNodes(flowData.nodes || []);
+          
+          // Properly load nodes with all their saved data
+          const savedNodes = flowData.nodes || [];
+          console.log('Loading saved nodes from Firestore:', savedNodes);
+          setNodes(savedNodes);
           setEdges(flowData.edges || []);
           
           setLastSavedState({
