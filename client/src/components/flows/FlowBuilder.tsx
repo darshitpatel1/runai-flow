@@ -556,6 +556,8 @@ export function FlowBuilder({
   }, [reactFlowInstance]);
   
   const updateNodeData = useCallback((nodeId: string, newData: any) => {
+    console.log(`💾 Updating node ${nodeId} with data:`, newData);
+    
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === nodeId) {

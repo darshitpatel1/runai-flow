@@ -49,6 +49,11 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     setAvailableVariables([]);
   }, [node.id]);
 
+  // Sync local state when node.data changes from external updates
+  useEffect(() => {
+    setNodeData(node.data);
+  }, [node.data]);
+
   // Handle resizing functionality
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -88,8 +93,16 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
   const handleChange = (field: string, value: any) => {
     const updatedData = { ...nodeData, [field]: value };
     setNodeData(updatedData);
+    
+    // For SetVariable nodes, also update the label to show the variable name
+    if (node.type === 'setVariable' && field === 'variableKey' && value) {
+      updatedData.label = `Set: ${value}`;
+    }
+    
     // Immediately save the change to the flow
     updateNodeData(node.id, updatedData);
+    
+    console.log(`💾 Saved ${field} = ${value} for node ${node.id}`);
   };
   
   // Function to get existing variables from all SetVariable nodes and tested HTTP nodes
