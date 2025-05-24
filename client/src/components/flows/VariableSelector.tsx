@@ -164,40 +164,41 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
       const testResult = node.data?.testResult || node.data?._lastTestResult;
       if (testResult) {
         try {
+          console.log(`🎯 Processing test results for node ${node.id}:`, testResult);
+          
           // For each test result, generate variables for its properties
           const paths = generateVariablePaths(testResult);
+          console.log(`📋 Generated ${paths.length} variable paths:`, paths);
           
           paths.forEach(path => {
-            // Extract variable name - get the last part of the path
-            const variableName = path.split('.').pop() || 'result';
+            // Create user-friendly display name
+            const displayName = path.split('.').map(part => {
+              if (part === 'length') return 'Count';
+              if (part === 'data') return 'Artworks';
+              if (part === 'pagination') return 'Page Info';
+              if (part.includes('[0]')) return part.replace('[0]', ' (First)');
+              if (part === 'title') return 'Title';
+              if (part === 'artist_title') return 'Artist';
+              if (part === 'date_display') return 'Date';
+              if (part === 'total') return 'Total Count';
+              if (part === 'limit') return 'Items Per Page';
+              if (part === 'offset') return 'Page Offset';
+              
+              // Convert snake_case to readable
+              return part.replace(/_/g, ' ')
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+            }).join(' → ');
             
             // Check if this test result path is already in the list
+            const fullPath = `${node.id}.result.${path}`;
             const exists = variableList.some(v => 
-              v.source === "testResult" && v.path === `${node.id}.result.${path}`
+              v.source === "testResult" && v.path === fullPath
             );
             
             if (!exists) {
-              // Create user-friendly display name
-              const displayName = path.split('.').map(part => {
-                if (part === 'length') return 'Count';
-                if (part === 'data') return 'Artworks';
-                if (part === 'pagination') return 'Page Info';
-                if (part.includes('[0]')) return part.replace('[0]', ' (First)');
-                if (part === 'title') return 'Title';
-                if (part === 'artist_title') return 'Artist';
-                if (part === 'date_display') return 'Date';
-                if (part === 'total') return 'Total Count';
-                if (part === 'limit') return 'Items Per Page';
-                if (part === 'offset') return 'Page Offset';
-                
-                // Convert snake_case to readable
-                return part.replace(/_/g, ' ')
-                  .split(' ')
-                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                  .join(' ');
-              }).join(' → ');
-              
-              // Get preview value from test result
+              // Get preview value from test result first
               let preview = 'No preview';
               let rawValue = null;
               try {
@@ -230,12 +231,14 @@ export function VariableSelector({ open, onClose, onSelectVariable, currentNodeI
                 preview = 'Preview unavailable';
               }
               
+              console.log(`✅ Creating variable: ${displayName} = ${preview}`);
+              
               variableList.push({
                 nodeId: node.id,
-                nodeName: node.data?.label || node.type || "Node",
+                nodeName: node.data?.label || `HTTP Request`,
                 nodeType: node.type || "unknown",
                 variableName: displayName,
-                path: `{{${node.id}.result.${path}}}`,
+                path: `{{${fullPath}}}`,
                 source: "testResult",
                 preview: preview,
                 rawValue: rawValue
