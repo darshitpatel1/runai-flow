@@ -114,67 +114,41 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
     // Immediately save the change to the flow (local state)
     updateNodeData(node.id, updatedData);
     
+    // IMMEDIATE SAVE TO FIRESTORE - no debouncing, direct save
+    if (flowId && allFlowNodes && auth.currentUser) {
+      try {
+        // Get the current nodes from the flow builder
+        const updatedNodes = allFlowNodes.map(n => 
+          n.id === node.id ? { 
+            ...n, 
+            data: updatedData  // Use the complete updated data
+          } : n
+        );
+        
+        console.log('🔥 IMMEDIATE SAVE - Saving to Firestore:', {
+          field,
+          value,
+          nodeId: node.id,
+          updatedData,
+          updatedNodeDataInArray: updatedNodes.find(n => n.id === node.id)?.data
+        });
+        
+        // Save directly to Firestore immediately
+        const flowRef = doc(db, "users", auth.currentUser.uid, "flows", flowId);
+        await updateDoc(flowRef, {
+          nodes: updatedNodes,
+          edges: allFlowEdges || [],
+          updatedAt: new Date()
+        });
+        
+        console.log(`✅ IMMEDIATE SAVE SUCCESS: ${field} = ${value} saved to Firestore`);
+      } catch (error) {
+        console.error("❌ IMMEDIATE SAVE FAILED:", error);
+      }
+    }
+    
     console.log(`💾 Saved ${field} = ${value} for node ${node.id}`);
   };
-
-  // Separate function for saving to Firestore with debouncing
-  const saveToFirestore = async (nodeData: any) => {
-    if (!flowId || !allFlowNodes || !auth.currentUser) {
-      console.warn('⚠️ Cannot save to Firestore - missing data:', {
-        hasFlowId: !!flowId,
-        hasAllFlowNodes: !!allFlowNodes,
-        hasUser: !!auth.currentUser
-      });
-      return;
-    }
-
-    try {
-      // Update the node in the all nodes array
-      const updatedNodes = allFlowNodes.map(n => 
-        n.id === node.id ? { ...n, data: { ...n.data, ...nodeData } } : n
-      );
-      
-      console.log('💾 Attempting to save node configuration to Firestore:', { 
-        flowId, 
-        nodeId: node.id, 
-        nodeData: nodeData,
-        updatedNodes: updatedNodes,
-        nodesCount: updatedNodes.length,
-        edgesCount: (allFlowEdges || []).length
-      });
-      
-      // Save to Firestore
-      const flowRef = doc(db, "users", auth.currentUser.uid, "flows", flowId);
-      await updateDoc(flowRef, {
-        nodes: updatedNodes,
-        edges: allFlowEdges || [],
-        updatedAt: new Date()
-      });
-      
-      console.log(`✅ Successfully saved node configuration to Firestore`);
-    } catch (error) {
-      console.error("❌ Error saving to Firestore:", error);
-      toast({
-        title: "Save Error",
-        description: "Failed to save node configuration. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Debounced save effect - only save to Firestore after user stops typing
-  useEffect(() => {
-    // Don't save if nodeData is empty or only has initial data
-    if (!nodeData || Object.keys(nodeData).length === 0) return;
-    
-    console.log('🔄 Node data changed, scheduling save:', nodeData);
-    
-    const saveTimer = setTimeout(() => {
-      saveToFirestore(nodeData);
-    }, 1000); // Wait 1 second after last change before saving
-
-    return () => clearTimeout(saveTimer);
-  }, [nodeData, flowId, allFlowNodes, auth.currentUser]);
   
   // Function to get existing variables from all SetVariable nodes and tested HTTP nodes
   const getExistingVariables = () => {
