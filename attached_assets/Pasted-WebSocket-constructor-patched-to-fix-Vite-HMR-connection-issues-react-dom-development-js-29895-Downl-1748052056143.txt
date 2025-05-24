@@ -1,0 +1,84 @@
+WebSocket constructor patched to fix Vite HMR connection issues
+react-dom.development.js:29895 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+/api/auth/register:1 
+            
+            
+            Failed to load resource: the server responded with a status of 409 (Conflict)
+mpPs0hkOn9k5ryPJOfMv:90 User already exists in the database
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 No initial nodes to load or empty array received
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 🧪 Testing HTTP node: GET https://api.artic.edu/api/v1/artworks
+mpPs0hkOn9k5ryPJOfMv:90 ✅ Node test result: Object
+mpPs0hkOn9k5ryPJOfMv:90 ✅ Generated variables: Array(25)
+mpPs0hkOn9k5ryPJOfMv:90 ✅ Test result stored: Object
+mpPs0hkOn9k5ryPJOfMv:90 🔄 Sharing test results from node httpRequest_1747967479330 with all nodes
+mpPs0hkOn9k5ryPJOfMv:90 🔄 Sharing data from node httpRequest_1747967479330: Object
+mpPs0hkOn9k5ryPJOfMv:90 🔄 Sharing data from node setVariable_1748037790401: Object
+mpPs0hkOn9k5ryPJOfMv:90 🔍 NEW VARIABLE SELECTOR - Starting collection...
+mpPs0hkOn9k5ryPJOfMv:90 📋 Nodes to check: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Checking httpRequest_1747967479330 (direct): Object
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Checking setVariable_1748037790401 (direct): Object
+mpPs0hkOn9k5ryPJOfMv:90 📊 NEW SELECTOR: Found 0 total variables: Array(0)
+dialog.tsx:542  Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ dialog.tsx:542
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 No initial nodes to load or empty array received
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 🔍 NEW VARIABLE SELECTOR - Starting collection...
+mpPs0hkOn9k5ryPJOfMv:90 📋 Nodes to check: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Checking httpRequest_1747967479330 (direct): Object
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Checking setVariable_1748037790401 (direct): Object
+mpPs0hkOn9k5ryPJOfMv:90 📊 NEW SELECTOR: Found 0 total variables: Array(0)
+dialog.tsx:542  Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ dialog.tsx:542
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 No initial nodes to load or empty array received
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 🧪 Testing HTTP node: GET https://api.artic.edu/api/v1/artworks
+mpPs0hkOn9k5ryPJOfMv:90 🔄 Sharing test results from node httpRequest_1747967479330 with all nodes
+mpPs0hkOn9k5ryPJOfMv:90 🔄 Sharing data from node httpRequest_1747967479330: Object
+mpPs0hkOn9k5ryPJOfMv:90 🔄 Sharing data from node setVariable_1748037790401: Object
+mpPs0hkOn9k5ryPJOfMv:90 ✅ Node test result: Object
+mpPs0hkOn9k5ryPJOfMv:90 ✅ Generated variables: Array(25)
+mpPs0hkOn9k5ryPJOfMv:90 ✅ Test result stored: Object
+mpPs0hkOn9k5ryPJOfMv:90 🔄 Sharing test results from node httpRequest_1747967479330 with all nodes
+mpPs0hkOn9k5ryPJOfMv:90 🔄 Sharing data from node httpRequest_1747967479330: Object
+mpPs0hkOn9k5ryPJOfMv:90 🔄 Sharing data from node setVariable_1748037790401: Object
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 No initial nodes to load or empty array received
+mpPs0hkOn9k5ryPJOfMv:90 Reporting regular node changes to parent
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Initial nodes data received in Flow Builder: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 Setting processed nodes: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 🔍 NEW VARIABLE SELECTOR - Starting collection...
+mpPs0hkOn9k5ryPJOfMv:90 📋 Nodes to check: Array(2)
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Checking httpRequest_1747967479330 (direct): Object
+mpPs0hkOn9k5ryPJOfMv:90 🔍 Checking setVariable_1748037790401 (direct): Object
+mpPs0hkOn9k5ryPJOfMv:90 📊 NEW SELECTOR: Found 0 total variables: Array(0)

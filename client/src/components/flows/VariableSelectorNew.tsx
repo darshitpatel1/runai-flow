@@ -47,7 +47,8 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
         type: node.type,
         hasVariables: !!node.data?.variables,
         variableCount: node.data?.variables?.length || 0,
-        variables: node.data?.variables
+        variables: node.data?.variables,
+        allNodeData: node.data
       });
       
       // Add variables from tested HTTP nodes
