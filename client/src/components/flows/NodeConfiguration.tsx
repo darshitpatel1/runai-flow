@@ -86,7 +86,10 @@ export function NodeConfiguration({ node, updateNodeData, onClose, connectors, o
   };
   
   const handleChange = (field: string, value: any) => {
-    setNodeData({ ...nodeData, [field]: value });
+    const updatedData = { ...nodeData, [field]: value };
+    setNodeData(updatedData);
+    // Immediately save the change to the flow
+    updateNodeData(node.id, updatedData);
   };
   
   // Function to get existing variables from all SetVariable nodes and tested HTTP nodes
