@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, X } from 'lucide-react';
+import { Search, X, Eye, Database, Code, Hash, Calendar, Type, List, FileText, Activity } from 'lucide-react';
 interface VariableSelectorNewProps {
   open: boolean;
   onClose: () => void;
@@ -19,10 +19,58 @@ type VariableEntry = {
   path: string;
   source: "variable" | "testResult";
   preview?: string;
+  dataType?: "string" | "number" | "boolean" | "array" | "object" | "date" | "null";
+  rawValue?: any;
 };
 
 export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNodeId, manualNodes }: VariableSelectorNewProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Helper function to get icon based on data type
+  const getDataTypeIcon = (dataType: string, variableName: string) => {
+    // First check for specific field names
+    if (variableName.toLowerCase().includes('date') || variableName.toLowerCase().includes('time')) {
+      return <Calendar className="h-4 w-4 text-blue-500" />;
+    }
+    if (variableName.toLowerCase().includes('id') || variableName.toLowerCase().includes('uuid')) {
+      return <Hash className="h-4 w-4 text-purple-500" />;
+    }
+    if (variableName.toLowerCase().includes('title') || variableName.toLowerCase().includes('name')) {
+      return <Type className="h-4 w-4 text-green-500" />;
+    }
+    
+    // Then by data type
+    switch (dataType) {
+      case 'string':
+        return <FileText className="h-4 w-4 text-green-500" />;
+      case 'number':
+        return <Hash className="h-4 w-4 text-blue-500" />;
+      case 'boolean':
+        return <Code className="h-4 w-4 text-orange-500" />;
+      case 'array':
+        return <List className="h-4 w-4 text-purple-500" />;
+      case 'object':
+        return <Database className="h-4 w-4 text-indigo-500" />;
+      case 'date':
+        return <Calendar className="h-4 w-4 text-red-500" />;
+      default:
+        return <Activity className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  // Helper function to detect data type from value
+  const detectDataType = (value: any): string => {
+    if (value === null || value === undefined) return 'null';
+    if (Array.isArray(value)) return 'array';
+    if (value instanceof Date) return 'date';
+    if (typeof value === 'object') return 'object';
+    if (typeof value === 'string') {
+      // Check if it's a date string
+      if (/^\d{4}-\d{2}-\d{2}/.test(value)) return 'date';
+      return 'string';
+    }
+    return typeof value;
+  };
   
   // Copy the exact working generateVariablePaths function from NodeConfiguration
   const generateVariablePaths = (obj: any, prefix = ""): string[] => {
@@ -197,8 +245,11 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
             );
             
             if (!exists) {
-              // Get preview value from test result
+              // Get preview value and data type from test result
               let preview = 'No preview';
+              let dataType = 'string';
+              let rawValue = null;
+              
               try {
                 const pathParts = path.split('.');
                 let value = testResult;
@@ -211,21 +262,46 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
                     value = value[part];
                   }
                 }
+                
+                rawValue = value;
+                dataType = detectDataType(value);
+                
+                // Create smart previews based on data type
                 if (typeof value === 'string') {
-                  preview = value.length > 50 ? `"${value.substring(0, 50)}..."` : `"${value}"`;
+                  if (value.length > 60) {
+                    preview = `"${value.substring(0, 60)}..."`;
+                  } else {
+                    preview = `"${value}"`;
+                  }
                 } else if (typeof value === 'number') {
                   preview = value.toLocaleString();
                 } else if (typeof value === 'boolean') {
                   preview = value ? 'true' : 'false';
                 } else if (Array.isArray(value)) {
-                  preview = `Array (${value.length} items)`;
+                  if (value.length === 0) {
+                    preview = 'Empty array';
+                  } else if (value.length <= 3) {
+                    preview = `[${value.map(v => typeof v === 'string' ? `"${v}"` : v).join(', ')}]`;
+                  } else {
+                    preview = `Array with ${value.length} items`;
+                  }
                 } else if (value && typeof value === 'object') {
-                  preview = `Object (${Object.keys(value).length} properties)`;
+                  const keys = Object.keys(value);
+                  if (keys.length <= 3) {
+                    preview = `{${keys.join(', ')}}`;
+                  } else {
+                    preview = `Object with ${keys.length} properties`;
+                  }
+                } else if (value === null) {
+                  preview = 'null';
+                } else if (value === undefined) {
+                  preview = 'undefined';
                 } else {
                   preview = String(value);
                 }
               } catch (error) {
                 preview = 'Preview unavailable';
+                dataType = 'unknown';
               }
               
               console.log(`✅ Creating variable: ${displayName} = ${preview}`);
@@ -237,7 +313,9 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
                 variableName: displayName,
                 path: `{{${fullPath}}}`,
                 source: "testResult",
-                preview: preview
+                preview: preview,
+                dataType: dataType as any,
+                rawValue: rawValue
               });
             }
           });
@@ -317,64 +395,88 @@ export function VariableSelectorNew({ open, onClose, onSelectVariable, currentNo
         </div>
         
         {/* Variables List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {filteredVariables.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               {allVariables.length === 0 ? (
                 <div>
-                  <p className="text-sm">No variables available.</p>
-                  <p className="text-xs mt-1">Test your HTTP nodes to create variables.</p>
+                  <Database className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                  <p className="text-sm font-medium">No variables available</p>
+                  <p className="text-xs mt-1 text-gray-400">Test your API nodes to generate variables from real data</p>
                 </div>
               ) : (
-                <p className="text-sm">No variables match your search.</p>
+                <div>
+                  <Search className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                  <p className="text-sm">No variables match your search</p>
+                </div>
               )}
             </div>
           ) : (
             filteredVariables.map((variable, index) => (
               <div
                 key={`${variable.nodeId}-${index}`}
-                className="group p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-300 dark:hover:border-blue-600 cursor-pointer transition-all duration-200"
+                className="group p-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-950/20 dark:hover:to-indigo-950/20 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md cursor-pointer transition-all duration-300 transform hover:scale-[1.02]"
                 onClick={() => handleSelectVariable(variable)}
               >
-                <div className="flex items-start justify-between mb-2">
+                {/* Header with Icon, Name and Source Badge */}
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    {getDataTypeIcon(variable.dataType || 'string', variable.variableName)}
+                  </div>
+                  
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
-                      {variable.variableName}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
+                        {variable.variableName}
+                      </h3>
+                      <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
+                        variable.source === 'testResult' 
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
+                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                      }`}>
+                        {variable.source === 'testResult' ? 'Live API Data' : 'Variable'}
+                      </span>
+                    </div>
+                    
+                    <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                      <Activity className="h-3 w-3" />
                       from {variable.nodeName}
                     </p>
                   </div>
-                  <div className="ml-2 flex-shrink-0">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      variable.source === 'testResult' 
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
-                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                    }`}>
-                      {variable.source === 'testResult' ? 'API' : 'Var'}
-                    </span>
-                  </div>
                 </div>
                 
-                {/* Preview */}
+                {/* Enhanced Preview with Real Data */}
                 {variable.preview && (
-                  <div className="mb-2 p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs">
-                    <span className="text-gray-600 dark:text-gray-400">Preview: </span>
-                    <span className="text-blue-600 dark:text-blue-400 font-mono">
+                  <div className="mb-3 p-3 bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-blue-900/20 rounded-lg border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Eye className="h-3 w-3 text-blue-500" />
+                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Live Preview</span>
+                      <span className="text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded">
+                        {variable.dataType || 'string'}
+                      </span>
+                    </div>
+                    <div className="text-sm font-mono text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900 p-2 rounded border break-all">
                       {variable.preview}
-                    </span>
+                    </div>
                   </div>
                 )}
                 
                 {/* Variable Path */}
-                <div className="text-xs font-mono text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 p-2 rounded break-all">
-                  {variable.path}
+                <div className="mb-3 p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Code className="h-3 w-3 text-gray-500" />
+                    <span className="text-xs text-gray-600 dark:text-gray-400">Variable Path</span>
+                  </div>
+                  <div className="text-xs font-mono text-gray-700 dark:text-gray-300 break-all">
+                    {variable.path}
+                  </div>
                 </div>
                 
-                {/* Use Button */}
-                <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  <button className="w-full px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors duration-200">
-                    Use Variable
+                {/* Use Button with Enhanced Styling */}
+                <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0">
+                  <button className="w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                    <Database className="h-4 w-4" />
+                    Use This Variable
                   </button>
                 </div>
               </div>
