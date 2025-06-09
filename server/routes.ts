@@ -196,11 +196,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // User routes
-  app.get('/api/user', requireAuth, async (req, res) => {
+  app.get('/api/user', simpleAuth, async (req, res) => {
     res.json((req as any).user);
   });
   
-  app.patch('/api/user', requireAuth, async (req, res) => {
+  app.patch('/api/user', simpleAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
       const { displayName, photoUrl } = req.body;
@@ -217,7 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Connector routes
-  app.get('/api/connectors', requireAuth, async (req, res) => {
+  app.get('/api/connectors', simpleAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
       const connectors = await storage.getConnectors(userId);
@@ -227,7 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get('/api/connectors/:id', requireAuth, async (req, res) => {
+  app.get('/api/connectors/:id', simpleAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
       const connectorId = parseInt(req.params.id);
@@ -248,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post('/api/connectors', requireAuth, async (req, res) => {
+  app.post('/api/connectors', simpleAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
       
@@ -275,7 +275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.put('/api/connectors/:id', requireAuth, async (req, res) => {
+  app.put('/api/connectors/:id', simpleAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
       const connectorId = parseInt(req.params.id);
@@ -984,7 +984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/tables/rows/:id', requireAuth, async (req, res) => {
+  app.put('/api/tables/rows/:id', simpleAuth, async (req, res) => {
     try {
       const rowId = parseInt(req.params.id);
       
@@ -1004,7 +1004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/tables/rows/:id', requireAuth, async (req, res) => {
+  app.delete('/api/tables/rows/:id', simpleAuth, async (req, res) => {
     try {
       const rowId = parseInt(req.params.id);
       
