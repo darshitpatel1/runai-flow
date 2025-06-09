@@ -75,6 +75,8 @@ export default function TableDetailPage() {
       });
     },
     onSuccess: () => {
+      // Force complete cache refresh
+      queryClient.removeQueries({ queryKey: [`/api/tables/${tableId}/rows`] });
       queryClient.invalidateQueries({ queryKey: [`/api/tables/${tableId}/rows`] });
       toast({
         title: "Cell updated",
@@ -98,6 +100,8 @@ export default function TableDetailPage() {
       });
     },
     onSuccess: () => {
+      // Force complete cache refresh
+      queryClient.removeQueries({ queryKey: [`/api/tables/${tableId}/rows`] });
       queryClient.invalidateQueries({ queryKey: [`/api/tables/${tableId}/rows`] });
       toast({
         title: "Row deleted",
@@ -122,6 +126,8 @@ export default function TableDetailPage() {
       });
     },
     onSuccess: () => {
+      // Force complete cache refresh
+      queryClient.removeQueries({ queryKey: [`/api/tables/${tableId}/rows`] });
       queryClient.invalidateQueries({ queryKey: [`/api/tables/${tableId}/rows`] });
       toast({
         title: "Row added",

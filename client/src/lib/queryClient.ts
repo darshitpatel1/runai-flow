@@ -80,6 +80,8 @@ export const getQueryFn: <T>(options: {
     const res = await fetch(queryKey[0] as string, {
       credentials: "include",
       headers: {
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
         ...(firebaseToken ? { "Authorization": `Bearer ${firebaseToken}` } : {})
       }
     });

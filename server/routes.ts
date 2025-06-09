@@ -955,6 +955,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const rows = await storage.getTableRows(tableId, limit, offset);
+      
+      // Prevent caching to ensure fresh data after updates
+      res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store'
+      });
+      
       res.json(rows);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
