@@ -41,8 +41,22 @@ export default function FlowBuilderPage() {
 
   useEffect(() => {
     // Get flow ID from URL params
-    const urlParams = new URLSearchParams(location.split('?')[1] || '');
+    const urlParams = new URLSearchParams(window.location.search);
     const urlFlowId = urlParams.get('id');
+    
+    console.log('Current location:', location);
+    console.log('URL search params:', window.location.search);
+    console.log('Flow ID from URL:', urlFlowId);
+    console.log('User:', user?.uid);
+    
+    // Reset state when switching flows or starting new
+    if (!urlFlowId) {
+      setFlowId(null);
+      setFlowName("");
+      setFlowDescription("");
+      setNodes([]);
+      setEdges([]);
+    }
     
     // Load existing flow if ID is provided
     if (urlFlowId && user) {
@@ -143,19 +157,19 @@ export default function FlowBuilderPage() {
       <div className="flex flex-col h-screen">
         {/* Compact Flow Header */}
         <div className="bg-black border-b border-gray-800 px-4 py-2">
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
-            <div className="flex items-center space-x-4 max-w-lg">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center space-x-3">
               <Input
                 placeholder="Flow name..."
                 value={flowName}
                 onChange={(e) => setFlowName(e.target.value)}
-                className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8 w-48"
+                className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8 w-44"
               />
               <Input
                 placeholder="Description..."
                 value={flowDescription}
                 onChange={(e) => setFlowDescription(e.target.value)}
-                className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8 w-64"
+                className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8 w-56"
               />
             </div>
             
