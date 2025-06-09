@@ -803,7 +803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Data tables routes
-  app.get('/api/tables', requireAuth, async (req, res) => {
+  app.get('/api/tables', simpleAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
       const tables = await storage.getTables(userId);
@@ -813,7 +813,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/tables/:id', requireAuth, async (req, res) => {
+  app.get('/api/tables/:id', simpleAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
       const tableId = parseInt(req.params.id);
@@ -834,7 +834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/tables', requireAuth, async (req, res) => {
+  app.post('/api/tables', simpleAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
       
@@ -844,7 +844,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId
       });
       
-      const table = await storage.createTable(validatedData);
+      const table = await storage.createTable({
+        userId: validatedData.userId,
+        name: validatedData.name,
+        description: validatedData.description || undefined,
+        columns: validatedData.columns
+      });
       res.status(201).json(table);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -854,7 +859,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/tables/:id', requireAuth, async (req, res) => {
+  app.put('/api/tables/:id', simpleAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
       const tableId = parseInt(req.params.id);
@@ -875,7 +880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/tables/:id', requireAuth, async (req, res) => {
+  app.delete('/api/tables/:id', simpleAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
       const tableId = parseInt(req.params.id);
@@ -892,7 +897,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Table rows routes
-  app.get('/api/tables/:id/rows', requireAuth, async (req, res) => {
+  app.get('/api/tables/:id/rows', simpleAuth, async (req, res) => {
     try {
       const tableId = parseInt(req.params.id);
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
@@ -909,7 +914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/tables/:id/rows', requireAuth, async (req, res) => {
+  app.post('/api/tables/:id/rows', simpleAuth, async (req, res) => {
     try {
       const tableId = parseInt(req.params.id);
       
