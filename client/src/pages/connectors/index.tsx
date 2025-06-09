@@ -266,7 +266,8 @@ export default function Connectors() {
                     body: JSON.stringify({
                       code: event.data.code,
                       connectorId: targetConnectorId,
-                      userId: user?.uid
+                      userId: user?.uid,
+                      connectorConfig: connectors.find(c => c.id === targetConnectorId)
                     })
                   });
 
