@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { collection, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { SaveIcon, ArrowLeftIcon } from "lucide-react";
+import { ArrowLeftIcon } from "lucide-react";
 import ReactFlow, { 
   Node, 
   Edge, 
@@ -33,6 +33,7 @@ export default function FlowBuilderPage() {
   const [flowDescription, setFlowDescription] = useState("");
   const [flowId, setFlowId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [autoSaving, setAutoSaving] = useState(false);
   const [location, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -69,18 +70,11 @@ export default function FlowBuilderPage() {
     }
   };
 
-  const saveFlow = async () => {
-    if (!user) return;
-    if (!flowName.trim()) {
-      toast({
-        title: "Name Required",
-        description: "Please enter a flow name",
-        variant: "destructive",
-      });
-      return;
-    }
+  // Auto-save function
+  const autoSaveFlow = useCallback(async () => {
+    if (!user || !flowName.trim()) return;
 
-    setSaving(true);
+    setAutoSaving(true);
     try {
       const flowData = {
         name: flowName.trim(),
@@ -93,10 +87,6 @@ export default function FlowBuilderPage() {
       if (flowId) {
         // Update existing flow
         await updateDoc(doc(db, "users", user.uid, "flows", flowId), flowData);
-        toast({
-          title: "Flow Updated",
-          description: "Your flow has been saved successfully",
-        });
       } else {
         // Create new flow
         const flowsRef = collection(db, "users", user.uid, "flows");
@@ -105,71 +95,63 @@ export default function FlowBuilderPage() {
           createdAt: new Date()
         });
         setFlowId(docRef.id);
-        // Update URL to include the flow ID
-        navigate(`/flow-builder?id=${docRef.id}`);
-        toast({
-          title: "Flow Created",
-          description: "Your new flow has been created successfully",
-        });
+        // Update URL to include the flow ID without navigation
+        window.history.replaceState({}, '', `/flow-builder?id=${docRef.id}`);
       }
     } catch (error) {
-      console.error("Error saving flow:", error);
-      toast({
-        title: "Save Failed",
-        description: "Failed to save the flow",
-        variant: "destructive",
-      });
+      console.error("Error auto-saving flow:", error);
     } finally {
-      setSaving(false);
+      setAutoSaving(false);
     }
-  };
+  }, [user, flowName, flowDescription, nodes, edges, flowId]);
+
+  // Auto-save on changes with debounce
+  useEffect(() => {
+    if (!flowName.trim()) return;
+    
+    const timeoutId = setTimeout(() => {
+      autoSaveFlow();
+    }, 2000); // Auto-save after 2 seconds of inactivity
+
+    return () => clearTimeout(timeoutId);
+  }, [flowName, flowDescription, autoSaveFlow]);
 
   const onConnect = (params: Connection) => setEdges((eds) => addEdge(params, eds));
 
   return (
     <AppLayout>
       <div className="flex flex-col h-screen">
-        {/* Flow Creation Header */}
-        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-4">
+        {/* Compact Flow Header */}
+        <div className="bg-black border-b border-gray-800 px-4 py-2">
           <div className="flex items-center justify-between max-w-7xl mx-auto">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/dashboard")}
-                className="flex items-center space-x-2"
-              >
-                <ArrowLeftIcon className="h-4 w-4" />
-                <span>Back to Dashboard</span>
-              </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/dashboard")}
+              className="flex items-center space-x-1 text-white hover:bg-gray-800"
+            >
+              <ArrowLeftIcon className="h-3 w-3" />
+              <span className="text-sm">Dashboard</span>
+            </Button>
+            
+            <div className="flex items-center space-x-4 flex-1 max-w-lg mx-4">
+              <Input
+                placeholder="Flow name..."
+                value={flowName}
+                onChange={(e) => setFlowName(e.target.value)}
+                className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8"
+              />
+              <Input
+                placeholder="Description..."
+                value={flowDescription}
+                onChange={(e) => setFlowDescription(e.target.value)}
+                className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8"
+              />
             </div>
             
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <div className="flex flex-col space-y-2">
-                  <Input
-                    placeholder="Enter flow name..."
-                    value={flowName}
-                    onChange={(e) => setFlowName(e.target.value)}
-                    className="w-64"
-                  />
-                  <Textarea
-                    placeholder="Flow description (optional)..."
-                    value={flowDescription}
-                    onChange={(e) => setFlowDescription(e.target.value)}
-                    className="w-64 h-20 resize-none"
-                  />
-                </div>
-              </div>
-              
-              <Button
-                onClick={saveFlow}
-                disabled={saving || !flowName.trim()}
-                className="flex items-center space-x-2"
-              >
-                <SaveIcon className="h-4 w-4" />
-                <span>{saving ? "Saving..." : flowId ? "Update Flow" : "Create Flow"}</span>
-              </Button>
+            <div className="flex items-center space-x-2 text-xs text-gray-400">
+              {autoSaving && <span>Saving...</span>}
+              {flowId && !autoSaving && <span>Saved</span>}
             </div>
           </div>
         </div>
@@ -183,23 +165,10 @@ export default function FlowBuilderPage() {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             fitView
-            className="bg-gray-50 dark:bg-gray-900"
+            className="bg-black"
           >
-            <Controls />
-            <Background variant={BackgroundVariant.Dots} />
-            
-            {flowName && (
-              <Panel position="top-left">
-                <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg border">
-                  <h3 className="font-medium text-sm">{flowName}</h3>
-                  {flowDescription && (
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                      {flowDescription}
-                    </p>
-                  )}
-                </div>
-              </Panel>
-            )}
+            <Controls className="fill-white" />
+            <Background variant={BackgroundVariant.Dots} className="bg-black" color="#333" />
           </ReactFlow>
         </div>
       </div>

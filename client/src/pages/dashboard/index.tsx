@@ -675,7 +675,7 @@ export default function Dashboard() {
                         </p>
                       </CardContent>
                       <CardFooter className="flex justify-between">
-                        <Link href={`/flow-builder/${flow.id}`}>
+                        <Link href={`/flow-builder?id=${flow.id}`}>
                           <Button variant="ghost" size="sm" className="gap-1">
                             Edit <ArrowRightIcon className="h-4 w-4" />
                           </Button>
