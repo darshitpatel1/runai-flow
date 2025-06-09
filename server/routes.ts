@@ -257,20 +257,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Generate a state parameter for security
         const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         
-        // Build authorization URL with minimal required parameters
+        // Build clean authorization URL with only essential parameters
         const authUrl = new URL(auth.authorizationUrl);
-        authUrl.searchParams.append('response_type', 'code');
-        authUrl.searchParams.append('client_id', auth.clientId);
-        authUrl.searchParams.append('state', state);
         
-        // Only add redirect_uri if it's provided and different from the base callback
+        // Clear any existing parameters to ensure clean URL
+        authUrl.search = '';
+        
+        // Add only essential OAuth2 parameters
+        authUrl.searchParams.set('response_type', 'code');
+        authUrl.searchParams.set('client_id', auth.clientId);
+        authUrl.searchParams.set('state', state);
+        
+        // Only add optional parameters if they're provided
         if (auth.redirectUri && auth.redirectUri.trim()) {
-          authUrl.searchParams.append('redirect_uri', auth.redirectUri);
+          authUrl.searchParams.set('redirect_uri', auth.redirectUri);
         }
         
-        // Only add scope if it's provided
         if (auth.scope && auth.scope.trim()) {
-          authUrl.searchParams.append('scope', auth.scope);
+          authUrl.searchParams.set('scope', auth.scope);
         }
 
         return res.json({
