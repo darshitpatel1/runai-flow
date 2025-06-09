@@ -154,7 +154,7 @@ export default function FlowBuilderPage() {
                   placeholder="Flow name..."
                   value={flowName}
                   onChange={(e) => setFlowName(e.target.value)}
-                  className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8 w-44"
+                  className="bg-transparent border-none text-white font-bold placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8 w-44"
                 />
                 <Input
                   placeholder="Description..."
