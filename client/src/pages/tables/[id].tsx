@@ -782,6 +782,8 @@ export default function TableDetailPage() {
                                         autoFocus
                                         onKeyDown={(e) => {
                                           if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            e.stopPropagation();
                                             saveEditedCell();
                                           } else if (e.key === 'Escape') {
                                             cancelEditing();
@@ -799,6 +801,8 @@ export default function TableDetailPage() {
                                         autoFocus
                                         onKeyDown={(e) => {
                                           if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            e.stopPropagation();
                                             saveEditedCell();
                                           } else if (e.key === 'Escape') {
                                             cancelEditing();
@@ -816,6 +820,8 @@ export default function TableDetailPage() {
                                         autoFocus
                                         onKeyDown={(e) => {
                                           if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            e.stopPropagation();
                                             saveEditedCell();
                                           } else if (e.key === 'Escape') {
                                             cancelEditing();
