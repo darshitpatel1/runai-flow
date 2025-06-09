@@ -1,7 +1,4 @@
-import React, { useState, useEffect } from "react";
-import { collection, query, orderBy, getDocs, limit, startAfter, where, getDoc, doc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { useAuth } from "@/context/AuthContext";
+import React, { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,8 +11,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2Icon, SearchIcon, FilterIcon, ChevronRightIcon } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { SearchIcon, FilterIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { 
   Select,
@@ -24,221 +20,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { ExecutionDetail } from "@/components/flows/ExecutionDetail";
 
 export default function History() {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [executions, setExecutions] = useState<any[]>([]);
-  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
-  const [lastVisible, setLastVisible] = useState<any>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
-  const [flowsMap, setFlowsMap] = useState<Record<string, any>>({});
   
-  useEffect(() => {
-    const fetchExecutions = async () => {
-      if (!user) return;
-      
-      try {
-        // Fetch executions from our backend API (PostgreSQL) instead of Firestore
-        const response = await fetch('/api/executions', {
-          headers: {
-            'Authorization': `Bearer ${user.uid}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch executions');
-        }
-        
-        const data = await response.json();
-        const executionsData = data.executions || [];
-        
-        setExecutions(executionsData);
-        setLoading(false);
-      } catch (error: any) {
-        console.error('Error fetching executions:', error);
-        toast({
-          title: "Error loading execution history",
-          description: error.message,
-          variant: "destructive"
-        });
-        setLoading(false);
-      }
-    };
-
-    fetchExecutions();
-  }, [user]);
-  
-  const handleLoadMore = async () => {
-    if (!user || !lastVisible || loadingMore) return;
-    
-    setLoadingMore(true);
-    
-    try {
-      let executionsQuery = query(
-        collection(db, "users", user.uid, "executions"),
-        orderBy("startedAt", "desc"),
-        startAfter(lastVisible),
-        limit(10)
-      );
-      
-      const snapshot = await getDocs(executionsQuery);
-      
-      if (snapshot.empty) {
-        setLoadingMore(false);
-        return;
-      }
-      
-      const newExecutions = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      setExecutions([...executions, ...newExecutions]);
-      setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
-    } catch (error: any) {
-      toast({
-        title: "Error loading more executions",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-  
-  const toggleRowExpand = (id: string) => {
-    setExpandedRows({
-      ...expandedRows,
-      [id]: !expandedRows[id]
-    });
-  };
-  
-  const applyFilters = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    
-    try {
-      let executionsQuery: any = collection(db, "users", user.uid, "executions");
-      let constraints = [orderBy("startedAt", "desc"), limit(10)];
-      
-      // Apply status filter
-      if (statusFilter !== "all") {
-        constraints.push(where("status", "==", statusFilter));
-      }
-      
-      // Apply date filter
-      if (dateFilter !== "all") {
-        const date = new Date();
-        if (dateFilter === "today") {
-          date.setHours(0, 0, 0, 0);
-        } else if (dateFilter === "week") {
-          date.setDate(date.getDate() - 7);
-        } else if (dateFilter === "month") {
-          date.setMonth(date.getMonth() - 1);
-        }
-        constraints.push(where("startedAt", ">=", date));
-      }
-      
-      executionsQuery = query(executionsQuery, ...constraints);
-      const snapshot = await getDocs(executionsQuery);
-      
-      if (snapshot.empty) {
-        setExecutions([]);
-        setLastVisible(null);
-        setLoading(false);
-        return;
-      }
-      
-      const executionsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      // Apply search filter client-side (since Firestore doesn't support full-text search)
-      let filteredExecutions = executionsData;
-      if (searchTerm) {
-        const lowercaseSearch = searchTerm.toLowerCase();
-        filteredExecutions = executionsData.filter(exec => {
-          const flowName = flowsMap[exec.flowId]?.name || "";
-          return (
-            flowName.toLowerCase().includes(lowercaseSearch) ||
-            exec.id.toLowerCase().includes(lowercaseSearch) ||
-            exec.status.toLowerCase().includes(lowercaseSearch)
-          );
-        });
-      }
-      
-      setExecutions(filteredExecutions);
-      setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
-    } catch (error: any) {
-      toast({
-        title: "Error applying filters",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+  const applyFilters = () => {
+    // Filter functionality can be implemented here
+    console.log("Applying filters:", { searchTerm, statusFilter, dateFilter });
   };
   
   const resetFilters = () => {
     setSearchTerm("");
     setStatusFilter("all");
     setDateFilter("all");
-    // Re-fetch the original data
-    setLoading(true);
-    const fetchExecutions = async () => {
-      if (!user) return;
-      
-      try {
-        let executionsQuery = query(
-          collection(db, "users", user.uid, "executions"),
-          orderBy("startedAt", "desc"),
-          limit(10)
-        );
-        
-        const snapshot = await getDocs(executionsQuery);
-        
-        if (snapshot.empty) {
-          setExecutions([]);
-          setLoading(false);
-          return;
-        }
-        
-        const executionsData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        
-        setExecutions(executionsData);
-        setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
-      } catch (error: any) {
-        toast({
-          title: "Error resetting filters",
-          description: error.message,
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchExecutions();
   };
   
   const getStatusBadge = (status: string) => {
@@ -315,111 +112,16 @@ export default function History() {
           </CardContent>
         </Card>
         
-        {/* Executions Table */}
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
+        {/* Empty State */}
+        <Card className="text-center p-6">
+          <div className="mb-4">
+            <svg className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
           </div>
-        ) : executions.length > 0 ? (
-          <>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12"></TableHead>
-                    <TableHead className="text-left">Flow Name</TableHead>
-                    <TableHead className="text-left">Status</TableHead>
-                    <TableHead className="text-left">Start Time</TableHead>
-                    <TableHead className="text-left">Duration</TableHead>
-                    <TableHead className="text-left">Execution ID</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {executions.map((execution) => [
-                    // Regular Row
-                    <TableRow 
-                      key={`row-${execution.id}`}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => toggleRowExpand(execution.id)}
-                    >
-                      <TableCell>
-                        <Button variant="ghost" size="sm" className="p-0 h-6 w-6">
-                          <ChevronRightIcon 
-                            className={`h-4 w-4 transition-transform ${expandedRows[execution.id] ? 'rotate-90' : ''}`}
-                          />
-                        </Button>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {flowsMap[execution.flowId]?.name || "Unknown Flow"}
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(execution.status)}
-                      </TableCell>
-                      <TableCell>
-                        {execution.startedAt?.toDate 
-                          ? new Date(execution.startedAt.toDate()).toLocaleString() 
-                          : "Unknown"}
-                      </TableCell>
-                      <TableCell>
-                        {execution.duration 
-                          ? `${execution.duration}ms`
-                          : execution.status === "running" 
-                            ? "Running..."
-                            : "Unknown"}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {execution.id.substring(0, 8)}...
-                      </TableCell>
-                    </TableRow>,
-                    
-                    // Expanded Content Row - only rendered when expanded
-                    expandedRows[execution.id] ? (
-                      <TableRow key={`content-${execution.id}`}>
-                        <TableCell colSpan={6} className="bg-muted/30 p-0">
-                          <div className="p-4">
-                            <ExecutionDetail 
-                              execution={execution} 
-                              flowData={flowsMap[execution.flowId]} 
-                            />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : null
-                  ].filter(Boolean))}
-                </TableBody>
-              </Table>
-            </div>
-            
-            {lastVisible && (
-              <div className="flex justify-center mt-6">
-                <Button
-                  variant="outline"
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? (
-                    <>
-                      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    "Load More"
-                  )}
-                </Button>
-              </div>
-            )}
-          </>
-        ) : (
-          <Card className="text-center p-6">
-            <div className="mb-4">
-              <svg className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium mb-2">No execution history</h3>
-            <p className="text-muted-foreground mb-4">No flow executions found. Run a flow to see execution data.</p>
-          </Card>
-        )}
+          <h3 className="text-lg font-medium mb-2">No execution history</h3>
+          <p className="text-muted-foreground mb-4">Ready to display your execution data here.</p>
+        </Card>
       </div>
     </AppLayout>
   );
