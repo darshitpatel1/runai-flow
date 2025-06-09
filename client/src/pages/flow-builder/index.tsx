@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { collection, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { PlusIcon, WrenchIcon, MicIcon } from "lucide-react";
@@ -40,6 +41,7 @@ export default function FlowBuilderPage() {
   const [location, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { theme } = useTheme();
 
   useEffect(() => {
     // Get flow ID from URL params
@@ -147,24 +149,32 @@ export default function FlowBuilderPage() {
         {/* Main Content */}
         <div className="flex flex-col flex-1">
           {/* Compact Flow Header */}
-          <div className="bg-black border-b border-gray-800 px-4 py-2">
+          <div className={`${theme === 'dark' ? 'bg-black border-gray-800' : 'bg-white border-gray-200'} border-b px-4 py-2`}>
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center space-x-3">
                 <Input
                   placeholder="Flow name..."
                   value={flowName}
                   onChange={(e) => setFlowName(e.target.value)}
-                  className="bg-transparent border-none text-white font-bold placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8 w-44"
+                  className={`bg-transparent border-none font-bold focus:ring-0 focus-visible:ring-0 text-sm h-8 w-44 ${
+                    theme === 'dark' 
+                      ? 'text-white placeholder:text-gray-400' 
+                      : 'text-black placeholder:text-gray-500'
+                  }`}
                 />
                 <Input
                   placeholder="Description..."
                   value={flowDescription}
                   onChange={(e) => setFlowDescription(e.target.value)}
-                  className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8 w-56"
+                  className={`bg-transparent border-none focus:ring-0 focus-visible:ring-0 text-sm h-8 w-56 ${
+                    theme === 'dark' 
+                      ? 'text-white placeholder:text-gray-400' 
+                      : 'text-black placeholder:text-gray-500'
+                  }`}
                 />
               </div>
               
-              <div className="flex items-center space-x-2 text-xs text-gray-400">
+              <div className={`flex items-center space-x-2 text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                 {loading && <span>Loading...</span>}
                 {autoSaving && <span>Saving...</span>}
               </div>
@@ -180,10 +190,14 @@ export default function FlowBuilderPage() {
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               fitView
-              className="bg-black"
+              className={theme === 'dark' ? 'bg-black' : 'bg-gray-50'}
             >
-              <Controls className="fill-white" />
-              <Background variant={BackgroundVariant.Dots} className="bg-black" color="#333" />
+              <Controls className={theme === 'dark' ? 'fill-white' : 'fill-black'} />
+              <Background 
+                variant={BackgroundVariant.Dots} 
+                className={theme === 'dark' ? 'bg-black' : 'bg-gray-50'} 
+                color={theme === 'dark' ? '#333' : '#ddd'} 
+              />
             </ReactFlow>
 
             {/* Chat Input Bar */}
