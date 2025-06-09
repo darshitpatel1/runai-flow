@@ -254,45 +254,78 @@ export default function Connectors() {
               });
             }
             
-            if (event.data.success) {
-              // Update UI to show successful connection
-              setConnectionResults(prev => ({ ...prev, [targetConnectorId]: true }));
-
-              // Also update the persistent connection state
-              setPersistentConnections(prev => {
-                const newState = { ...prev, [targetConnectorId]: true };
-                
-                // Save to localStorage for persistence across page refreshes
+            if (event.data.success && event.data.code) {
+              // Exchange authorization code for access token automatically
+              (async () => {
                 try {
-                  localStorage.setItem('connectorStatus', JSON.stringify(newState));
-                } catch (err) {
-                  console.error('Failed to save connector status to localStorage:', err);
-                }
-                
-                return newState;
-              });
-              
-              // Find the connector name for the toast
-              const targetConnector = connectors.find(c => c.id === targetConnectorId);
-              const connectorName = targetConnector ? targetConnector.name : "the connector";
-              
-              toast({
-                title: "OAuth Authorization Successful",
-                description: `Successfully connected to ${connectorName}`,
-              });
+                  const exchangeResponse = await fetch('/api/oauth-exchange', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      code: event.data.code,
+                      connectorId: targetConnectorId,
+                      userId: user?.uid
+                    })
+                  });
 
-              // Update connector in Firestore to store connection status
-              if (user && targetConnector) {
-                try {
-                  const connectorRef = doc(db, "users", user.uid, "connectors", targetConnectorId);
-                  updateDoc(connectorRef, {
-                    connectionStatus: 'connected',
-                    updatedAt: new Date()
-                  }).catch(err => console.error('Failed to update connector status:', err));
-                } catch (err) {
-                  console.error('Failed to update connector in Firestore:', err);
+                  const exchangeData = await exchangeResponse.json();
+
+                  if (exchangeResponse.ok && exchangeData.success) {
+                    // Update UI to show successful connection
+                    setConnectionResults(prev => ({ ...prev, [targetConnectorId]: true }));
+
+                    // Also update the persistent connection state
+                    setPersistentConnections(prev => {
+                      const newState = { ...prev, [targetConnectorId]: true };
+                      
+                      // Save to localStorage for persistence across page refreshes
+                      try {
+                        localStorage.setItem('connectorStatus', JSON.stringify(newState));
+                      } catch (err) {
+                        console.error('Failed to save connector status to localStorage:', err);
+                      }
+                      
+                      return newState;
+                    });
+                    
+                    // Find the connector name for the toast
+                    const targetConnector = connectors.find(c => c.id === targetConnectorId);
+                    const connectorName = targetConnector ? targetConnector.name : "the connector";
+                    
+                    toast({
+                      title: "OAuth Connection Complete",
+                      description: `Successfully authenticated and connected to ${connectorName}`,
+                    });
+
+                    // Update connector in Firestore to store connection status
+                    if (user && targetConnector) {
+                      try {
+                        const connectorRef = doc(db, "users", user.uid, "connectors", targetConnectorId);
+                        updateDoc(connectorRef, {
+                          connectionStatus: 'connected',
+                          lastAuthenticated: new Date(),
+                          updatedAt: new Date()
+                        }).catch(err => console.error('Failed to update connector status:', err));
+                      } catch (err) {
+                        console.error('Failed to update connector in Firestore:', err);
+                      }
+                    }
+                  } else {
+                    throw new Error(exchangeData.error || 'Token exchange failed');
+                  }
+                } catch (error: any) {
+                  console.error('OAuth token exchange error:', error);
+                  setConnectionResults(prev => ({ ...prev, [targetConnectorId]: false }));
+                  
+                  toast({
+                    title: "Authentication Failed",
+                    description: error.message || "Failed to complete OAuth authentication",
+                    variant: "destructive",
+                  });
                 }
-              }
+              })();
             } else {
               // Show error
               setConnectionResults(prev => ({ ...prev, [targetConnectorId]: false }));

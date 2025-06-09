@@ -257,13 +257,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Generate a state parameter for security
         const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         
-        // Build authorization URL
+        // Build authorization URL with minimal required parameters
         const authUrl = new URL(auth.authorizationUrl);
-        authUrl.searchParams.append('client_id', auth.clientId);
-        authUrl.searchParams.append('redirect_uri', auth.redirectUri);
         authUrl.searchParams.append('response_type', 'code');
+        authUrl.searchParams.append('client_id', auth.clientId);
         authUrl.searchParams.append('state', state);
-        if (auth.scope) {
+        
+        // Only add redirect_uri if it's provided and different from the base callback
+        if (auth.redirectUri && auth.redirectUri.trim()) {
+          authUrl.searchParams.append('redirect_uri', auth.redirectUri);
+        }
+        
+        // Only add scope if it's provided
+        if (auth.scope && auth.scope.trim()) {
           authUrl.searchParams.append('scope', auth.scope);
         }
 
@@ -367,7 +373,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: response.status,
             statusText: response.statusText,
             endpoint: endpoint || 'root',
-            headers: Object.fromEntries(response.headers.entries())
+            headers: Object.fromEntries(response.headers.entries()),
+            note: undefined
           };
 
           // If we get a successful response, break out of the loop
@@ -377,7 +384,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // If we get a 401/403, it might mean auth is wrong but connection works
           if (response.status === 401 || response.status === 403) {
-            testResponse.note = 'Authentication may be incorrect, but connection successful';
+            testResponse = {
+              ...testResponse,
+              note: 'Authentication may be incorrect, but connection successful'
+            };
             break;
           }
 
@@ -486,6 +496,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
           </body>
         </html>
       `);
+    }
+  });
+
+  // Exchange OAuth authorization code for access token
+  app.post('/api/oauth-exchange', async (req, res) => {
+    try {
+      const { code, connectorId, userId } = req.body;
+
+      if (!code || !connectorId || !userId) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+      }
+
+      // Get the connector configuration
+      const connector = await storage.getConnector(userId, connectorId);
+      if (!connector || !connector.authConfig) {
+        return res.status(404).json({ error: 'Connector not found' });
+      }
+
+      const auth = connector.authConfig as any;
+
+      // Exchange code for access token
+      const tokenResponse = await fetch(auth.tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Basic ${Buffer.from(`${auth.clientId}:${auth.clientSecret}`).toString('base64')}`
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: code,
+          redirect_uri: auth.redirectUri || '',
+          client_id: auth.clientId
+        }).toString()
+      });
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        console.error('Token exchange failed:', errorText);
+        return res.status(400).json({ 
+          error: 'Token exchange failed',
+          details: errorText 
+        });
+      }
+
+      const tokenData = await tokenResponse.json();
+
+      if (!tokenData.access_token) {
+        return res.status(400).json({ error: 'No access token received' });
+      }
+
+      // Store the tokens in the connector configuration
+      const updatedAuth = {
+        ...auth,
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token || null,
+        tokenExpiresAt: tokenData.expires_in ? 
+          new Date(Date.now() + (tokenData.expires_in * 1000)) : null,
+        lastAuthenticated: new Date()
+      };
+
+      // Update the connector with the new auth tokens
+      await storage.updateConnector(userId, connectorId, {
+        authConfig: updatedAuth
+      });
+
+      res.json({
+        success: true,
+        message: 'OAuth authentication successful',
+        expiresIn: tokenData.expires_in
+      });
+
+    } catch (error: any) {
+      console.error('OAuth exchange error:', error);
+      res.status(500).json({ 
+        error: 'Internal server error during token exchange',
+        details: error.message 
+      });
     }
   });
 
