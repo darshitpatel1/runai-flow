@@ -71,7 +71,7 @@ export default function TableDetailPage() {
     mutationFn: async ({ rowId, data }: { rowId: number, data: any }) => {
       return await apiRequest(`/api/tables/${tableId}/rows/${rowId}`, {
         method: 'PUT',
-        data,
+        data: { data },
       });
     },
     onSuccess: () => {
