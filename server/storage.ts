@@ -142,6 +142,21 @@ export const storage = {
     
     return updatedUser;
   },
+
+  async getUserByEmail(email: string) {
+    return await db.query.users.findFirst({
+      where: eq(users.email, email)
+    });
+  },
+
+  async updateUserFirebaseUid(userId: number, firebaseUid: string) {
+    const [updatedUser] = await db.update(users)
+      .set({ firebaseUid })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updatedUser;
+  },
   
   // Connector operations
   async getConnectors(userId: number) {

@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { simpleAuth } from "./auth-simple";
 import { 
   insertConnectorSchema, 
   insertDataTableSchema,
@@ -55,13 +56,19 @@ const requireAuth = async (req: Request, res: Response, next: Function) => {
     }
     
     try {
-      // Decode the payload (the middle part)
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+      // Decode the payload (the middle part) - add padding if needed
+      let base64Payload = parts[1];
+      // Add padding if needed for base64 decoding
+      while (base64Payload.length % 4) {
+        base64Payload += '=';
+      }
+      const payload = JSON.parse(Buffer.from(base64Payload, 'base64').toString());
       
       // Extract the Firebase UID from the payload
       const firebaseUid = payload.user_id || payload.sub || payload.uid;
       
       if (!firebaseUid) {
+        console.log('Token payload:', payload);
         return res.status(401).json({ error: 'Could not extract user ID from token' });
       }
       
@@ -73,15 +80,32 @@ const requireAuth = async (req: Request, res: Response, next: Function) => {
         // This helps with testing and development when the frontend and backend states get out of sync
         console.log(`User with Firebase UID ${firebaseUid} not found in database, creating...`);
         if (payload.email) {
-          const newUser = await storage.createUser({
-            firebaseUid,
-            email: payload.email,
-            displayName: payload.name || '',
-            photoUrl: payload.picture || ''
-          });
-          (req as any).user = newUser;
-          next();
-          return;
+          try {
+            const newUser = await storage.createUser({
+              firebaseUid,
+              email: payload.email,
+              displayName: payload.name || '',
+              photoUrl: payload.picture || ''
+            });
+            (req as any).user = newUser;
+            next();
+            return;
+          } catch (error: any) {
+            // If user already exists by email, try to find them by email
+            if (error.code === '23505' && error.constraint === 'users_email_unique') {
+              console.log(`User with email ${payload.email} already exists, finding by email...`);
+              const existingUser = await storage.getUserByEmail(payload.email);
+              if (existingUser) {
+                // Update the existing user with the new Firebase UID
+                await storage.updateUserFirebaseUid(existingUser.id, firebaseUid);
+                (req as any).user = { ...existingUser, firebaseUid };
+                next();
+                return;
+              }
+            }
+            console.error('Error creating/finding user:', error);
+            return res.status(500).json({ error: 'Could not create or find user' });
+          }
         } else {
           return res.status(401).json({ error: 'User not found and could not auto-create user' });
         }
