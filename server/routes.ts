@@ -296,7 +296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete('/api/connectors/:id', requireAuth, async (req, res) => {
+  app.delete('/api/connectors/:id', simpleAuth, async (req, res) => {
     try {
       const userId = (req as any).user.id;
       const connectorId = parseInt(req.params.id);
