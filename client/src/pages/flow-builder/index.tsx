@@ -188,11 +188,11 @@ export default function FlowBuilderPage() {
 
             {/* Chat Input Bar */}
             <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
-              <div className="flex items-center bg-purple-900/40 backdrop-blur-sm border border-purple-400/50 rounded-lg px-4 py-2 shadow-xl w-[600px]">
+              <div className="flex items-center bg-blue-600/30 backdrop-blur-sm border border-blue-400/40 rounded-lg px-4 py-2 shadow-xl w-[600px]">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="p-1 h-8 w-8 text-purple-300 hover:text-white hover:bg-purple-500/40 rounded-md"
+                  className="p-1 h-8 w-8 text-blue-300 hover:text-white hover:bg-blue-500/40 rounded-md"
                 >
                   <PlusIcon className="h-4 w-4" />
                 </Button>
@@ -201,7 +201,7 @@ export default function FlowBuilderPage() {
                   placeholder="Type a message..."
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  className="flex-1 bg-transparent border-none text-white placeholder:text-purple-300/60 focus:ring-0 focus-visible:ring-0 focus:outline-none text-sm mx-3"
+                  className="flex-1 bg-transparent border-none text-white placeholder:text-blue-300/60 focus:ring-0 focus-visible:ring-0 focus:outline-none text-sm mx-3"
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
                       // Handle send message
@@ -215,7 +215,7 @@ export default function FlowBuilderPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="p-1 h-8 w-8 text-purple-300 hover:text-white hover:bg-purple-500/40 rounded-md mr-2"
+                  className="p-1 h-8 w-8 text-blue-300 hover:text-white hover:bg-blue-500/40 rounded-md mr-2"
                 >
                   <WrenchIcon className="h-4 w-4" />
                 </Button>
@@ -223,7 +223,7 @@ export default function FlowBuilderPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="p-1 h-8 w-8 text-purple-300 hover:text-white hover:bg-purple-500/40 rounded-md"
+                  className="p-1 h-8 w-8 text-blue-300 hover:text-white hover:bg-blue-500/40 rounded-md"
                 >
                   <MicIcon className="h-4 w-4" />
                 </Button>
@@ -234,15 +234,15 @@ export default function FlowBuilderPage() {
 
         {/* Right Sidebar */}
         {sidebarOpen && (
-          <div className="w-80 bg-purple-900/40 backdrop-blur-sm border-l border-purple-400/50 flex flex-col">
-            <div className="p-4 border-b border-purple-400/50">
+          <div className="w-80 bg-black border-l border-gray-700 flex flex-col">
+            <div className="p-4 border-b border-gray-700">
               <div className="flex items-center justify-between">
                 <h2 className="text-white font-medium">Tools</h2>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setSidebarOpen(false)}
-                  className="text-purple-300 hover:text-white hover:bg-purple-500/40"
+                  className="text-gray-400 hover:text-white hover:bg-gray-800"
                 >
                   ×
                 </Button>
