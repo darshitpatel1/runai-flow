@@ -34,23 +34,25 @@ export default function FlowBuilderPage() {
   const [flowId, setFlowId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [autoSaving, setAutoSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [location, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Get flow ID from URL params
-  const urlParams = new URLSearchParams(location.split('?')[1] || '');
-  const urlFlowId = urlParams.get('id');
-
   useEffect(() => {
+    // Get flow ID from URL params
+    const urlParams = new URLSearchParams(location.split('?')[1] || '');
+    const urlFlowId = urlParams.get('id');
+    
     // Load existing flow if ID is provided
     if (urlFlowId && user) {
       console.log('Loading flow with ID:', urlFlowId);
       loadFlow(urlFlowId);
     }
-  }, [urlFlowId, user]);
+  }, [location, user]);
 
   const loadFlow = async (id: string) => {
+    setLoading(true);
     try {
       console.log('Attempting to load flow:', id, 'for user:', user?.uid);
       const flowDoc = await getDoc(doc(db, "users", user!.uid, "flows", id));
@@ -70,6 +72,11 @@ export default function FlowBuilderPage() {
         console.log('Set flow description to:', flowData.description);
       } else {
         console.log('Flow document does not exist');
+        toast({
+          title: "Flow not found",
+          description: "The requested flow could not be found",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Error loading flow:", error);
@@ -78,6 +85,8 @@ export default function FlowBuilderPage() {
         description: "Failed to load flow",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -134,25 +143,26 @@ export default function FlowBuilderPage() {
       <div className="flex flex-col h-screen">
         {/* Compact Flow Header */}
         <div className="bg-black border-b border-gray-800 px-4 py-2">
-          <div className="flex items-center justify-center max-w-7xl mx-auto">
-            <div className="flex items-center space-x-4 flex-1 max-w-lg">
+          <div className="flex items-center justify-between max-w-7xl mx-auto">
+            <div className="flex items-center space-x-4 max-w-lg">
               <Input
                 placeholder="Flow name..."
                 value={flowName}
                 onChange={(e) => setFlowName(e.target.value)}
-                className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8"
+                className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8 w-48"
               />
               <Input
                 placeholder="Description..."
                 value={flowDescription}
                 onChange={(e) => setFlowDescription(e.target.value)}
-                className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8"
+                className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8 w-64"
               />
             </div>
             
-            <div className="flex items-center space-x-2 text-xs text-gray-400 ml-4">
+            <div className="flex items-center space-x-2 text-xs text-gray-400">
+              {loading && <span>Loading...</span>}
               {autoSaving && <span>Saving...</span>}
-              {flowId && !autoSaving && <span>Saved</span>}
+              {flowId && !autoSaving && !loading && <span>Saved</span>}
             </div>
           </div>
         </div>
