@@ -44,11 +44,6 @@ export default function FlowBuilderPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const urlFlowId = urlParams.get('id');
     
-    console.log('Current location:', location);
-    console.log('URL search params:', window.location.search);
-    console.log('Flow ID from URL:', urlFlowId);
-    console.log('User:', user?.uid);
-    
     // Reset state when switching flows or starting new
     if (!urlFlowId) {
       setFlowId(null);
@@ -60,7 +55,6 @@ export default function FlowBuilderPage() {
     
     // Load existing flow if ID is provided
     if (urlFlowId && user) {
-      console.log('Loading flow with ID:', urlFlowId);
       loadFlow(urlFlowId);
     }
   }, [location, user]);
@@ -68,24 +62,17 @@ export default function FlowBuilderPage() {
   const loadFlow = async (id: string) => {
     setLoading(true);
     try {
-      console.log('Attempting to load flow:', id, 'for user:', user?.uid);
       const flowDoc = await getDoc(doc(db, "users", user!.uid, "flows", id));
-      console.log('Flow document exists:', flowDoc.exists());
       
       if (flowDoc.exists()) {
         const flowData = flowDoc.data();
-        console.log('Flow data:', flowData);
         
         setFlowId(id);
         setFlowName(flowData.name || "");
         setFlowDescription(flowData.description || "");
         setNodes(flowData.nodes || []);
         setEdges(flowData.edges || []);
-        
-        console.log('Set flow name to:', flowData.name);
-        console.log('Set flow description to:', flowData.description);
       } else {
-        console.log('Flow document does not exist');
         toast({
           title: "Flow not found",
           description: "The requested flow could not be found",
@@ -139,16 +126,16 @@ export default function FlowBuilderPage() {
     }
   }, [user, flowName, flowDescription, nodes, edges, flowId]);
 
-  // Auto-save on changes with debounce
+  // Auto-save on changes with debounce (only for name and description)
   useEffect(() => {
-    if (!flowName.trim()) return;
+    if (!flowName.trim() || loading) return;
     
     const timeoutId = setTimeout(() => {
       autoSaveFlow();
-    }, 2000); // Auto-save after 2 seconds of inactivity
+    }, 3000); // Auto-save after 3 seconds of inactivity
 
     return () => clearTimeout(timeoutId);
-  }, [flowName, flowDescription, autoSaveFlow]);
+  }, [flowName, flowDescription]);
 
   const onConnect = (params: Connection) => setEdges((eds) => addEdge(params, eds));
 
@@ -176,7 +163,6 @@ export default function FlowBuilderPage() {
             <div className="flex items-center space-x-2 text-xs text-gray-400">
               {loading && <span>Loading...</span>}
               {autoSaving && <span>Saving...</span>}
-              {flowId && !autoSaving && !loading && <span>Saved</span>}
             </div>
           </div>
         </div>
