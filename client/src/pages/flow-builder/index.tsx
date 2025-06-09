@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { collection, addDoc, updateDoc, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { ArrowLeftIcon } from "lucide-react";
+import { PlusIcon, WrenchIcon, MicIcon } from "lucide-react";
 import ReactFlow, { 
   Node, 
   Edge, 
@@ -35,6 +35,8 @@ export default function FlowBuilderPage() {
   const [saving, setSaving] = useState(false);
   const [autoSaving, setAutoSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatInput, setChatInput] = useState("");
   const [location, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -141,47 +143,132 @@ export default function FlowBuilderPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col h-screen">
-        {/* Compact Flow Header */}
-        <div className="bg-black border-b border-gray-800 px-4 py-2">
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center space-x-3">
-              <Input
-                placeholder="Flow name..."
-                value={flowName}
-                onChange={(e) => setFlowName(e.target.value)}
-                className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8 w-44"
-              />
-              <Input
-                placeholder="Description..."
-                value={flowDescription}
-                onChange={(e) => setFlowDescription(e.target.value)}
-                className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8 w-56"
-              />
+      <div className="flex h-screen">
+        {/* Main Content */}
+        <div className="flex flex-col flex-1">
+          {/* Compact Flow Header */}
+          <div className="bg-black border-b border-gray-800 px-4 py-2">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center space-x-3">
+                <Input
+                  placeholder="Flow name..."
+                  value={flowName}
+                  onChange={(e) => setFlowName(e.target.value)}
+                  className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8 w-44"
+                />
+                <Input
+                  placeholder="Description..."
+                  value={flowDescription}
+                  onChange={(e) => setFlowDescription(e.target.value)}
+                  className="bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm h-8 w-56"
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2 text-xs text-gray-400">
+                {loading && <span>Loading...</span>}
+                {autoSaving && <span>Saving...</span>}
+              </div>
             </div>
-            
-            <div className="flex items-center space-x-2 text-xs text-gray-400">
-              {loading && <span>Loading...</span>}
-              {autoSaving && <span>Saving...</span>}
+          </div>
+
+          {/* React Flow Canvas */}
+          <div className="flex-1 relative">
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              fitView
+              className="bg-black"
+            >
+              <Controls className="fill-white" />
+              <Background variant={BackgroundVariant.Dots} className="bg-black" color="#333" />
+            </ReactFlow>
+
+            {/* Chat Input Bar */}
+            <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
+              <div className="flex items-center bg-gray-800 border border-gray-600 rounded-full px-4 py-2 shadow-lg min-w-96">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-1 h-8 w-8 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                </Button>
+                
+                <Input
+                  placeholder="Type a message..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  className="flex-1 bg-transparent border-none text-white placeholder:text-gray-400 focus:ring-0 focus-visible:ring-0 text-sm mx-3"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      // Handle send message
+                      console.log('Send message:', chatInput);
+                      setChatInput("");
+                    }
+                  }}
+                />
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="p-1 h-8 w-8 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full mr-2"
+                >
+                  <WrenchIcon className="h-4 w-4" />
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-1 h-8 w-8 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full"
+                >
+                  <MicIcon className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* React Flow Canvas */}
-        <div className="flex-1 relative">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            fitView
-            className="bg-black"
-          >
-            <Controls className="fill-white" />
-            <Background variant={BackgroundVariant.Dots} className="bg-black" color="#333" />
-          </ReactFlow>
-        </div>
+        {/* Right Sidebar */}
+        {sidebarOpen && (
+          <div className="w-80 bg-gray-900 border-l border-gray-800 flex flex-col">
+            <div className="p-4 border-b border-gray-800">
+              <div className="flex items-center justify-between">
+                <h2 className="text-white font-medium">Tools</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSidebarOpen(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  ×
+                </Button>
+              </div>
+            </div>
+            
+            <div className="flex-1 p-4">
+              <div className="space-y-3">
+                <div className="p-3 bg-gray-800 rounded-lg">
+                  <h3 className="text-white text-sm font-medium mb-2">Connectors</h3>
+                  <p className="text-gray-400 text-xs">Manage your API connections</p>
+                </div>
+                
+                <div className="p-3 bg-gray-800 rounded-lg">
+                  <h3 className="text-white text-sm font-medium mb-2">Actions</h3>
+                  <p className="text-gray-400 text-xs">Add flow actions and triggers</p>
+                </div>
+                
+                <div className="p-3 bg-gray-800 rounded-lg">
+                  <h3 className="text-white text-sm font-medium mb-2">Variables</h3>
+                  <p className="text-gray-400 text-xs">Manage flow variables</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   );
