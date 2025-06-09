@@ -241,6 +241,254 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test connector endpoint
+  app.post('/api/test-connector', async (req, res) => {
+    try {
+      const { connector } = req.body;
+      
+      if (!connector) {
+        return res.status(400).json({ error: 'Connector data is required' });
+      }
+
+      const { name, baseUrl, authType, auth, headers } = connector;
+
+      // For OAuth2 Authorization Code flow, we need to initiate the OAuth flow
+      if (authType === 'oauth2' && auth?.oauth2Type === 'authorization_code') {
+        // Generate a state parameter for security
+        const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        
+        // Build authorization URL
+        const authUrl = new URL(auth.authorizationUrl);
+        authUrl.searchParams.append('client_id', auth.clientId);
+        authUrl.searchParams.append('redirect_uri', auth.redirectUri);
+        authUrl.searchParams.append('response_type', 'code');
+        authUrl.searchParams.append('state', state);
+        if (auth.scope) {
+          authUrl.searchParams.append('scope', auth.scope);
+        }
+
+        return res.json({
+          authRequired: true,
+          authType: 'oauth2',
+          authUrl: authUrl.toString(),
+          state: state
+        });
+      }
+
+      // For other auth types, test the connection directly
+      let testUrl = baseUrl;
+      if (!testUrl.endsWith('/')) {
+        testUrl += '/';
+      }
+      
+      // Try to make a simple API call to test the connection
+      // For most APIs, we can try a basic endpoint like /api/v1/user or similar
+      const testEndpoints = [
+        'api/v1/user',
+        'api/user', 
+        'user',
+        'me',
+        'profile',
+        'account',
+        'status',
+        'health',
+        ''
+      ];
+
+      let testResponse = null;
+      let lastError = null;
+
+      for (const endpoint of testEndpoints) {
+        try {
+          const fullUrl = testUrl + endpoint;
+          const requestHeaders: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'User-Agent': 'RunAI-Connector-Test/1.0'
+          };
+
+          // Add custom headers
+          if (headers && Array.isArray(headers)) {
+            headers.forEach((header: any) => {
+              if (header.key && header.value) {
+                requestHeaders[header.key] = header.value;
+              }
+            });
+          }
+
+          // Add authentication
+          if (authType === 'basic' && auth?.username && auth?.password) {
+            const credentials = Buffer.from(`${auth.username}:${auth.password}`).toString('base64');
+            requestHeaders['Authorization'] = `Basic ${credentials}`;
+          } else if (authType === 'oauth2' && auth?.oauth2Type === 'client_credentials') {
+            // For client credentials flow, we need to get an access token first
+            try {
+              const tokenResponse = await fetch(auth.tokenUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/x-www-form-urlencoded',
+                  'Authorization': `Basic ${Buffer.from(`${auth.clientId}:${auth.clientSecret}`).toString('base64')}`
+                },
+                body: 'grant_type=client_credentials' + (auth.scope ? `&scope=${encodeURIComponent(auth.scope)}` : '')
+              });
+
+              if (!tokenResponse.ok) {
+                const errorText = await tokenResponse.text();
+                throw new Error(`Token request failed: ${tokenResponse.status} ${errorText}`);
+              }
+
+              const tokenData = await tokenResponse.json();
+              
+              if (!tokenData.access_token) {
+                throw new Error('No access token received');
+              }
+
+              // Add the access token to headers
+              if (auth.tokenLocation === 'header') {
+                requestHeaders['Authorization'] = `Bearer ${tokenData.access_token}`;
+              } else if (auth.tokenLocation === 'query') {
+                const urlWithToken = new URL(fullUrl);
+                urlWithToken.searchParams.append('access_token', tokenData.access_token);
+                testUrl = urlWithToken.toString();
+              }
+            } catch (tokenError: any) {
+              lastError = `OAuth2 token error: ${tokenError.message}`;
+              continue;
+            }
+          }
+
+          const response = await fetch(fullUrl, {
+            method: 'GET',
+            headers: requestHeaders
+          });
+
+          // Consider any response (even 401/403) as a successful connection
+          // since it means we can reach the API
+          testResponse = {
+            status: response.status,
+            statusText: response.statusText,
+            endpoint: endpoint || 'root',
+            headers: Object.fromEntries(response.headers.entries())
+          };
+
+          // If we get a successful response, break out of the loop
+          if (response.ok) {
+            break;
+          }
+
+          // If we get a 401/403, it might mean auth is wrong but connection works
+          if (response.status === 401 || response.status === 403) {
+            testResponse.note = 'Authentication may be incorrect, but connection successful';
+            break;
+          }
+
+        } catch (error: any) {
+          lastError = error.message;
+          continue;
+        }
+      }
+
+      if (testResponse) {
+        return res.json({
+          success: true,
+          message: 'Connection test successful',
+          details: testResponse
+        });
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Connection test failed',
+          error: lastError || 'All test endpoints failed'
+        });
+      }
+
+    } catch (error: any) {
+      console.error('Connector test error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: 'Internal server error during connection test',
+        error: error.message 
+      });
+    }
+  });
+
+  // OAuth callback handler for authorization code flow
+  app.get('/api/oauth-callback', async (req, res) => {
+    try {
+      const { code, state, error } = req.query;
+
+      if (error) {
+        return res.send(`
+          <html>
+            <body>
+              <script>
+                window.opener.postMessage({
+                  type: 'oauth-callback',
+                  success: false,
+                  error: '${error}',
+                  state: '${state}'
+                }, '*');
+                window.close();
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      if (!code || !state) {
+        return res.send(`
+          <html>
+            <body>
+              <script>
+                window.opener.postMessage({
+                  type: 'oauth-callback',
+                  success: false,
+                  error: 'Missing authorization code or state parameter',
+                  state: '${state}'
+                }, '*');
+                window.close();
+              </script>
+            </body>
+          </html>
+        `);
+      }
+
+      // Success - send the code back to the parent window
+      res.send(`
+        <html>
+          <body>
+            <script>
+              window.opener.postMessage({
+                type: 'oauth-callback',
+                success: true,
+                code: '${code}',
+                state: '${state}'
+              }, '*');
+              window.close();
+            </script>
+          </body>
+        </html>
+      `);
+
+    } catch (error: any) {
+      console.error('OAuth callback error:', error);
+      res.send(`
+        <html>
+          <body>
+            <script>
+              window.opener.postMessage({
+                type: 'oauth-callback',
+                success: false,
+                error: 'Internal server error',
+                state: '${req.query.state}'
+              }, '*');
+              window.close();
+            </script>
+          </body>
+        </html>
+      `);
+    }
+  });
+
   // Data tables routes
   app.get('/api/tables', requireAuth, async (req, res) => {
     try {
