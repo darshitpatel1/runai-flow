@@ -215,7 +215,11 @@ export default function FlowBuilderPage() {
                   placeholder="Type a message..."
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  className="flex-1 bg-transparent border-none text-white placeholder:text-blue-300/60 focus:ring-0 focus-visible:ring-0 focus:outline-none focus:border-none active:border-none text-sm mx-3"
+                  className={`flex-1 bg-transparent border-none focus:ring-0 focus-visible:ring-0 focus:outline-none focus:border-none active:border-none text-sm mx-3 ${
+                    theme === 'dark' 
+                      ? 'text-white placeholder:text-blue-300/60' 
+                      : 'text-black placeholder:text-blue-600/60'
+                  }`}
                   style={{ boxShadow: 'none' }}
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
@@ -249,15 +253,28 @@ export default function FlowBuilderPage() {
 
         {/* Right Sidebar */}
         {sidebarOpen && (
-          <div className="w-80 bg-black border-l border-gray-700 flex flex-col">
-            <div className="p-4 border-b border-gray-700">
+          <div className={`w-80 border-l flex flex-col ${
+            theme === 'dark' 
+              ? 'bg-black border-gray-700' 
+              : 'bg-white border-gray-200'
+          }`}>
+            <div className={`p-4 border-b ${
+              theme === 'dark' 
+                ? 'border-gray-700' 
+                : 'border-gray-200'
+            }`}>
               <div className="flex items-center justify-between">
-                <h2 className="text-white font-medium">Tools</h2>
+                <h2 className={`font-medium ${
+                  theme === 'dark' ? 'text-white' : 'text-black'
+                }`}>Tools</h2>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setSidebarOpen(false)}
-                  className="text-gray-400 hover:text-white hover:bg-gray-800"
+                  className={theme === 'dark' 
+                    ? 'text-gray-400 hover:text-white hover:bg-gray-800'
+                    : 'text-gray-600 hover:text-black hover:bg-gray-100'
+                  }
                 >
                   ×
                 </Button>
