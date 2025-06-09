@@ -188,7 +188,7 @@ export default function FlowBuilderPage() {
 
             {/* Chat Input Bar */}
             <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
-              <div className="flex items-center bg-blue-600/30 backdrop-blur-sm border border-blue-400/40 rounded-lg px-4 py-2 shadow-xl w-[600px]">
+              <div className="flex items-center bg-blue-900/20 backdrop-blur-sm border border-blue-500/20 rounded-lg px-4 py-2 shadow-xl w-[700px]">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -201,7 +201,8 @@ export default function FlowBuilderPage() {
                   placeholder="Type a message..."
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  className="flex-1 bg-transparent border-none text-white placeholder:text-blue-300/60 focus:ring-0 focus-visible:ring-0 focus:outline-none text-sm mx-3"
+                  className="flex-1 bg-transparent border-none text-white placeholder:text-blue-300/60 focus:ring-0 focus-visible:ring-0 focus:outline-none focus:border-none active:border-none text-sm mx-3"
+                  style={{ boxShadow: 'none' }}
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
                       // Handle send message
