@@ -600,7 +600,7 @@ export default function Dashboard() {
                                 onClick={() => {
                                   if (item.type === 'flow') {
                                     // Use history to navigate
-                                    window.location.href = `/flow-builder/${item.id}`;
+                                    window.location.href = `/flow-builder?id=${item.id}`;
                                   } else {
                                     window.location.href = `/connectors?edit=${item.id}`;
                                   }
