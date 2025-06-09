@@ -576,6 +576,205 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Token refresh endpoint for OAuth2 connectors
+  app.post('/api/oauth-refresh', async (req, res) => {
+    try {
+      const { connectorId, userId } = req.body;
+
+      if (!connectorId || !userId) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+      }
+
+      // Get the connector configuration
+      const connector = await storage.getConnector(userId, connectorId);
+      if (!connector || !connector.authConfig) {
+        return res.status(404).json({ error: 'Connector not found' });
+      }
+
+      const auth = connector.authConfig as any;
+
+      if (!auth.refreshToken) {
+        return res.status(400).json({ error: 'No refresh token available' });
+      }
+
+      // Refresh the access token
+      const tokenResponse = await fetch(auth.tokenUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Basic ${Buffer.from(`${auth.clientId}:${auth.clientSecret}`).toString('base64')}`
+        },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: auth.refreshToken,
+          client_id: auth.clientId
+        }).toString()
+      });
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        console.error('Token refresh failed:', errorText);
+        return res.status(400).json({ 
+          error: 'Token refresh failed',
+          details: errorText 
+        });
+      }
+
+      const tokenData = await tokenResponse.json();
+
+      if (!tokenData.access_token) {
+        return res.status(400).json({ error: 'No access token received from refresh' });
+      }
+
+      // Update the connector with the new tokens
+      const updatedAuth = {
+        ...auth,
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token || auth.refreshToken, // Keep old refresh token if new one not provided
+        tokenExpiresAt: tokenData.expires_in ? 
+          new Date(Date.now() + (tokenData.expires_in * 1000)) : null,
+        lastRefreshed: new Date()
+      };
+
+      await storage.updateConnector(userId, connectorId, {
+        authConfig: updatedAuth
+      });
+
+      res.json({
+        success: true,
+        message: 'Token refreshed successfully',
+        expiresIn: tokenData.expires_in
+      });
+
+    } catch (error: any) {
+      console.error('Token refresh error:', error);
+      res.status(500).json({ 
+        error: 'Internal server error during token refresh',
+        details: error.message 
+      });
+    }
+  });
+
+  // Enhanced test connector with automatic token refresh
+  app.post('/api/use-connector', async (req, res) => {
+    try {
+      const { connectorId, userId, endpoint = '', method = 'GET', data = null } = req.body;
+
+      if (!connectorId || !userId) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+      }
+
+      // Get the connector configuration
+      const connector = await storage.getConnector(userId, connectorId);
+      if (!connector) {
+        return res.status(404).json({ error: 'Connector not found' });
+      }
+
+      const { baseUrl, authType, authConfig, headers: customHeaders } = connector;
+      const auth = authConfig as any;
+
+      // Build the full URL
+      let fullUrl = baseUrl;
+      if (!fullUrl.endsWith('/') && endpoint && !endpoint.startsWith('/')) {
+        fullUrl += '/';
+      }
+      fullUrl += endpoint;
+
+      // Prepare headers
+      const requestHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'RunAI-Connector/1.0'
+      };
+
+      // Add custom headers
+      if (customHeaders && Array.isArray(customHeaders)) {
+        customHeaders.forEach((header: any) => {
+          if (header.key && header.value) {
+            requestHeaders[header.key] = header.value;
+          }
+        });
+      }
+
+      // Handle authentication
+      if (authType === 'basic' && auth?.username && auth?.password) {
+        const credentials = Buffer.from(`${auth.username}:${auth.password}`).toString('base64');
+        requestHeaders['Authorization'] = `Basic ${credentials}`;
+      } else if (authType === 'oauth2') {
+        if (auth?.accessToken) {
+          // Check if token is expired and refresh if needed
+          if (auth.tokenExpiresAt && new Date() >= new Date(auth.tokenExpiresAt)) {
+            if (auth.refreshToken) {
+              // Attempt to refresh the token
+              const refreshResponse = await fetch('/api/oauth-refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ connectorId, userId })
+              });
+
+              if (refreshResponse.ok) {
+                // Get the updated connector with new token
+                const updatedConnector = await storage.getConnector(userId, connectorId);
+                const updatedAuth = updatedConnector?.authConfig as any;
+                if (updatedAuth?.accessToken) {
+                  requestHeaders['Authorization'] = `Bearer ${updatedAuth.accessToken}`;
+                }
+              } else {
+                return res.status(401).json({ 
+                  error: 'Token expired and refresh failed',
+                  requiresReauth: true 
+                });
+              }
+            } else {
+              return res.status(401).json({ 
+                error: 'Token expired and no refresh token available',
+                requiresReauth: true 
+              });
+            }
+          } else {
+            // Token is still valid
+            requestHeaders['Authorization'] = `Bearer ${auth.accessToken}`;
+          }
+        } else {
+          return res.status(401).json({ 
+            error: 'No access token available',
+            requiresReauth: true 
+          });
+        }
+      }
+
+      // Make the API request
+      const apiResponse = await fetch(fullUrl, {
+        method: method.toUpperCase(),
+        headers: requestHeaders,
+        body: data && method.toUpperCase() !== 'GET' ? JSON.stringify(data) : undefined
+      });
+
+      const responseData = await apiResponse.text();
+      let parsedData;
+      
+      try {
+        parsedData = JSON.parse(responseData);
+      } catch {
+        parsedData = responseData;
+      }
+
+      res.json({
+        success: apiResponse.ok,
+        status: apiResponse.status,
+        statusText: apiResponse.statusText,
+        data: parsedData,
+        headers: Object.fromEntries(apiResponse.headers.entries())
+      });
+
+    } catch (error: any) {
+      console.error('Connector usage error:', error);
+      res.status(500).json({ 
+        error: 'Internal server error during connector usage',
+        details: error.message 
+      });
+    }
+  });
+
   // Data tables routes
   app.get('/api/tables', requireAuth, async (req, res) => {
     try {
