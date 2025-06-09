@@ -993,9 +993,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/tables/rows/:id', simpleAuth, async (req, res) => {
+  app.put('/api/tables/:tableId/rows/:id', simpleAuth, async (req, res) => {
     try {
+      const tableId = parseInt(req.params.tableId);
       const rowId = parseInt(req.params.id);
+      
+      if (isNaN(tableId)) {
+        return res.status(400).json({ error: 'Invalid table ID' });
+      }
       
       if (isNaN(rowId)) {
         return res.status(400).json({ error: 'Invalid row ID' });
@@ -1013,9 +1018,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/tables/rows/:id', simpleAuth, async (req, res) => {
+  app.delete('/api/tables/:tableId/rows/:id', simpleAuth, async (req, res) => {
     try {
+      const tableId = parseInt(req.params.tableId);
       const rowId = parseInt(req.params.id);
+      
+      if (isNaN(tableId)) {
+        return res.status(400).json({ error: 'Invalid table ID' });
+      }
       
       if (isNaN(rowId)) {
         return res.status(400).json({ error: 'Invalid row ID' });
