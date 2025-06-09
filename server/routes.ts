@@ -218,7 +218,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId
       });
       
-      const connector = await storage.createConnector(validatedData);
+      const connector = await storage.createConnector({
+        userId: validatedData.userId,
+        name: validatedData.name,
+        baseUrl: validatedData.baseUrl,
+        authType: validatedData.authType || 'none',
+        authConfig: validatedData.authConfig,
+        headers: validatedData.headers
+      });
       res.status(201).json(connector);
     } catch (error) {
       if (error instanceof z.ZodError) {
