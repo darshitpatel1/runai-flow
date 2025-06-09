@@ -188,11 +188,11 @@ export default function FlowBuilderPage() {
 
             {/* Chat Input Bar */}
             <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
-              <div className="flex items-center bg-gray-800 border border-gray-600 rounded-full px-4 py-2 shadow-lg min-w-96">
+              <div className="flex items-center bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 shadow-lg w-[600px]">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="p-1 h-8 w-8 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full"
+                  className="p-1 h-8 w-8 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md"
                 >
                   <PlusIcon className="h-4 w-4" />
                 </Button>
@@ -215,7 +215,7 @@ export default function FlowBuilderPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="p-1 h-8 w-8 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full mr-2"
+                  className="p-1 h-8 w-8 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md mr-2"
                 >
                   <WrenchIcon className="h-4 w-4" />
                 </Button>
@@ -223,7 +223,7 @@ export default function FlowBuilderPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="p-1 h-8 w-8 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full"
+                  className="p-1 h-8 w-8 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md"
                 >
                   <MicIcon className="h-4 w-4" />
                 </Button>
@@ -246,25 +246,6 @@ export default function FlowBuilderPage() {
                 >
                   ×
                 </Button>
-              </div>
-            </div>
-            
-            <div className="flex-1 p-4">
-              <div className="space-y-3">
-                <div className="p-3 bg-gray-800 rounded-lg">
-                  <h3 className="text-white text-sm font-medium mb-2">Connectors</h3>
-                  <p className="text-gray-400 text-xs">Manage your API connections</p>
-                </div>
-                
-                <div className="p-3 bg-gray-800 rounded-lg">
-                  <h3 className="text-white text-sm font-medium mb-2">Actions</h3>
-                  <p className="text-gray-400 text-xs">Add flow actions and triggers</p>
-                </div>
-                
-                <div className="p-3 bg-gray-800 rounded-lg">
-                  <h3 className="text-white text-sm font-medium mb-2">Variables</h3>
-                  <p className="text-gray-400 text-xs">Manage flow variables</p>
-                </div>
               </div>
             </div>
           </div>
