@@ -553,25 +553,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'No access token received' });
       }
 
-      // Store the tokens in the connector configuration
-      const updatedAuth = {
-        ...auth,
+      // Return the tokens to the frontend for storage
+      const tokenInfo = {
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token || null,
         tokenExpiresAt: tokenData.expires_in ? 
-          new Date(Date.now() + (tokenData.expires_in * 1000)) : null,
-        lastAuthenticated: new Date()
+          new Date(Date.now() + (tokenData.expires_in * 1000)).toISOString() : null,
+        lastAuthenticated: new Date().toISOString(),
+        tokenType: tokenData.token_type || 'Bearer'
       };
-
-      // Update the connector in Firebase with the new auth tokens
-      await connectorRef.update({
-        auth: updatedAuth,
-        updatedAt: admin.default.firestore.FieldValue.serverTimestamp()
-      });
 
       res.json({
         success: true,
         message: 'OAuth authentication successful',
+        tokens: tokenInfo,
         expiresIn: tokenData.expires_in
       });
 

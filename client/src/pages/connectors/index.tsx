@@ -300,15 +300,18 @@ export default function Connectors() {
                       description: `Successfully authenticated and connected to ${connectorName}`,
                     });
 
-                    // Update connector in Firestore to store connection status
-                    if (user && targetConnector) {
+                    // Update connector in Firestore with the OAuth tokens
+                    if (user && targetConnector && exchangeData.tokens) {
                       try {
                         const connectorRef = doc(db, "users", user.uid, "connectors", targetConnectorId);
                         updateDoc(connectorRef, {
+                          auth: {
+                            ...targetConnector.auth,
+                            ...exchangeData.tokens
+                          },
                           connectionStatus: 'connected',
-                          lastAuthenticated: new Date(),
                           updatedAt: new Date()
-                        }).catch(err => console.error('Failed to update connector status:', err));
+                        }).catch(err => console.error('Failed to update connector with tokens:', err));
                       } catch (err) {
                         console.error('Failed to update connector in Firestore:', err);
                       }
