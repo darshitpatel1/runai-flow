@@ -45,20 +45,31 @@ export default function FlowBuilderPage() {
   useEffect(() => {
     // Load existing flow if ID is provided
     if (urlFlowId && user) {
+      console.log('Loading flow with ID:', urlFlowId);
       loadFlow(urlFlowId);
     }
   }, [urlFlowId, user]);
 
   const loadFlow = async (id: string) => {
     try {
+      console.log('Attempting to load flow:', id, 'for user:', user?.uid);
       const flowDoc = await getDoc(doc(db, "users", user!.uid, "flows", id));
+      console.log('Flow document exists:', flowDoc.exists());
+      
       if (flowDoc.exists()) {
         const flowData = flowDoc.data();
+        console.log('Flow data:', flowData);
+        
         setFlowId(id);
         setFlowName(flowData.name || "");
         setFlowDescription(flowData.description || "");
         setNodes(flowData.nodes || []);
         setEdges(flowData.edges || []);
+        
+        console.log('Set flow name to:', flowData.name);
+        console.log('Set flow description to:', flowData.description);
+      } else {
+        console.log('Flow document does not exist');
       }
     } catch (error) {
       console.error("Error loading flow:", error);
@@ -123,18 +134,8 @@ export default function FlowBuilderPage() {
       <div className="flex flex-col h-screen">
         {/* Compact Flow Header */}
         <div className="bg-black border-b border-gray-800 px-4 py-2">
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/dashboard")}
-              className="flex items-center space-x-1 text-white hover:bg-gray-800"
-            >
-              <ArrowLeftIcon className="h-3 w-3" />
-              <span className="text-sm">Dashboard</span>
-            </Button>
-            
-            <div className="flex items-center space-x-4 flex-1 max-w-lg mx-4">
+          <div className="flex items-center justify-center max-w-7xl mx-auto">
+            <div className="flex items-center space-x-4 flex-1 max-w-lg">
               <Input
                 placeholder="Flow name..."
                 value={flowName}
@@ -149,7 +150,7 @@ export default function FlowBuilderPage() {
               />
             </div>
             
-            <div className="flex items-center space-x-2 text-xs text-gray-400">
+            <div className="flex items-center space-x-2 text-xs text-gray-400 ml-4">
               {autoSaving && <span>Saving...</span>}
               {flowId && !autoSaving && <span>Saved</span>}
             </div>
