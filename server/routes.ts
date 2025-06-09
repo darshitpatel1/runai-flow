@@ -426,7 +426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // OAuth callback handler for authorization code flow
-  app.get('/api/oauth-callback', async (req, res) => {
+  app.get('/api/oauth/callback', async (req, res) => {
     try {
       const { code, state, error } = req.query;
 
@@ -512,13 +512,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Missing required parameters' });
       }
 
-      // Get the connector configuration
-      const connector = await storage.getConnector(userId, connectorId);
-      if (!connector || !connector.authConfig) {
+      // Get the connector configuration from Firebase (not PostgreSQL storage)
+      // Since we're using Firebase for connectors, we need to fetch from there
+      const admin = await import('firebase-admin');
+      
+      // Initialize Firebase Admin if not already done
+      if (!admin.getApps().length) {
+        admin.initializeApp({
+          credential: admin.credential.applicationDefault(),
+          projectId: process.env.FIREBASE_PROJECT_ID || 'runai-copy'
+        });
+      }
+      
+      const firestore = admin.firestore();
+      const connectorRef = firestore.collection('users').doc(userId).collection('connectors').doc(connectorId);
+      const connectorDoc = await connectorRef.get();
+      
+      if (!connectorDoc.exists) {
         return res.status(404).json({ error: 'Connector not found' });
       }
-
-      const auth = connector.authConfig as any;
+      
+      const connector = connectorDoc.data();
+      const auth = connector?.auth;
 
       // Exchange code for access token
       const tokenResponse = await fetch(auth.tokenUrl, {
@@ -560,9 +575,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastAuthenticated: new Date()
       };
 
-      // Update the connector with the new auth tokens
-      await storage.updateConnector(userId, connectorId, {
-        authConfig: updatedAuth
+      // Update the connector in Firebase with the new auth tokens
+      await connectorRef.update({
+        auth: updatedAuth,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
 
       res.json({
