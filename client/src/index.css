@@ -126,11 +126,25 @@
   .react-flow__controls-button svg {
     width: 16px !important;
     height: 16px !important;
+    fill: currentColor !important;
+    stroke: currentColor !important;
   }
   
-  /* Hide ReactFlow attribution */
-  .react-flow__attribution {
+  .dark .react-flow__controls-button svg {
+    fill: #fff !important;
+    stroke: #fff !important;
+  }
+  
+  /* Hide ReactFlow attribution - multiple selectors to ensure complete removal */
+  .react-flow__attribution,
+  .react-flow__panel.react-flow__attribution,
+  [data-testid="rf__attribution"],
+  .react-flow__renderer .react-flow__attribution {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
   }
   
   @keyframes dash {
