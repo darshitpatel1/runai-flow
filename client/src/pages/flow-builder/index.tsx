@@ -179,125 +179,108 @@ export default function FlowBuilderPage() {
           </div>
         </div>
 
-        {/* Tools Panel - positioned below header */}
-        {sidebarOpen && (
-          <div className={`${theme === 'dark' ? 'bg-black border-gray-800' : 'bg-white border-gray-200'} border-b px-4 py-3`}>
-            <div className="flex items-center justify-between">
-              <h2 className={`font-medium ${
-                theme === 'dark' ? 'text-white' : 'text-black'
-              }`}>Tools</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSidebarOpen(false)}
-                className={theme === 'dark' 
-                  ? 'text-gray-400 hover:text-white hover:bg-gray-800'
-                  : 'text-gray-600 hover:text-black hover:bg-gray-100'
-                }
-              >
-                ×
-              </Button>
-            </div>
-            {/* Tool content area */}
-            <div className="mt-3">
-              <div className="grid grid-cols-6 gap-2">
-                {/* Add tool buttons here */}
+        {/* Main Content Area - positioned below header */}
+        <div className="flex flex-1">
+          {/* React Flow Canvas */}
+          <div className="flex-1 relative">
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              fitView
+              className={theme === 'dark' ? 'bg-black' : 'bg-gray-50'}
+            >
+              <Controls className={theme === 'dark' ? 'fill-white' : 'fill-black'} />
+              <Background 
+                variant={BackgroundVariant.Dots} 
+                className={theme === 'dark' ? 'bg-black' : 'bg-gray-50'} 
+                color={theme === 'dark' ? '#333' : '#ddd'} 
+              />
+            </ReactFlow>
+
+            {/* Chat Input Bar */}
+            <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
+              <div className="flex items-center bg-blue-900/20 backdrop-blur-sm border border-blue-500/20 rounded-lg px-4 py-2 shadow-xl w-[700px]">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className={`h-12 flex flex-col items-center justify-center gap-1 ${
-                    theme === 'dark' 
-                      ? 'border-gray-700 hover:bg-gray-800' 
-                      : 'border-gray-300 hover:bg-gray-50'
-                  }`}
+                  className="p-1 h-8 w-8 text-blue-300 hover:text-white hover:bg-blue-500/40 rounded-md"
                 >
                   <PlusIcon className="h-4 w-4" />
-                  <span className="text-xs">Add</span>
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={`h-12 flex flex-col items-center justify-center gap-1 ${
+                
+                <Input
+                  placeholder="Type a message..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  className={`flex-1 bg-transparent border-none focus:ring-0 focus-visible:ring-0 focus:outline-none focus:border-none active:border-none text-sm mx-3 ${
                     theme === 'dark' 
-                      ? 'border-gray-700 hover:bg-gray-800' 
-                      : 'border-gray-300 hover:bg-gray-50'
+                      ? 'text-white placeholder:text-blue-300/60' 
+                      : 'text-black placeholder:text-blue-600/60'
                   }`}
+                  style={{ boxShadow: 'none' }}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      // Handle send message
+                      console.log('Send message:', chatInput);
+                      setChatInput("");
+                    }
+                  }}
+                />
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="p-1 h-8 w-8 text-blue-300 hover:text-white hover:bg-blue-500/40 rounded-md mr-2"
                 >
                   <WrenchIcon className="h-4 w-4" />
-                  <span className="text-xs">Tool</span>
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-1 h-8 w-8 text-blue-300 hover:text-white hover:bg-blue-500/40 rounded-md"
+                >
+                  <MicIcon className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           </div>
-        )}
 
-        {/* Main Content Area */}
-        <div className="flex-1 relative">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            fitView
-            className={theme === 'dark' ? 'bg-black' : 'bg-gray-50'}
-          >
-            <Controls className={theme === 'dark' ? 'fill-white' : 'fill-black'} />
-            <Background 
-              variant={BackgroundVariant.Dots} 
-              className={theme === 'dark' ? 'bg-black' : 'bg-gray-50'} 
-              color={theme === 'dark' ? '#333' : '#ddd'} 
-            />
-          </ReactFlow>
-
-          {/* Chat Input Bar */}
-          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
-            <div className="flex items-center bg-blue-900/20 backdrop-blur-sm border border-blue-500/20 rounded-lg px-4 py-2 shadow-xl w-[700px]">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-1 h-8 w-8 text-blue-300 hover:text-white hover:bg-blue-500/40 rounded-md"
-              >
-                <PlusIcon className="h-4 w-4" />
-              </Button>
-              
-              <Input
-                placeholder="Type a message..."
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                className={`flex-1 bg-transparent border-none focus:ring-0 focus-visible:ring-0 focus:outline-none focus:border-none active:border-none text-sm mx-3 ${
-                  theme === 'dark' 
-                    ? 'text-white placeholder:text-blue-300/60' 
-                    : 'text-black placeholder:text-blue-600/60'
-                }`}
-                style={{ boxShadow: 'none' }}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    // Handle send message
-                    console.log('Send message:', chatInput);
-                    setChatInput("");
-                  }
-                }}
-              />
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-1 h-8 w-8 text-blue-300 hover:text-white hover:bg-blue-500/40 rounded-md mr-2"
-              >
-                <WrenchIcon className="h-4 w-4" />
-              </Button>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-1 h-8 w-8 text-blue-300 hover:text-white hover:bg-blue-500/40 rounded-md"
-              >
-                <MicIcon className="h-4 w-4" />
-              </Button>
+          {/* Right Sidebar - positioned below header */}
+          {sidebarOpen && (
+            <div className={`w-80 border-l flex flex-col ${
+              theme === 'dark' 
+                ? 'bg-black border-gray-700' 
+                : 'bg-white border-gray-200'
+            }`}>
+              <div className={`p-4 border-b ${
+                theme === 'dark' 
+                  ? 'border-gray-700' 
+                  : 'border-gray-200'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <h2 className={`font-medium ${
+                    theme === 'dark' ? 'text-white' : 'text-black'
+                  }`}>Tools</h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSidebarOpen(false)}
+                    className={theme === 'dark' 
+                      ? 'text-gray-400 hover:text-white hover:bg-gray-800'
+                      : 'text-gray-600 hover:text-black hover:bg-gray-100'
+                    }
+                  >
+                    ×
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </AppLayout>
