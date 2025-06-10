@@ -91,6 +91,48 @@
     animation: node-pulse 2s infinite;
   }
   
+  /* ReactFlow Controls styling for dark mode */
+  .react-flow__controls {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  
+  .react-flow__controls-button {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    color: #000 !important;
+    width: 32px !important;
+    height: 32px !important;
+    margin: 2px !important;
+  }
+  
+  .react-flow__controls-button:hover {
+    background: rgba(255, 255, 255, 1) !important;
+    transform: scale(1.05);
+  }
+  
+  .dark .react-flow__controls-button {
+    background: rgba(0, 0, 0, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: #fff !important;
+  }
+  
+  .dark .react-flow__controls-button:hover {
+    background: rgba(0, 0, 0, 0.9) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+  }
+  
+  .react-flow__controls-button svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+  
+  /* Hide ReactFlow attribution */
+  .react-flow__attribution {
+    display: none !important;
+  }
+  
   @keyframes dash {
     to {
       stroke-dashoffset: -1000;

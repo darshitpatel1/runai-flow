@@ -192,7 +192,7 @@ export default function FlowBuilderPage() {
               fitView
               className={theme === 'dark' ? 'bg-black' : 'bg-gray-50'}
             >
-              <Controls className={theme === 'dark' ? 'fill-white' : 'fill-black'} />
+              <Controls />
               <Background 
                 variant={BackgroundVariant.Dots} 
                 className={theme === 'dark' ? 'bg-black' : 'bg-gray-50'} 
