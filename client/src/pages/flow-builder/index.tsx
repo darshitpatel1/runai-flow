@@ -190,13 +190,14 @@ export default function FlowBuilderPage() {
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               fitView
-              className={theme === 'dark' ? 'bg-black' : 'bg-gray-50'}
+              className="bg-black"
+              proOptions={{ hideAttribution: true }}
             >
-              <Controls className={theme === 'dark' ? 'fill-white' : 'fill-black'} />
+              <Controls className="fill-white" />
               <Background 
                 variant={BackgroundVariant.Dots} 
-                className={theme === 'dark' ? 'bg-black' : 'bg-gray-50'} 
-                color={theme === 'dark' ? '#333' : '#ddd'} 
+                className="bg-black" 
+                color="#333" 
               />
             </ReactFlow>
 
