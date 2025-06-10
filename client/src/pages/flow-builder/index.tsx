@@ -190,14 +190,13 @@ export default function FlowBuilderPage() {
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
               fitView
-              className="bg-black"
-              proOptions={{ hideAttribution: true }}
+              className={theme === 'dark' ? 'bg-black' : 'bg-gray-50'}
             >
-              <Controls className="fill-white" />
+              <Controls className={theme === 'dark' ? 'fill-white' : 'fill-black'} />
               <Background 
                 variant={BackgroundVariant.Dots} 
-                className="bg-black" 
-                color="#333" 
+                className={theme === 'dark' ? 'bg-black' : 'bg-gray-50'} 
+                color={theme === 'dark' ? '#333' : '#ddd'} 
               />
             </ReactFlow>
 
@@ -255,7 +254,7 @@ export default function FlowBuilderPage() {
           {sidebarOpen && (
             <div className={`w-80 border-l flex flex-col ${
               theme === 'dark' 
-                ? 'bg-gray-900 border-gray-700' 
+                ? 'bg-black border-gray-700' 
                 : 'bg-white border-gray-200'
             }`}>
               <div className={`p-4 border-b ${
