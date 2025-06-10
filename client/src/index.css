@@ -101,4 +101,21 @@
     0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
     50% { box-shadow: 0 0 0 8px rgba(79, 70, 229, 0); }
   }
+
+  /* Force ReactFlow to always have black background */
+  .react-flow {
+    background-color: #000000 !important;
+  }
+  
+  .react-flow__pane {
+    background-color: #000000 !important;
+  }
+  
+  .react-flow__viewport {
+    background-color: #000000 !important;
+  }
+  
+  .react-flow__renderer {
+    background-color: #000000 !important;
+  }
 }

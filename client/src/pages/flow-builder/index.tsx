@@ -255,7 +255,7 @@ export default function FlowBuilderPage() {
           {sidebarOpen && (
             <div className={`w-80 border-l flex flex-col ${
               theme === 'dark' 
-                ? 'bg-black border-gray-700' 
+                ? 'bg-gray-900 border-gray-700' 
                 : 'bg-white border-gray-200'
             }`}>
               <div className={`p-4 border-b ${
