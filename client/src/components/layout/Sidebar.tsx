@@ -147,24 +147,18 @@ export function Sidebar() {
               <p className="text-sm font-medium truncate">
                 {user?.displayName || user?.email || "User"}
               </p>
-              <div className="flex items-center gap-2">
-                <Link href="/settings">
-                  <Button 
-                    variant="link" 
-                    className="p-0 h-auto text-xs text-muted-foreground leading-none"
-                  >
-                    Edit Profile
-                  </Button>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Link href="/settings" className="leading-none">
+                  <span className="hover:underline cursor-pointer">Edit Profile</span>
                 </Link>
-                <span className="text-xs text-muted-foreground leading-none">|</span>
-                <Button 
-                  variant="link" 
-                  className="p-0 h-auto text-xs text-muted-foreground leading-none"
+                <span>|</span>
+                <button 
+                  className="hover:underline cursor-pointer leading-none bg-transparent border-none p-0 text-xs text-muted-foreground"
                   onClick={handleSignOut}
                   disabled={loggingOut}
                 >
                   {loggingOut ? "Signing out..." : "Sign out"}
-                </Button>
+                </button>
               </div>
             </div>
           </div>
