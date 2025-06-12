@@ -147,19 +147,19 @@ export function Sidebar() {
               <p className="text-sm font-medium truncate">
                 {user?.displayName || user?.email || "User"}
               </p>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <Link href="/settings">
                   <Button 
                     variant="link" 
-                    className="p-0 h-auto text-xs text-muted-foreground"
+                    className="p-0 h-auto text-xs text-muted-foreground leading-none"
                   >
                     Edit Profile
                   </Button>
                 </Link>
-                <span className="text-xs text-muted-foreground">|</span>
+                <span className="text-xs text-muted-foreground leading-none">|</span>
                 <Button 
                   variant="link" 
-                  className="p-0 h-auto text-xs text-muted-foreground"
+                  className="p-0 h-auto text-xs text-muted-foreground leading-none"
                   onClick={handleSignOut}
                   disabled={loggingOut}
                 >
