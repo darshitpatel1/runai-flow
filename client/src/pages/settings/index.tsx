@@ -799,7 +799,7 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle>Application Settings</CardTitle>
                 <CardDescription>
-                  Configure how FlowForge works for you
+                  Configure how RunAI works for you
                 </CardDescription>
               </CardHeader>
               <CardContent>
