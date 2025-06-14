@@ -651,21 +651,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Enhanced token refresh endpoint using the automatic refresh service
+  // Enhanced token refresh endpoint with Firebase support
   app.post('/api/oauth-refresh', async (req, res) => {
     try {
-      const { connectorId, userId } = req.body;
+      const { connectorId, userId, connectorName } = req.body;
 
-      if (!connectorId || !userId) {
-        return res.status(400).json({ error: 'Missing required parameters' });
+      if ((!connectorId && !connectorName) || !userId) {
+        return res.status(400).json({ error: 'Missing required parameters (need connectorId or connectorName and userId)' });
       }
 
-      // Use the token refresh service for consistent behavior
+      // For Firebase connectors, use connectorName
+      if (connectorName) {
+        const { firebaseSync } = await import('./firebase-sync');
+        
+        // Get Firebase connectors for this user
+        const firebaseConnectors = await firebaseSync.getAllFirebaseConnectors();
+        const userConnector = firebaseConnectors.find(fc => 
+          fc.userId === userId && fc.connector.name === connectorName
+        );
+
+        if (!userConnector) {
+          return res.status(404).json({ error: 'Firebase connector not found' });
+        }
+
+        const auth = userConnector.connector.auth;
+        if (!auth?.refreshToken) {
+          return res.status(400).json({ error: 'No refresh token available' });
+        }
+
+        // Perform token refresh directly
+        const body = new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: auth.refreshToken,
+          client_id: auth.clientId
+        });
+
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        };
+
+        if (auth.clientSecret) {
+          const credentials = Buffer.from(`${auth.clientId}:${auth.clientSecret}`).toString('base64');
+          headers['Authorization'] = `Basic ${credentials}`;
+        }
+
+        const response = await fetch(auth.tokenUrl, {
+          method: 'POST',
+          headers,
+          body: body.toString()
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Token refresh failed:', errorText);
+          return res.status(400).json({ 
+            error: 'Token refresh failed',
+            details: errorText 
+          });
+        }
+
+        const tokenData = await response.json();
+
+        if (!tokenData.access_token) {
+          return res.status(400).json({ error: 'No access token received from refresh' });
+        }
+
+        // Update the auth object
+        const updatedAuth = {
+          ...auth,
+          accessToken: tokenData.access_token,
+          refreshToken: tokenData.refresh_token || auth.refreshToken,
+          tokenExpiresAt: tokenData.expires_in ? 
+            new Date(Date.now() + (tokenData.expires_in * 1000)).toISOString() : auth.tokenExpiresAt,
+          lastRefreshed: new Date().toISOString(),
+          lastAuthenticated: new Date().toISOString()
+        };
+
+        // Sync back to Firebase
+        await firebaseSync.syncConnectorFromPostgres(userId, connectorName, updatedAuth);
+
+        return res.json({
+          success: true,
+          message: 'Token refreshed successfully',
+          tokenExpiresAt: updatedAuth.tokenExpiresAt,
+          lastRefreshed: updatedAuth.lastRefreshed
+        });
+      }
+
+      // Fallback to PostgreSQL connector refresh
       const { tokenRefreshService } = await import('./token-refresh-service');
       const success = await tokenRefreshService.refreshSpecificConnector(userId, connectorId);
 
       if (success) {
-        // Get the updated connector to return the new expiry info
         const connector = await storage.getConnector(userId, connectorId);
         const auth = connector?.authConfig as any;
         

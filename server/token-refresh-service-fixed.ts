@@ -75,11 +75,7 @@ class AutoTokenRefreshService implements TokenRefreshService {
   }
 
   private async getAllUsers(): Promise<Array<{ id: number }>> {
-    // This is a simplified approach - in production you might want to optimize this
-    // by maintaining a separate table of users with OAuth connectors
     try {
-      // Since we don't have a direct getAllUsers method, we'll work with what we have
-      // For now, we'll return an empty array and log that we need this functionality
       console.log('Note: getAllUsers not implemented, token refresh will work reactively only');
       return [];
     } catch (error) {
@@ -92,16 +88,15 @@ class AutoTokenRefreshService implements TokenRefreshService {
     const { id: connectorId, authType, authConfig } = connector;
     
     if (authType !== 'oauth2' || !authConfig) {
-      return; // Skip non-OAuth connectors
+      return;
     }
 
     const auth = authConfig as any;
     
     if (!auth.accessToken || !auth.refreshToken) {
-      return; // Skip connectors without tokens
+      return;
     }
 
-    // Check if token needs refresh
     if (this.shouldRefreshToken(auth)) {
       console.log(`Refreshing token for connector ${connectorId} (user ${userId})`);
       
@@ -110,8 +105,6 @@ class AutoTokenRefreshService implements TokenRefreshService {
         console.log(`Successfully refreshed token for connector ${connectorId}`);
       } catch (error) {
         console.error(`Failed to refresh token for connector ${connectorId}:`, error);
-        
-        // Mark connector as needing re-authentication
         await this.markConnectorForReauth(userId, connectorId);
       }
     }
@@ -119,14 +112,13 @@ class AutoTokenRefreshService implements TokenRefreshService {
 
   private shouldRefreshToken(auth: any): boolean {
     if (!auth.tokenExpiresAt) {
-      return false; // No expiry info, can't determine
+      return false;
     }
 
     const expiryTime = new Date(auth.tokenExpiresAt).getTime();
     const currentTime = Date.now();
     const bufferTime = this.REFRESH_BUFFER;
 
-    // Refresh if token expires within the buffer time
     return (expiryTime - currentTime) <= bufferTime;
   }
 
@@ -135,7 +127,6 @@ class AutoTokenRefreshService implements TokenRefreshService {
       throw new Error('Missing token URL or refresh token');
     }
 
-    // Prepare the token refresh request
     const body = new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: auth.refreshToken,
@@ -146,7 +137,6 @@ class AutoTokenRefreshService implements TokenRefreshService {
       'Content-Type': 'application/x-www-form-urlencoded'
     };
 
-    // Add client authentication
     if (auth.clientSecret) {
       const credentials = Buffer.from(`${auth.clientId}:${auth.clientSecret}`).toString('base64');
       headers['Authorization'] = `Basic ${credentials}`;
@@ -169,7 +159,6 @@ class AutoTokenRefreshService implements TokenRefreshService {
       throw new Error('No access token received from refresh');
     }
 
-    // Update the connector with new tokens
     const updatedAuth = {
       ...auth,
       accessToken: tokenData.access_token,
@@ -177,7 +166,7 @@ class AutoTokenRefreshService implements TokenRefreshService {
       tokenExpiresAt: tokenData.expires_in ? 
         new Date(Date.now() + (tokenData.expires_in * 1000)) : null,
       lastRefreshed: new Date(),
-      needsReauth: false // Clear any previous reauth flag
+      needsReauth: false
     };
 
     await storage.updateConnector(userId, connectorId, {
@@ -204,7 +193,6 @@ class AutoTokenRefreshService implements TokenRefreshService {
     }
   }
 
-  // Public method to manually refresh a specific connector
   async refreshSpecificConnector(userId: number, connectorId: number): Promise<boolean> {
     try {
       const connector = await storage.getConnector(userId, connectorId);
@@ -219,43 +207,7 @@ class AutoTokenRefreshService implements TokenRefreshService {
       return false;
     }
   }
-}
 
-// Export singleton instance
-export const tokenRefreshService = new AutoTokenRefreshService();
-
-// Enhanced token refresh utility functions
-export async function ensureValidToken(userId: number, connectorId: number): Promise<boolean> {
-  try {
-    const connector = await storage.getConnector(userId, connectorId);
-    if (!connector || connector.authType !== 'oauth2') {
-      return true; // Non-OAuth connectors don't need token refresh
-    }
-
-    const auth = connector.authConfig as any;
-    if (!auth?.accessToken) {
-      return false; // No token available
-    }
-
-    // Check if token is expired or will expire soon
-    if (auth.tokenExpiresAt) {
-      const expiryTime = new Date(auth.tokenExpiresAt).getTime();
-      const currentTime = Date.now();
-      const bufferTime = 60 * 1000; // 1 minute buffer for immediate use
-
-      if ((expiryTime - currentTime) <= bufferTime) {
-        // Token is expired or will expire soon, try to refresh
-        return await tokenRefreshService.refreshSpecificConnector(userId, connectorId);
-      }
-    }
-
-    return true; // Token is valid
-  } catch (error) {
-    console.error('Error ensuring valid token:', error);
-    return false;
-  }
-
-  // Method to refresh Firebase connector tokens
   async refreshFirebaseConnectorToken(userId: string, connectorName: string, auth: any): Promise<void> {
     if (!auth.tokenUrl || !auth.refreshToken) {
       throw new Error('Missing token URL or refresh token');
@@ -263,7 +215,6 @@ export async function ensureValidToken(userId: number, connectorId: number): Pro
 
     console.log(`Attempting to refresh token for ${connectorName} with refresh token: ${auth.refreshToken.substring(0, 10)}...`);
 
-    // Prepare the token refresh request
     const body = new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: auth.refreshToken,
@@ -274,7 +225,6 @@ export async function ensureValidToken(userId: number, connectorId: number): Pro
       'Content-Type': 'application/x-www-form-urlencoded'
     };
 
-    // Add client authentication
     if (auth.clientSecret) {
       const credentials = Buffer.from(`${auth.clientId}:${auth.clientSecret}`).toString('base64');
       headers['Authorization'] = `Basic ${credentials}`;
@@ -303,7 +253,6 @@ export async function ensureValidToken(userId: number, connectorId: number): Pro
       throw new Error('No access token received from refresh');
     }
 
-    // Update the auth object with new tokens
     const updatedAuth = {
       ...auth,
       accessToken: tokenData.access_token,
@@ -314,10 +263,40 @@ export async function ensureValidToken(userId: number, connectorId: number): Pro
       lastAuthenticated: new Date().toISOString()
     };
 
-    // Sync the updated auth back to Firebase
     await firebaseSync.syncConnectorFromPostgres(userId, connectorName, updatedAuth);
     
     console.log(`Successfully refreshed token for ${connectorName}, new expiry: ${updatedAuth.tokenExpiresAt}`);
+  }
+}
+
+export const tokenRefreshService = new AutoTokenRefreshService();
+
+export async function ensureValidToken(userId: number, connectorId: number): Promise<boolean> {
+  try {
+    const connector = await storage.getConnector(userId, connectorId);
+    if (!connector || connector.authType !== 'oauth2') {
+      return true;
+    }
+
+    const auth = connector.authConfig as any;
+    if (!auth?.accessToken) {
+      return false;
+    }
+
+    if (auth.tokenExpiresAt) {
+      const expiryTime = new Date(auth.tokenExpiresAt).getTime();
+      const currentTime = Date.now();
+      const bufferTime = 60 * 1000; // 1 minute buffer
+
+      if ((expiryTime - currentTime) <= bufferTime) {
+        return await tokenRefreshService.refreshSpecificConnector(userId, connectorId);
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error ensuring valid token:', error);
+    return false;
   }
 }
 
