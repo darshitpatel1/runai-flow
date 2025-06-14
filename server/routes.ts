@@ -660,21 +660,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Missing required parameters (need connectorId or connectorName and userId)' });
       }
 
-      // For Firebase connectors, use connectorName
+      // For Firebase connectors, use connectorName and auth data from request
       if (connectorName) {
-        const { firebaseSync } = await import('./firebase-sync');
+        const { auth } = req.body;
         
-        // Get Firebase connectors for this user
-        const firebaseConnectors = await firebaseSync.getAllFirebaseConnectors();
-        const userConnector = firebaseConnectors.find(fc => 
-          fc.userId === userId && fc.connector.name === connectorName
-        );
-
-        if (!userConnector) {
-          return res.status(404).json({ error: 'Firebase connector not found' });
+        if (!auth) {
+          return res.status(400).json({ error: 'Auth configuration required for Firebase connector refresh' });
         }
-
-        const auth = userConnector.connector.auth;
         if (!auth?.refreshToken) {
           return res.status(400).json({ error: 'No refresh token available' });
         }
@@ -728,6 +720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
 
         // Sync back to Firebase
+        const { firebaseSync } = await import('./firebase-sync');
         await firebaseSync.syncConnectorFromPostgres(userId, connectorName, updatedAuth);
 
         return res.json({
@@ -768,22 +761,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Enhanced test connector with automatic token refresh
+  // Enhanced test connector with automatic token refresh for both PostgreSQL and Firebase connectors
   app.post('/api/use-connector', async (req, res) => {
     try {
-      const { connectorId, userId, endpoint = '', method = 'GET', data = null } = req.body;
+      const { connectorId, userId, endpoint = '', method = 'GET', data = null, connector: firebaseConnector } = req.body;
 
-      if (!connectorId || !userId) {
-        return res.status(400).json({ error: 'Missing required parameters' });
+      if ((!connectorId && !firebaseConnector) || !userId) {
+        return res.status(400).json({ error: 'Missing required parameters (need connectorId or connector data and userId)' });
       }
 
-      // Get the connector configuration
-      const connector = await storage.getConnector(userId, connectorId);
-      if (!connector) {
-        return res.status(404).json({ error: 'Connector not found' });
+      let connector, baseUrl, authType, authConfig, customHeaders;
+
+      // Handle Firebase connector data passed directly from frontend
+      if (firebaseConnector) {
+        baseUrl = firebaseConnector.baseUrl;
+        authType = firebaseConnector.authType;
+        authConfig = firebaseConnector.auth;
+        customHeaders = firebaseConnector.headers;
+      } else {
+        // Handle PostgreSQL connector
+        connector = await storage.getConnector(parseInt(userId), connectorId);
+        if (!connector) {
+          return res.status(404).json({ error: 'Connector not found' });
+        }
+        baseUrl = connector.baseUrl;
+        authType = connector.authType;
+        authConfig = connector.authConfig;
+        customHeaders = connector.headers;
       }
 
-      const { baseUrl, authType, authConfig, headers: customHeaders } = connector;
       const auth = authConfig as any;
 
       // Build the full URL
@@ -813,16 +819,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const credentials = Buffer.from(`${auth.username}:${auth.password}`).toString('base64');
         requestHeaders['Authorization'] = `Basic ${credentials}`;
       } else if (authType === 'oauth2') {
-        // Use the new automatic token refresh system
-        const accessToken = await getValidAccessToken(userId, connectorId);
-        
-        if (accessToken) {
-          requestHeaders['Authorization'] = `Bearer ${accessToken}`;
+        // Handle OAuth2 authentication with automatic token refresh
+        if (firebaseConnector) {
+          // Firebase connector - check if token needs refresh
+          if (auth?.accessToken) {
+            let currentAccessToken = auth.accessToken;
+            
+            // Check if token is expired and needs refresh
+            if (auth.tokenExpiresAt) {
+              const expiryTime = new Date(auth.tokenExpiresAt).getTime();
+              const currentTime = Date.now();
+              const bufferTime = 60 * 1000; // 1 minute buffer
+              
+              if ((expiryTime - currentTime) <= bufferTime && auth.refreshToken) {
+                console.log(`Token expired for Firebase connector, attempting refresh...`);
+                
+                // Refresh the token
+                try {
+                  const body = new URLSearchParams({
+                    grant_type: 'refresh_token',
+                    refresh_token: auth.refreshToken,
+                    client_id: auth.clientId
+                  });
+
+                  const refreshHeaders: Record<string, string> = {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                  };
+
+                  if (auth.clientSecret) {
+                    const credentials = Buffer.from(`${auth.clientId}:${auth.clientSecret}`).toString('base64');
+                    refreshHeaders['Authorization'] = `Basic ${credentials}`;
+                  }
+
+                  const refreshResponse = await fetch(auth.tokenUrl, {
+                    method: 'POST',
+                    headers: refreshHeaders,
+                    body: body.toString()
+                  });
+
+                  if (refreshResponse.ok) {
+                    const tokenData = await refreshResponse.json();
+                    
+                    if (tokenData.access_token) {
+                      currentAccessToken = tokenData.access_token;
+                      console.log(`Successfully refreshed token for Firebase connector`);
+                      
+                      // Return the updated auth in the response for frontend to save
+                      res.locals.updatedAuth = {
+                        ...auth,
+                        accessToken: tokenData.access_token,
+                        refreshToken: tokenData.refresh_token || auth.refreshToken,
+                        tokenExpiresAt: tokenData.expires_in ? 
+                          new Date(Date.now() + (tokenData.expires_in * 1000)).toISOString() : auth.tokenExpiresAt,
+                        lastRefreshed: new Date().toISOString(),
+                        lastAuthenticated: new Date().toISOString()
+                      };
+                    }
+                  } else {
+                    console.error('Token refresh failed for Firebase connector');
+                  }
+                } catch (refreshError) {
+                  console.error('Error refreshing Firebase connector token:', refreshError);
+                }
+              }
+            }
+            
+            requestHeaders['Authorization'] = `Bearer ${currentAccessToken}`;
+          } else {
+            return res.status(401).json({ 
+              error: 'No access token available',
+              requiresReauth: true 
+            });
+          }
         } else {
-          return res.status(401).json({ 
-            error: 'Unable to obtain valid access token',
-            requiresReauth: true 
-          });
+          // PostgreSQL connector - use existing refresh system
+          const accessToken = await getValidAccessToken(parseInt(userId), connectorId);
+          
+          if (accessToken) {
+            requestHeaders['Authorization'] = `Bearer ${accessToken}`;
+          } else {
+            return res.status(401).json({ 
+              error: 'Unable to obtain valid access token',
+              requiresReauth: true 
+            });
+          }
         }
       }
 
@@ -896,6 +976,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         error: 'Internal server error during connector usage',
         details: error.message 
+      });
+    }
+  });
+
+  // Manual trigger for token refresh service (for testing)
+  app.post('/api/trigger-token-refresh', async (req, res) => {
+    try {
+      const { tokenRefreshService } = await import('./token-refresh-service');
+      await tokenRefreshService.refreshExpiredTokens();
+      
+      res.json({
+        success: true,
+        message: 'Token refresh cycle completed'
+      });
+    } catch (error: any) {
+      console.error('Manual token refresh trigger error:', error);
+      res.status(500).json({
+        error: 'Failed to trigger token refresh',
+        details: error.message
       });
     }
   });
