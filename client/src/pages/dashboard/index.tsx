@@ -477,121 +477,122 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user) return;
+  // Refresh data function
+  const refreshData = async () => {
+    if (!user) return;
 
-      try {
-        // Fetch flows
-        const flowsQuery = query(collection(db, "users", user.uid, "flows"));
-        const flowsSnapshot = await getDocs(flowsQuery);
-        const flowsData = flowsSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Array<{ id: string; folderId?: string; name: string }>;
-        setFlows(flowsData);
+    try {
+      // Fetch flows
+      const flowsQuery = query(collection(db, "users", user.uid, "flows"));
+      const flowsSnapshot = await getDocs(flowsQuery);
+      const flowsData = flowsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Array<{ id: string; folderId?: string; name: string }>;
+      setFlows(flowsData);
 
-        // Fetch connectors
-        const connectorsQuery = query(
-          collection(db, "users", user.uid, "connectors"),
-        );
-        const connectorsSnapshot = await getDocs(connectorsQuery);
-        const connectorsData = connectorsSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Array<{ id: string; folderId?: string; name: string }>;
-        setConnectors(connectorsData);
+      // Fetch connectors
+      const connectorsQuery = query(
+        collection(db, "users", user.uid, "connectors"),
+      );
+      const connectorsSnapshot = await getDocs(connectorsQuery);
+      const connectorsData = connectorsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Array<{ id: string; folderId?: string; name: string }>;
+      setConnectors(connectorsData);
 
-        // Fetch tables from backend API
-        const tablesResponse = await fetch('/api/tables', {
-          headers: {
-            'Authorization': `Bearer ${await user.getIdToken()}`
-          }
-        });
-        let mergedTables: any[] = [];
-        if (tablesResponse.ok) {
-          const tablesData = await tablesResponse.json();
-          
-          // Fetch table folder assignments from Firebase
-          const firebaseTablesQuery = query(
-            collection(db, "users", user.uid, "tables"),
-          );
-          const firebaseTablesSnapshot = await getDocs(firebaseTablesQuery);
-          const firebaseTablesData = firebaseTablesSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          })) as Array<{ id: string; folderId?: string }>;
-          
-          // Merge table data with Firebase folder assignments
-          mergedTables = tablesData.map((table: any) => {
-            const firebaseTable = firebaseTablesData.find((ft) => ft.id === table.id.toString());
-            return {
-              ...table,
-              folderId: firebaseTable?.folderId || null
-            };
-          });
-          
-          console.log("Merged tables data:", {
-            totalTables: mergedTables.length,
-            tablesWithFolders: mergedTables.filter(t => t.folderId).length,
-            allTables: mergedTables.map(t => ({ id: t.id, name: t.name, folderId: t.folderId }))
-          });
+      // Fetch tables from backend API
+      const tablesResponse = await fetch('/api/tables', {
+        headers: {
+          'Authorization': `Bearer ${await user.getIdToken()}`
         }
-        setTables(mergedTables);
-
-        // Fetch folders
-        const foldersQuery = query(
-          collection(db, "users", user.uid, "folders"),
+      });
+      let mergedTables: any[] = [];
+      if (tablesResponse.ok) {
+        const tablesData = await tablesResponse.json();
+        
+        // Fetch table folder assignments from Firebase
+        const firebaseTablesQuery = query(
+          collection(db, "users", user.uid, "tables"),
         );
-        const foldersSnapshot = await getDocs(foldersQuery);
-        const foldersData = foldersSnapshot.docs.map((doc) => ({
+        const firebaseTablesSnapshot = await getDocs(firebaseTablesQuery);
+        const firebaseTablesData = firebaseTablesSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        })) as Array<{ id: string; items?: any[]; name: string }>;
-
-        // Calculate folder contents by combining existing items with tables
-        const foldersWithItems = foldersData.map(folder => {
-          // Keep existing items (flows and connectors already in the folder)
-          const existingItems = (folder as any).items || [];
-          
-          // Add tables that have this folder assigned
-          const folderTables = mergedTables.filter(table => table.folderId === folder.id);
-          const tableItems = folderTables.map(table => ({ ...table, type: 'table' }));
-          
-          console.log("Folder calculation for", folder.name, {
-            folderId: folder.id,
-            allTables: mergedTables.length,
-            folderTables: folderTables.length,
-            tableItems: tableItems.map(t => ({ id: t.id, name: t.name, folderId: t.folderId }))
-          });
-          
-          // Remove any existing table items to avoid duplicates
-          const nonTableItems = existingItems.filter((item: any) => item.type !== 'table');
-          
-          const allItems = [
-            ...nonTableItems,
-            ...tableItems
-          ];
-          
+        })) as Array<{ id: string; folderId?: string }>;
+        
+        // Merge table data with Firebase folder assignments
+        mergedTables = tablesData.map((table: any) => {
+          const firebaseTable = firebaseTablesData.find((ft) => ft.id === table.id.toString());
           return {
-            ...folder,
-            items: allItems
+            ...table,
+            folderId: firebaseTable?.folderId || null
           };
         });
         
-        setFolders(foldersWithItems);
-      } catch (error: any) {
-        toast({
-          title: "Error loading data",
-          description: error.message,
-          variant: "destructive",
+        console.log("Merged tables data:", {
+          totalTables: mergedTables.length,
+          tablesWithFolders: mergedTables.filter(t => t.folderId).length,
+          allTables: mergedTables.map(t => ({ id: t.id, name: t.name, folderId: t.folderId }))
         });
-      } finally {
-        setLoading(false);
       }
-    };
+      setTables(mergedTables);
 
-    fetchUserData();
+      // Fetch folders
+      const foldersQuery = query(
+        collection(db, "users", user.uid, "folders"),
+      );
+      const foldersSnapshot = await getDocs(foldersQuery);
+      const foldersData = foldersSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Array<{ id: string; items?: any[]; name: string }>;
+
+      // Calculate folder contents by combining existing items with tables
+      const foldersWithItems = foldersData.map(folder => {
+        // Keep existing items (flows and connectors already in the folder)
+        const existingItems = (folder as any).items || [];
+        
+        // Add tables that have this folder assigned
+        const folderTables = mergedTables.filter(table => table.folderId === folder.id);
+        const tableItems = folderTables.map(table => ({ ...table, type: 'table' }));
+        
+        console.log("Folder calculation for", folder.name, {
+          folderId: folder.id,
+          allTables: mergedTables.length,
+          folderTables: folderTables.length,
+          tableItems: tableItems.map(t => ({ id: t.id, name: t.name, folderId: t.folderId }))
+        });
+        
+        // Remove any existing table items to avoid duplicates
+        const nonTableItems = existingItems.filter((item: any) => item.type !== 'table');
+        
+        const allItems = [
+          ...nonTableItems,
+          ...tableItems
+        ];
+        
+        return {
+          ...folder,
+          items: allItems
+        };
+      });
+      
+      setFolders(foldersWithItems);
+    } catch (error: any) {
+      toast({
+        title: "Error loading data",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshData();
   }, [user, toast]);
 
   return (

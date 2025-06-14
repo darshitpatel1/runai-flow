@@ -121,6 +121,11 @@ export default function TablesPage() {
         documentPath: `users/${user.uid}/tables/${selectedTable.id}`
       });
 
+      // Verify the document was created by reading it back
+      const { getDoc } = await import("firebase/firestore");
+      const verifyDoc = await getDoc(tableRef);
+      console.log("Verification - Document exists:", verifyDoc.exists(), "Data:", verifyDoc.data());
+
       toast({
         title: "Table moved",
         description: "The table has been moved successfully",
