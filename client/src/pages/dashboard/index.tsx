@@ -350,24 +350,28 @@ export default function Dashboard() {
             : table
         ));
         
-        // Recalculate folder contents
+        // Recalculate folder contents - preserve existing items and add new table
         const updatedFolders = folders.map(folder => {
           if (folder.id === selectedFolderId) {
-            const folderFlows = flows.filter(flow => flow.folderId === folder.id);
-            const folderConnectors = connectors.filter(connector => connector.folderId === folder.id);
+            // Keep existing non-table items
+            const existingItems = folder.items || [];
+            const nonTableItems = existingItems.filter((item: any) => item.type !== 'table');
+            
+            // Get updated tables for this folder
             const folderTables = tables.map(table => 
               table.id === selectedItem.id 
                 ? { ...table, folderId: selectedFolderId }
                 : table
             ).filter(table => table.folderId === folder.id);
             
-            const items = [
-              ...folderFlows.map(flow => ({ ...flow, type: 'flow' })),
-              ...folderConnectors.map(connector => ({ ...connector, type: 'connector' })),
-              ...folderTables.map(table => ({ ...table, type: 'table' }))
+            const tableItems = folderTables.map(table => ({ ...table, type: 'table' }));
+            
+            const allItems = [
+              ...nonTableItems,
+              ...tableItems
             ];
             
-            return { ...folder, items };
+            return { ...folder, items: allItems };
           }
           return folder;
         });
@@ -537,23 +541,28 @@ export default function Dashboard() {
         const foldersData = foldersSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }));
+        })) as Array<{ id: string; items?: any[]; name: string }>;
 
-        // Calculate folder contents dynamically
+        // Calculate folder contents by combining existing items with tables
         const foldersWithItems = foldersData.map(folder => {
-          const folderFlows = flowsData.filter(flow => flow.folderId === folder.id);
-          const folderConnectors = connectorsData.filter(connector => connector.folderId === folder.id);
-          const folderTables = mergedTables.filter(table => table.folderId === folder.id);
+          // Keep existing items (flows and connectors already in the folder)
+          const existingItems = (folder as any).items || [];
           
-          const items = [
-            ...folderFlows.map(flow => ({ ...flow, type: 'flow' })),
-            ...folderConnectors.map(connector => ({ ...connector, type: 'connector' })),
-            ...folderTables.map(table => ({ ...table, type: 'table' }))
+          // Add tables that have this folder assigned
+          const folderTables = mergedTables.filter(table => table.folderId === folder.id);
+          const tableItems = folderTables.map(table => ({ ...table, type: 'table' }));
+          
+          // Remove any existing table items to avoid duplicates
+          const nonTableItems = existingItems.filter((item: any) => item.type !== 'table');
+          
+          const allItems = [
+            ...nonTableItems,
+            ...tableItems
           ];
           
           return {
             ...folder,
-            items
+            items: allItems
           };
         });
         
