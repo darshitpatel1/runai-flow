@@ -703,8 +703,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const tokenData = await response.json();
+        console.log('Token refresh response:', JSON.stringify(tokenData, null, 2));
 
         if (!tokenData.access_token) {
+          console.error('No access token in response:', tokenData);
           return res.status(400).json({ error: 'No access token received from refresh' });
         }
 
@@ -719,15 +721,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastAuthenticated: new Date().toISOString()
         };
 
-        // Sync back to Firebase
-        const { firebaseSync } = await import('./firebase-sync');
-        await firebaseSync.syncConnectorFromPostgres(userId, connectorName, updatedAuth);
+        console.log('Updated auth object:', {
+          accessToken: updatedAuth.accessToken ? 'PRESENT' : 'MISSING',
+          refreshToken: updatedAuth.refreshToken ? 'PRESENT' : 'MISSING',
+          tokenExpiresAt: updatedAuth.tokenExpiresAt,
+          lastRefreshed: updatedAuth.lastRefreshed
+        });
+
+        // Sync back to Firebase (optional, may fail without config)
+        try {
+          const { firebaseSync } = await import('./firebase-sync');
+          await firebaseSync.syncConnectorFromPostgres(userId, connectorName, updatedAuth);
+        } catch (syncError) {
+          console.error('Firebase sync failed (continuing anyway):', syncError.message);
+        }
 
         return res.json({
           success: true,
           message: 'Token refreshed successfully',
+          accessToken: updatedAuth.accessToken,
+          refreshToken: updatedAuth.refreshToken,
           tokenExpiresAt: updatedAuth.tokenExpiresAt,
-          lastRefreshed: updatedAuth.lastRefreshed
+          lastRefreshed: updatedAuth.lastRefreshed,
+          lastAuthenticated: updatedAuth.lastAuthenticated
         });
       }
 

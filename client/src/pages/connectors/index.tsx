@@ -199,6 +199,62 @@ export default function Connectors() {
         throw new Error("Connector not found");
       }
       
+      // For OAuth connectors with expired tokens, try to refresh first
+      let connectorToTest = connector;
+      if (connector.authType === 'oauth2' && connector.auth?.tokenExpiresAt) {
+        const expiryTime = new Date(connector.auth.tokenExpiresAt).getTime();
+        const currentTime = Date.now();
+        const bufferTime = 5 * 60 * 1000; // 5 minutes buffer
+        
+        if ((expiryTime - currentTime) <= bufferTime && connector.auth.refreshToken) {
+          console.log(`Token expired for ${connector.name}, refreshing before test...`);
+          
+          try {
+            const refreshResponse = await fetch('/api/oauth-refresh', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                connectorName: connector.name,
+                userId: user.uid,
+                auth: connector.auth
+              })
+            });
+
+            const refreshData = await refreshResponse.json();
+            
+            if (refreshData.success) {
+              // Update the connector with new auth data
+              const updatedAuth = {
+                ...connector.auth,
+                accessToken: refreshData.accessToken || connector.auth.accessToken,
+                tokenExpiresAt: refreshData.tokenExpiresAt,
+                lastRefreshed: refreshData.lastRefreshed
+              };
+              
+              connectorToTest = { ...connector, auth: updatedAuth };
+              
+              // Update Firebase with the new tokens
+              const connectorRef = doc(db, "users", user.uid, "connectors", connectorId);
+              await updateDoc(connectorRef, {
+                auth: updatedAuth,
+                updatedAt: new Date()
+              });
+              
+              // Update local state
+              setConnectors(prev => prev.map(c => 
+                c.id === connectorId ? connectorToTest : c
+              ));
+              
+              console.log(`Successfully refreshed token for ${connector.name}`);
+            }
+          } catch (refreshError) {
+            console.error('Token refresh failed:', refreshError);
+          }
+        }
+      }
+
       // Send the request to the server which will make the actual API call
       const response = await fetch('/api/test-connector', {
         method: 'POST',
@@ -206,7 +262,7 @@ export default function Connectors() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          connector
+          connector: connectorToTest
         })
       });
       
