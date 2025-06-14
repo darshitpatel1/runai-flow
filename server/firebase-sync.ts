@@ -118,10 +118,42 @@ export class FirebaseConnectorSync {
   }
 
   async getAllFirebaseConnectors(): Promise<Array<{ userId: string; connectorId: string; connector: FirebaseConnector }>> {
-    // Since Firebase Admin SDK requires authentication, we'll return empty for now
-    // The token refresh will work reactively when connectors are used
-    console.log('Firebase Admin SDK not configured, token refresh will work reactively when connectors are accessed');
-    return [];
+    if (!this.db) {
+      console.log('Firebase not initialized, token refresh will work reactively when connectors are accessed');
+      return [];
+    }
+
+    try {
+      const connectors: Array<{ userId: string; connectorId: string; connector: FirebaseConnector }> = [];
+      
+      // Get all users
+      const usersSnapshot = await this.db.collection('users').get();
+      
+      for (const userDoc of usersSnapshot.docs) {
+        const userId = userDoc.id;
+        
+        // Get all connectors for this user
+        const connectorsSnapshot = await userDoc.ref.collection('connectors').get();
+        
+        for (const connectorDoc of connectorsSnapshot.docs) {
+          const connectorData = connectorDoc.data() as FirebaseConnector;
+          connectors.push({
+            userId,
+            connectorId: connectorDoc.id,
+            connector: {
+              ...connectorData,
+              id: connectorDoc.id
+            }
+          });
+        }
+      }
+      
+      console.log(`Found ${connectors.length} Firebase connectors for token refresh check`);
+      return connectors;
+    } catch (error) {
+      console.error('Error fetching Firebase connectors:', error);
+      return [];
+    }
   }
 
   async syncAllConnectorsToPostgres(): Promise<void> {

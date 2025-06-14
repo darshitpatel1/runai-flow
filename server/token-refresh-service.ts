@@ -76,8 +76,11 @@ class AutoTokenRefreshService implements TokenRefreshService {
 
   private async getAllUsers(): Promise<Array<{ id: number }>> {
     try {
-      console.log('Note: getAllUsers not implemented, token refresh will work reactively only');
-      return [];
+      const { db } = await import('../db');
+      const { users } = await import('../shared/schema');
+      
+      const allUsers = await db.select({ id: users.id }).from(users);
+      return allUsers;
     } catch (error) {
       console.error('Error getting all users:', error);
       return [];
@@ -263,6 +266,7 @@ class AutoTokenRefreshService implements TokenRefreshService {
       lastAuthenticated: new Date().toISOString()
     };
 
+    const { firebaseSync } = await import('./firebase-sync');
     await firebaseSync.syncConnectorFromPostgres(userId, connectorName, updatedAuth);
     
     console.log(`Successfully refreshed token for ${connectorName}, new expiry: ${updatedAuth.tokenExpiresAt}`);

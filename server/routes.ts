@@ -732,8 +732,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const { firebaseSync } = await import('./firebase-sync');
           await firebaseSync.syncConnectorFromPostgres(userId, connectorName, updatedAuth);
-        } catch (syncError) {
-          console.error('Firebase sync failed (continuing anyway):', syncError.message);
+        } catch (syncError: any) {
+          console.error('Firebase sync failed (continuing anyway):', syncError?.message || syncError);
         }
 
         return res.json({
