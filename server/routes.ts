@@ -1395,7 +1395,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId
       });
       
-      const folder = await storage.createFolder(validatedData);
+      const folder = await storage.createFolder({
+        userId: validatedData.userId,
+        name: validatedData.name,
+        type: validatedData.type || 'table',
+        items: Array.isArray(validatedData.items) ? validatedData.items : []
+      });
       res.status(201).json(folder);
     } catch (error) {
       if (error instanceof z.ZodError) {
