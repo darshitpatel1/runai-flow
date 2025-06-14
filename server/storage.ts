@@ -1,5 +1,5 @@
 import { db } from '@db';
-import { users, connectors, dataTables, tableRows } from '@shared/schema';
+import { users, connectors, dataTables, tableRows, folders } from '@shared/schema';
 import { eq, and, desc } from "drizzle-orm";
 
 export const storage = {
@@ -224,6 +224,120 @@ export const storage = {
       ))
       .returning();
   },
-  
+
+  // Folder operations
+  async getFolders(userId: number, type: string = 'table') {
+    return await db.query.folders.findMany({
+      where: and(
+        eq(folders.userId, userId),
+        eq(folders.type, type)
+      ),
+      orderBy: [desc(folders.updatedAt)]
+    });
+  },
+
+  async getFolder(userId: number, folderId: number) {
+    return await db.query.folders.findFirst({
+      where: and(
+        eq(folders.userId, userId),
+        eq(folders.id, folderId)
+      )
+    });
+  },
+
+  async createFolder(folderData: {
+    userId: number;
+    name: string;
+    type?: string;
+    items?: any[];
+  }) {
+    const [newFolder] = await db.insert(folders).values({
+      userId: folderData.userId,
+      name: folderData.name,
+      type: folderData.type || 'table',
+      items: folderData.items || [],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+    
+    return newFolder;
+  },
+
+  async updateFolder(userId: number, folderId: number, folderData: Partial<{
+    name: string;
+    items: any[];
+  }>) {
+    const [updatedFolder] = await db.update(folders)
+      .set({
+        ...folderData,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(folders.userId, userId),
+        eq(folders.id, folderId)
+      ))
+      .returning();
+    
+    return updatedFolder;
+  },
+
+  async deleteFolder(userId: number, folderId: number) {
+    return await db.delete(folders)
+      .where(and(
+        eq(folders.userId, userId),
+        eq(folders.id, folderId)
+      ))
+      .returning();
+  },
+
+  async addItemToFolder(userId: number, folderId: number, item: {
+    id: number;
+    type: string;
+    name: string;
+    addedAt: Date;
+  }) {
+    // Get current folder
+    const folder = await this.getFolder(userId, folderId);
+    if (!folder) {
+      throw new Error('Folder not found');
+    }
+
+    // Get current items array
+    const currentItems = Array.isArray(folder.items) ? folder.items : [];
+    
+    // Check if item already exists
+    const itemExists = currentItems.some((existingItem: any) => 
+      existingItem.id === item.id && existingItem.type === item.type
+    );
+    
+    if (itemExists) {
+      throw new Error('Item already exists in folder');
+    }
+    
+    // Add new item
+    const updatedItems = [...currentItems, item];
+    
+    // Update folder
+    return await this.updateFolder(userId, folderId, { items: updatedItems });
+  },
+
+  async removeItemFromFolder(userId: number, folderId: number, itemId: number, itemType: string) {
+    // Get current folder
+    const folder = await this.getFolder(userId, folderId);
+    if (!folder) {
+      throw new Error('Folder not found');
+    }
+
+    // Get current items array
+    const currentItems = Array.isArray(folder.items) ? folder.items : [];
+    
+    // Remove item
+    const updatedItems = currentItems.filter((item: any) => 
+      !(item.id === itemId && item.type === itemType)
+    );
+    
+    // Update folder
+    return await this.updateFolder(userId, folderId, { items: updatedItems });
+  },
 
 };

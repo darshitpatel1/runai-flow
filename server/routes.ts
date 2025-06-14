@@ -5,6 +5,7 @@ import {
   insertConnectorSchema, 
   insertDataTableSchema,
   insertTableRowSchema,
+  insertFolderSchema,
   columnDefinitionSchema
 } from "@shared/schema";
 import { z } from "zod";
@@ -1369,6 +1370,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(recentActivity);
     } catch (error: any) {
       console.error('Recent activity error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Folder routes
+  app.get('/api/folders', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const type = req.query.type as string || 'table';
+      const folders = await storage.getFolders(userId, type);
+      res.json(folders);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/folders', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      
+      const validatedData = insertFolderSchema.parse({
+        ...req.body,
+        userId
+      });
+      
+      const folder = await storage.createFolder(validatedData);
+      res.status(201).json(folder);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ errors: error.errors });
+      }
+      res.status(500).json({ error: 'Error creating folder' });
+    }
+  });
+
+  app.put('/api/folders/:id', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const folderId = parseInt(req.params.id);
+      
+      if (isNaN(folderId)) {
+        return res.status(400).json({ error: 'Invalid folder ID' });
+      }
+      
+      const updatedFolder = await storage.updateFolder(userId, folderId, req.body);
+      
+      if (!updatedFolder) {
+        return res.status(404).json({ error: 'Folder not found' });
+      }
+      
+      res.json(updatedFolder);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/folders/:id', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const folderId = parseInt(req.params.id);
+      
+      if (isNaN(folderId)) {
+        return res.status(400).json({ error: 'Invalid folder ID' });
+      }
+      
+      await storage.deleteFolder(userId, folderId);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/folders/:id/items', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const folderId = parseInt(req.params.id);
+      const { itemId, itemType, itemName } = req.body;
+      
+      if (isNaN(folderId)) {
+        return res.status(400).json({ error: 'Invalid folder ID' });
+      }
+      
+      if (!itemId || !itemType || !itemName) {
+        return res.status(400).json({ error: 'Missing required fields: itemId, itemType, itemName' });
+      }
+      
+      const updatedFolder = await storage.addItemToFolder(userId, folderId, {
+        id: itemId,
+        type: itemType,
+        name: itemName,
+        addedAt: new Date()
+      });
+      
+      res.json(updatedFolder);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/folders/:id/items/:itemId', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const folderId = parseInt(req.params.id);
+      const itemId = parseInt(req.params.itemId);
+      const itemType = req.query.type as string;
+      
+      if (isNaN(folderId) || isNaN(itemId)) {
+        return res.status(400).json({ error: 'Invalid folder or item ID' });
+      }
+      
+      if (!itemType) {
+        return res.status(400).json({ error: 'Item type is required' });
+      }
+      
+      const updatedFolder = await storage.removeItemFromFolder(userId, folderId, itemId, itemType);
+      res.json(updatedFolder);
+    } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
