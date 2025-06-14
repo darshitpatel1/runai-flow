@@ -178,6 +178,8 @@ export default function Connectors() {
   const openEditDialog = (connector: any) => {
     setEditingConnector(connector);
     setOpenDialog(true);
+    // Update URL to include edit parameter
+    setLocation(`/connectors?edit=${connector.id}`);
   };
   
   const closeDialog = () => {
