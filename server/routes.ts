@@ -953,23 +953,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const responseData = await apiResponse.text();
+      const responseText = await apiResponse.text();
       let parsedData;
       
       try {
-        parsedData = JSON.parse(responseData);
+        parsedData = JSON.parse(responseText);
       } catch {
-        parsedData = responseData;
+        parsedData = responseText;
       }
 
-      res.json({
+      const responseObj: any = {
         success: apiResponse.ok,
         status: apiResponse.status,
         statusText: apiResponse.statusText,
         data: parsedData,
         headers: Object.fromEntries(apiResponse.headers.entries()),
-        tokenRefreshed: apiResponse.status !== 401 && authType === 'oauth2' // Indicate if token was refreshed
-      });
+        tokenRefreshed: !!res.locals.updatedAuth
+      };
+
+      // Include updated auth data if token was refreshed
+      if (res.locals.updatedAuth) {
+        responseObj.updatedAuth = res.locals.updatedAuth;
+      }
+
+      res.json(responseObj);
 
     } catch (error: any) {
       console.error('Connector usage error:', error);
