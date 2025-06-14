@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { collection, doc, addDoc, updateDoc, deleteDoc, getDocs, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -38,12 +38,15 @@ export default function Connectors() {
   // Store connection status persistently
   const [persistentConnections, setPersistentConnections] = useState<Record<string, boolean>>({});
   
-  // Get edit parameter from URL
-  const params = new URLSearchParams(location.split('?')[1] || '');
-  const editId = params.get('edit');
-  
-  console.log('Current location:', location);
-  console.log('Edit ID from URL:', editId);
+  // Get edit parameter from URL - use useMemo to ensure it updates when location changes
+  const editId = useMemo(() => {
+    if (!location.includes('?')) return null;
+    const params = new URLSearchParams(location.split('?')[1]);
+    const id = params.get('edit');
+    console.log('Current location:', location);
+    console.log('Edit ID from URL:', id);
+    return id;
+  }, [location]);
   
   useEffect(() => {
     const fetchConnectors = async () => {
@@ -57,19 +60,6 @@ export default function Connectors() {
           ...doc.data()
         }));
         setConnectors(connectorsData);
-        
-        // If edit parameter is present, load that connector for editing
-        if (editId) {
-          console.log('Edit ID found in URL:', editId);
-          const connectorToEdit = connectorsData.find(connector => connector.id === editId);
-          if (connectorToEdit) {
-            console.log('Found connector to edit:', connectorToEdit);
-            setEditingConnector(connectorToEdit);
-            setOpenDialog(true);
-          } else {
-            console.log('Connector not found in data:', connectorsData);
-          }
-        }
       } catch (error: any) {
         toast({
           title: "Error loading connectors",
@@ -82,7 +72,22 @@ export default function Connectors() {
     };
     
     fetchConnectors();
-  }, [user, toast, editId]);
+  }, [user, toast]);
+
+  // Separate useEffect to handle edit dialog opening when URL changes
+  useEffect(() => {
+    if (editId && connectors.length > 0) {
+      console.log('Edit ID found in URL:', editId);
+      const connectorToEdit = connectors.find(connector => connector.id === editId);
+      if (connectorToEdit) {
+        console.log('Found connector to edit:', connectorToEdit);
+        setEditingConnector(connectorToEdit);
+        setOpenDialog(true);
+      } else {
+        console.log('Connector not found in data:', connectors);
+      }
+    }
+  }, [editId, connectors]);
   
   const handleCreateConnector = async (connectorData: any) => {
     if (!user) return;
@@ -186,10 +191,8 @@ export default function Connectors() {
     setOpenDialog(false);
     setEditingConnector(null);
     
-    // Remove edit parameter from URL if it exists
-    if (editId) {
-      setLocation("/connectors");
-    }
+    // Always remove edit parameter from URL when closing dialog
+    setLocation("/connectors");
   };
   
   const testConnectorConnection = async (connectorId: string) => {
