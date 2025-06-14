@@ -334,33 +334,74 @@ export default function Dashboard() {
         return;
       }
       
-      // Add item to folder
-      const updatedItems = [
-        ...items, 
-        { 
-          id: selectedItem.id, 
-          name: selectedItem.name,
-          type: selectedItemType,
-          addedAt: new Date(),
-        }
-      ];
-      
-      // Update folder document
-      await updateDoc(folderRef, {
-        items: updatedItems,
-        updatedAt: new Date(),
-      });
-      
-      // Update local state
-      setFolders(folders.map(folder => 
-        folder.id === selectedFolderId 
-          ? { 
-              ...folder, 
-              items: updatedItems,
-              updatedAt: { toDate: () => new Date() },
-            } 
-          : folder
-      ));
+      // For tables, we don't update the folder's items array - we set the folderId on the table
+      if (selectedItemType === 'table') {
+        // Update the table's folder assignment in Firebase
+        const tableRef = doc(db, "users", user.uid, "tables", selectedItem.id.toString());
+        await updateDoc(tableRef, {
+          folderId: selectedFolderId,
+          updatedAt: new Date()
+        });
+        
+        // Update local tables state
+        setTables(tables.map(table => 
+          table.id === selectedItem.id 
+            ? { ...table, folderId: selectedFolderId }
+            : table
+        ));
+        
+        // Recalculate folder contents
+        const updatedFolders = folders.map(folder => {
+          if (folder.id === selectedFolderId) {
+            const folderFlows = flows.filter(flow => flow.folderId === folder.id);
+            const folderConnectors = connectors.filter(connector => connector.folderId === folder.id);
+            const folderTables = tables.map(table => 
+              table.id === selectedItem.id 
+                ? { ...table, folderId: selectedFolderId }
+                : table
+            ).filter(table => table.folderId === folder.id);
+            
+            const items = [
+              ...folderFlows.map(flow => ({ ...flow, type: 'flow' })),
+              ...folderConnectors.map(connector => ({ ...connector, type: 'connector' })),
+              ...folderTables.map(table => ({ ...table, type: 'table' }))
+            ];
+            
+            return { ...folder, items };
+          }
+          return folder;
+        });
+        
+        setFolders(updatedFolders);
+      } else {
+        // For flows and connectors, update the folder's items array
+        const updatedItems = [
+          ...items, 
+          { 
+            id: selectedItem.id, 
+            name: selectedItem.name,
+            type: selectedItemType,
+            addedAt: new Date(),
+          }
+        ];
+        
+        // Update folder document
+        await updateDoc(folderRef, {
+          items: updatedItems,
+          updatedAt: new Date(),
+        });
+        
+        // Update local state
+        setFolders(folders.map(folder => 
+          folder.id === selectedFolderId 
+            ? { 
+                ...folder, 
+                items: updatedItems,
+                updatedAt: { toDate: () => new Date() },
+              } 
+            : folder
+        ));
+      }
       
       const itemTypeLabel = selectedItemType === 'flow' ? 'Flow' : selectedItemType === 'connector' ? 'Connector' : 'Table';
       toast({
@@ -443,7 +484,7 @@ export default function Dashboard() {
         const flowsData = flowsSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }));
+        })) as Array<{ id: string; folderId?: string; name: string }>;
         setFlows(flowsData);
 
         // Fetch connectors
@@ -454,7 +495,7 @@ export default function Dashboard() {
         const connectorsData = connectorsSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }));
+        })) as Array<{ id: string; folderId?: string; name: string }>;
         setConnectors(connectorsData);
 
         // Fetch tables from backend API
@@ -497,7 +538,26 @@ export default function Dashboard() {
           id: doc.id,
           ...doc.data(),
         }));
-        setFolders(foldersData);
+
+        // Calculate folder contents dynamically
+        const foldersWithItems = foldersData.map(folder => {
+          const folderFlows = flowsData.filter(flow => flow.folderId === folder.id);
+          const folderConnectors = connectorsData.filter(connector => connector.folderId === folder.id);
+          const folderTables = mergedTables.filter(table => table.folderId === folder.id);
+          
+          const items = [
+            ...folderFlows.map(flow => ({ ...flow, type: 'flow' })),
+            ...folderConnectors.map(connector => ({ ...connector, type: 'connector' })),
+            ...folderTables.map(table => ({ ...table, type: 'table' }))
+          ];
+          
+          return {
+            ...folder,
+            items
+          };
+        });
+        
+        setFolders(foldersWithItems);
       } catch (error: any) {
         toast({
           title: "Error loading data",
