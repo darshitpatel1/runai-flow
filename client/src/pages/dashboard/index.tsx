@@ -85,7 +85,7 @@ export default function Dashboard() {
   // Add to folder state
   const [addToFolderDialogOpen, setAddToFolderDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [selectedItemType, setSelectedItemType] = useState<'flow' | 'connector'>('flow');
+  const [selectedItemType, setSelectedItemType] = useState<'flow' | 'connector' | 'table'>('flow');
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
   const [isAddingToFolder, setIsAddingToFolder] = useState(false);
 
@@ -455,6 +455,37 @@ export default function Dashboard() {
         }));
         setConnectors(connectorsData);
 
+        // Fetch tables from backend API
+        const tablesResponse = await fetch('/api/tables', {
+          headers: {
+            'Authorization': `Bearer ${await user.getIdToken()}`
+          }
+        });
+        let mergedTables: any[] = [];
+        if (tablesResponse.ok) {
+          const tablesData = await tablesResponse.json();
+          
+          // Fetch table folder assignments from Firebase
+          const firebaseTablesQuery = query(
+            collection(db, "users", user.uid, "tables"),
+          );
+          const firebaseTablesSnapshot = await getDocs(firebaseTablesQuery);
+          const firebaseTablesData = firebaseTablesSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          
+          // Merge table data with Firebase folder assignments
+          mergedTables = tablesData.map((table: any) => {
+            const firebaseTable = firebaseTablesData.find((ft: any) => ft.id === table.id.toString());
+            return {
+              ...table,
+              folderId: firebaseTable?.folderId || null
+            };
+          });
+        }
+        setTables(mergedTables);
+
         // Fetch folders
         const foldersQuery = query(
           collection(db, "users", user.uid, "folders"),
@@ -600,17 +631,20 @@ export default function Dashboard() {
                                 className="flex items-center gap-2 text-sm p-1 rounded-sm hover:bg-slate-100 dark:hover:bg-slate-800 group cursor-pointer"
                                 onClick={() => {
                                   if (item.type === 'flow') {
-                                    // Use history to navigate
                                     window.location.href = `/flow-builder?id=${item.id}`;
-                                  } else {
+                                  } else if (item.type === 'connector') {
                                     window.location.href = `/connectors?edit=${item.id}`;
+                                  } else if (item.type === 'table') {
+                                    window.location.href = `/tables/${item.id}`;
                                   }
                                 }}
                               >
                                 {item.type === 'flow' ? (
                                   <ArrowRightIcon className="h-3 w-3 text-blue-500" />
-                                ) : (
+                                ) : item.type === 'connector' ? (
                                   <div className="h-3 w-3 rounded-full bg-green-500" />
+                                ) : (
+                                  <TableIcon className="h-3 w-3 text-purple-500" />
                                 )}
                                 <span className="truncate">
                                   {item.name}
