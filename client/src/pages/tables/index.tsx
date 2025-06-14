@@ -94,23 +94,32 @@ export default function TablesPage() {
     setIsAddingToFolder(true);
     
     try {
-      // Create or update the table document in Firebase with folder assignment
+      // Always use setDoc to ensure the document exists
+      const { setDoc } = await import("firebase/firestore");
       const tableRef = doc(db, "users", user.uid, "tables", selectedTable.id.toString());
       
-      const updateData: any = {
+      const tableData: any = {
         id: selectedTable.id,
         name: selectedTable.name,
         type: 'table',
+        createdAt: new Date(),
         updatedAt: new Date()
       };
 
       if (selectedFolderId === "none") {
-        updateData.folderId = null;
+        tableData.folderId = null;
       } else {
-        updateData.folderId = selectedFolderId;
+        tableData.folderId = selectedFolderId;
       }
 
-      await updateDoc(tableRef, updateData);
+      await setDoc(tableRef, tableData, { merge: true });
+
+      console.log("Table assigned to folder:", {
+        tableId: selectedTable.id,
+        folderId: selectedFolderId,
+        tableName: selectedTable.name,
+        documentPath: `users/${user.uid}/tables/${selectedTable.id}`
+      });
 
       toast({
         title: "Table moved",
@@ -121,42 +130,12 @@ export default function TablesPage() {
       setSelectedTable(null);
       setSelectedFolderId("");
     } catch (error: any) {
-      // If document doesn't exist, we need to create it first
-      try {
-        const { setDoc } = await import("firebase/firestore");
-        const tableRef = doc(db, "users", user.uid, "tables", selectedTable.id.toString());
-        
-        const createData: any = {
-          id: selectedTable.id,
-          name: selectedTable.name,
-          type: 'table',
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-
-        if (selectedFolderId === "none") {
-          createData.folderId = null;
-        } else {
-          createData.folderId = selectedFolderId;
-        }
-
-        await setDoc(tableRef, createData);
-
-        toast({
-          title: "Table moved",
-          description: "The table has been moved successfully",
-        });
-        
-        setAddToFolderDialogOpen(false);
-        setSelectedTable(null);
-        setSelectedFolderId("");
-      } catch (createError: any) {
-        toast({
-          title: "Error moving table",
-          description: createError.message,
-          variant: "destructive",
-        });
-      }
+      console.error("Error assigning table to folder:", error);
+      toast({
+        title: "Error moving table",
+        description: error.message,
+        variant: "destructive",
+      });
     }
     
     setIsAddingToFolder(false);

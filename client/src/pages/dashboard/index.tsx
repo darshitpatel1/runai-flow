@@ -530,6 +530,12 @@ export default function Dashboard() {
               folderId: firebaseTable?.folderId || null
             };
           });
+          
+          console.log("Merged tables data:", {
+            totalTables: mergedTables.length,
+            tablesWithFolders: mergedTables.filter(t => t.folderId).length,
+            allTables: mergedTables.map(t => ({ id: t.id, name: t.name, folderId: t.folderId }))
+          });
         }
         setTables(mergedTables);
 
@@ -551,6 +557,13 @@ export default function Dashboard() {
           // Add tables that have this folder assigned
           const folderTables = mergedTables.filter(table => table.folderId === folder.id);
           const tableItems = folderTables.map(table => ({ ...table, type: 'table' }));
+          
+          console.log("Folder calculation for", folder.name, {
+            folderId: folder.id,
+            allTables: mergedTables.length,
+            folderTables: folderTables.length,
+            tableItems: tableItems.map(t => ({ id: t.id, name: t.name, folderId: t.folderId }))
+          });
           
           // Remove any existing table items to avoid duplicates
           const nonTableItems = existingItems.filter((item: any) => item.type !== 'table');
