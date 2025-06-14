@@ -39,7 +39,7 @@ export default function Connectors() {
   const [persistentConnections, setPersistentConnections] = useState<Record<string, boolean>>({});
   
   // Get edit parameter from URL
-  const params = new URLSearchParams(location.split('?')[1]);
+  const params = new URLSearchParams(location.split('?')[1] || '');
   const editId = params.get('edit');
   
   useEffect(() => {
@@ -57,13 +57,14 @@ export default function Connectors() {
         
         // If edit parameter is present, load that connector for editing
         if (editId) {
-          const connectorDoc = await getDoc(doc(db, "users", user.uid, "connectors", editId));
-          if (connectorDoc.exists()) {
-            setEditingConnector({
-              id: connectorDoc.id,
-              ...connectorDoc.data()
-            });
+          console.log('Edit ID found in URL:', editId);
+          const connectorToEdit = connectorsData.find(connector => connector.id === editId);
+          if (connectorToEdit) {
+            console.log('Found connector to edit:', connectorToEdit);
+            setEditingConnector(connectorToEdit);
             setOpenDialog(true);
+          } else {
+            console.log('Connector not found in data:', connectorsData);
           }
         }
       } catch (error: any) {
