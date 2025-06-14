@@ -42,6 +42,9 @@ export default function Connectors() {
   const params = new URLSearchParams(location.split('?')[1] || '');
   const editId = params.get('edit');
   
+  console.log('Current location:', location);
+  console.log('Edit ID from URL:', editId);
+  
   useEffect(() => {
     const fetchConnectors = async () => {
       if (!user) return;
