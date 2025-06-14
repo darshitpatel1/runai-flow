@@ -1303,5 +1303,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Usage statistics routes
+  app.get('/api/usage/statistics', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      
+      // For now, return placeholder data structure
+      // Real implementation would calculate from execution logs/analytics tables
+      const stats = {
+        totalExecutions: 0,
+        successRate: 0,
+        apiCalls: 0,
+        avgResponseTime: 0,
+        period: 'month'
+      };
+      
+      res.json(stats);
+    } catch (error: any) {
+      console.error('Usage statistics error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/usage/daily', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const days = parseInt(req.query.days as string) || 30;
+      
+      // For now, return placeholder data structure
+      // Real implementation would query execution history by day
+      const dailyUsage: any[] = [];
+      
+      res.json(dailyUsage);
+    } catch (error: any) {
+      console.error('Daily usage error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/usage/top-flows', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const limit = parseInt(req.query.limit as string) || 10;
+      
+      // For now, return placeholder data structure
+      // Real implementation would query execution counts by flow
+      const topFlows: any[] = [];
+      
+      res.json(topFlows);
+    } catch (error: any) {
+      console.error('Top flows error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/usage/recent-activity', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const limit = parseInt(req.query.limit as string) || 50;
+      
+      // For now, return placeholder data structure
+      // Real implementation would query recent execution history
+      const recentActivity = [];
+      
+      res.json(recentActivity);
+    } catch (error: any) {
+      console.error('Recent activity error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   return httpServer;
 }
