@@ -34,9 +34,8 @@ export default function Auth() {
     setLoading(true);
     
     try {
-      const result = await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
-      // We don't need to register the user here as they should already be registered
-      // when they first created the account
+      await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+      // The AuthContext will handle user registration automatically via onAuthStateChanged
       toast({
         title: "Login successful",
         description: "Welcome back to RunAI!",

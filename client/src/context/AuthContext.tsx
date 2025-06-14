@@ -28,14 +28,13 @@ async function registerUserWithBackend(user: User) {
       }),
     });
     
-    // 409 means the user already exists, which is fine
-    if (response.status === 409) {
-      console.log('User already exists in the database');
+    // Both 200 (existing user) and 201 (new user) are success cases
+    if (response.status === 200 || response.status === 201) {
       return true;
     }
     
     if (!response.ok) {
-      console.error('Failed to register with backend');
+      console.error('Failed to register with backend:', response.status, response.statusText);
       return false;
     }
     

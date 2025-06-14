@@ -177,21 +177,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Firebase UID and email are required' });
       }
       
-      // Check if user already exists
-      const existingUser = await storage.getUserByFirebaseUid(firebaseUid);
-      if (existingUser) {
-        return res.status(409).json({ error: 'User already exists' });
+      // Try to create user, handling race conditions gracefully
+      try {
+        const user = await storage.createUser({
+          firebaseUid,
+          email,
+          displayName,
+          photoUrl
+        });
+        return res.status(201).json(user);
+      } catch (createError: any) {
+        // Handle duplicate key constraint violations (race condition)
+        if (createError.code === '23505' || createError.message.includes('duplicate key')) {
+          // Check if user exists by Firebase UID first
+          let existingUser = await storage.getUserByFirebaseUid(firebaseUid);
+          if (existingUser) {
+            return res.status(200).json(existingUser);
+          }
+          
+          // Check by email in case the constraint was on email
+          existingUser = await storage.getUserByEmail(email);
+          if (existingUser) {
+            // If user exists with same email but different Firebase UID, update it
+            if (existingUser.firebaseUid !== firebaseUid) {
+              await storage.updateUserFirebaseUid(existingUser.id, firebaseUid);
+              const updatedUser = await storage.getUserByFirebaseUid(firebaseUid);
+              return res.status(200).json(updatedUser);
+            }
+            return res.status(200).json(existingUser);
+          }
+        }
+        throw createError;
       }
-      
-      const user = await storage.createUser({
-        firebaseUid,
-        email,
-        displayName,
-        photoUrl
-      });
-      
-      res.status(201).json(user);
     } catch (error: any) {
+      console.error('Registration error:', error);
       res.status(500).json({ error: error.message });
     }
   });
