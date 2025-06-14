@@ -134,6 +134,9 @@ export default function TablesPage() {
 
       await setDoc(tableRef, tableData, { merge: true });
 
+      // Handle folder assignment and show appropriate messages
+      let showGenericSuccess = true;
+      
       // Also add the table to the folder's items array (like flows and connectors)
       if (selectedFolderId !== "none") {
         const { updateDoc, getDoc, arrayUnion, arrayRemove, doc: firestoreDoc } = await import("firebase/firestore");
@@ -162,8 +165,21 @@ export default function TablesPage() {
               updatedAt: new Date(),
             });
             console.log("Table added to folder's items array");
+            
+            toast({
+              title: "Table moved",
+              description: "The table has been moved successfully",
+            });
+            showGenericSuccess = false;
           } else {
             console.log("Table already exists in folder, skipping addition");
+            
+            toast({
+              title: "Already in folder",
+              description: "This table is already in the selected folder",
+              variant: "default",
+            });
+            showGenericSuccess = false;
           }
         }
       }
@@ -175,10 +191,13 @@ export default function TablesPage() {
         documentPath: `users/${user.uid}/tables/${selectedTable.id}`
       });
 
-      toast({
-        title: "Table moved",
-        description: "The table has been moved successfully",
-      });
+      // Only show generic success message if not already handled above
+      if (showGenericSuccess && selectedFolderId === "none") {
+        toast({
+          title: "Table moved",
+          description: "The table has been removed from its folder",
+        });
+      }
       
       setAddToFolderDialogOpen(false);
       setSelectedTable(null);
@@ -247,27 +266,27 @@ export default function TablesPage() {
                         <CalendarIcon className="h-3.5 w-3.5 mr-1" />
                         Updated {formatDate(table.updatedAt)}
                       </div>
-                      <div className="mt-2 text-sm">
-                        {Array.isArray(table.columns) && 
-                          `${table.columns.length} column${table.columns.length !== 1 ? 's' : ''}`}
+                      <div className="mt-2 text-sm flex items-center justify-between">
+                        <span>
+                          {Array.isArray(table.columns) && 
+                            `${table.columns.length} column${table.columns.length !== 1 ? 's' : ''}`}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openAddToFolderDialog(table);
+                          }}
+                        >
+                          <FolderIcon className="h-4 w-4" />
+                        </Button>
                       </div>
                     </CardContent>
                   </div>
                 </Link>
-                <div className="px-6 pb-3">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      openAddToFolderDialog(table);
-                    }}
-                  >
-                    <FolderIcon className="h-4 w-4" />
-                  </Button>
-                </div>
               </Card>
             ))
           ) : (
