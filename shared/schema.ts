@@ -36,6 +36,7 @@ export const dataTables = pgTable("data_tables", {
   name: text("name").notNull(),
   description: text("description"),
   columns: jsonb("columns").notNull(), // column definitions as JSON
+  folderId: integer("folder_id").references(() => folders.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 });
@@ -49,10 +50,21 @@ export const tableRows = pgTable("table_rows", {
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 });
 
+// Folders Table (for organizing tables)
+export const folders = pgTable("folders", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(),
+  type: text("type").notNull().default("table"), // 'table' for table folders
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   connectors: many(connectors),
-  dataTables: many(dataTables)
+  dataTables: many(dataTables),
+  folders: many(folders)
 }));
 
 export const connectorsRelations = relations(connectors, ({ one }) => ({
@@ -62,12 +74,22 @@ export const connectorsRelations = relations(connectors, ({ one }) => ({
   })
 }));
 
-
+export const foldersRelations = relations(folders, ({ one, many }) => ({
+  user: one(users, {
+    fields: [folders.userId],
+    references: [users.id]
+  }),
+  tables: many(dataTables)
+}));
 
 export const dataTablesRelations = relations(dataTables, ({ one, many }) => ({
   user: one(users, {
     fields: [dataTables.userId],
     references: [users.id]
+  }),
+  folder: one(folders, {
+    fields: [dataTables.folderId],
+    references: [folders.id]
   }),
   rows: many(tableRows)
 }));
@@ -89,17 +111,22 @@ export const insertDataTableSchema = createInsertSchema(dataTables, {
   name: (schema) => schema.min(1, "Table name is required")
 });
 export const insertTableRowSchema = createInsertSchema(tableRows);
+export const insertFolderSchema = createInsertSchema(folders, {
+  name: (schema) => schema.min(1, "Folder name is required")
+});
 
 // Types
 export type User = typeof users.$inferSelect;
 export type Connector = typeof connectors.$inferSelect;
 export type DataTable = typeof dataTables.$inferSelect;
 export type TableRow = typeof tableRows.$inferSelect;
+export type Folder = typeof folders.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertConnector = z.infer<typeof insertConnectorSchema>;
 export type InsertDataTable = z.infer<typeof insertDataTableSchema>;
 export type InsertTableRow = z.infer<typeof insertTableRowSchema>;
+export type InsertFolder = z.infer<typeof insertFolderSchema>;
 
 // Define a structure for column definition
 export const columnTypeSchema = z.enum(['text', 'number', 'boolean', 'date', 'select']);
