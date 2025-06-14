@@ -823,6 +823,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check connector token status and health
+  app.get('/api/connectors/:connectorId/token-status', async (req, res) => {
+    try {
+      const connectorId = parseInt(req.params.connectorId);
+      const userId = req.query.userId as string;
+
+      if (isNaN(connectorId) || !userId) {
+        return res.status(400).json({ error: 'Invalid connector ID or missing user ID' });
+      }
+
+      const connector = await storage.getConnector(parseInt(userId), connectorId);
+      if (!connector) {
+        return res.status(404).json({ error: 'Connector not found' });
+      }
+
+      if (connector.authType !== 'oauth2') {
+        return res.json({
+          authType: connector.authType,
+          status: 'not_applicable',
+          message: 'Token status only applies to OAuth2 connectors'
+        });
+      }
+
+      const auth = connector.authConfig as any;
+      if (!auth?.accessToken) {
+        return res.json({
+          authType: 'oauth2',
+          status: 'no_token',
+          message: 'No access token available',
+          needsReauth: true
+        });
+      }
+
+      let status = 'valid';
+      let message = 'Token is valid';
+      let expiresIn = null;
+      let needsReauth = auth.needsReauth || false;
+
+      if (auth.tokenExpiresAt) {
+        const expiryTime = new Date(auth.tokenExpiresAt).getTime();
+        const currentTime = Date.now();
+        expiresIn = Math.max(0, Math.floor((expiryTime - currentTime) / 1000));
+
+        if (expiryTime <= currentTime) {
+          status = 'expired';
+          message = 'Token has expired';
+          needsReauth = !auth.refreshToken;
+        } else if (expiryTime - currentTime <= 10 * 60 * 1000) { // 10 minutes
+          status = 'expiring_soon';
+          message = 'Token expires within 10 minutes';
+        }
+      }
+
+      res.json({
+        authType: 'oauth2',
+        status,
+        message,
+        expiresIn,
+        expiresAt: auth.tokenExpiresAt,
+        lastRefreshed: auth.lastRefreshed,
+        hasRefreshToken: !!auth.refreshToken,
+        needsReauth
+      });
+
+    } catch (error: any) {
+      console.error('Token status check error:', error);
+      res.status(500).json({ 
+        error: 'Internal server error during token status check',
+        details: error.message 
+      });
+    }
+  });
+
   // Data tables routes
   app.get('/api/tables', simpleAuth, async (req, res) => {
     try {
