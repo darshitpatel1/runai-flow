@@ -5,6 +5,7 @@ import {
   insertConnectorSchema, 
   insertDataTableSchema,
   insertTableRowSchema,
+  insertFolderSchema,
   columnDefinitionSchema
 } from "@shared/schema";
 import { z } from "zod";
@@ -1111,6 +1112,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: 'Internal server error during token status check',
         details: error.message 
       });
+    }
+  });
+
+  // Folder routes
+  app.get('/api/folders', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const folders = await storage.getFolders(userId);
+      res.json(folders);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/folders', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const validatedData = insertFolderSchema.parse({
+        ...req.body,
+        userId,
+        type: 'table'
+      });
+      
+      const folder = await storage.createFolder(validatedData);
+      res.status(201).json(folder);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Validation error', details: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.put('/api/folders/:id', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const folderId = parseInt(req.params.id);
+      
+      if (isNaN(folderId)) {
+        return res.status(400).json({ error: 'Invalid folder ID' });
+      }
+      
+      const folder = await storage.updateFolder(userId, folderId, req.body);
+      res.json(folder);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete('/api/folders/:id', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const folderId = parseInt(req.params.id);
+      
+      if (isNaN(folderId)) {
+        return res.status(400).json({ error: 'Invalid folder ID' });
+      }
+      
+      await storage.deleteFolder(userId, folderId);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/tables/:tableId/add-to-folder', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const tableId = parseInt(req.params.tableId);
+      const { folderId } = req.body;
+      
+      if (isNaN(tableId)) {
+        return res.status(400).json({ error: 'Invalid table ID' });
+      }
+      
+      const table = await storage.updateTable(userId, tableId, { folderId });
+      res.json(table);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/tables/:tableId/remove-from-folder', simpleAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user.id;
+      const tableId = parseInt(req.params.tableId);
+      
+      if (isNaN(tableId)) {
+        return res.status(400).json({ error: 'Invalid table ID' });
+      }
+      
+      const table = await storage.updateTable(userId, tableId, { folderId: null });
+      res.json(table);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 

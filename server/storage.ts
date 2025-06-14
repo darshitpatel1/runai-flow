@@ -1,5 +1,5 @@
 import { db } from '@db';
-import { users, connectors, dataTables, tableRows } from '@shared/schema';
+import { users, connectors, dataTables, tableRows, folders } from '@shared/schema';
 import { eq, and, desc } from "drizzle-orm";
 
 export const storage = {
@@ -42,6 +42,7 @@ export const storage = {
     name: string;
     description: string;
     columns: any;
+    folderId: number | null;
   }>) {
     const [updatedTable] = await db.update(dataTables)
       .set({
@@ -224,6 +225,71 @@ export const storage = {
       ))
       .returning();
   },
-  
+
+  // Folder operations
+  async getFolders(userId: number) {
+    return await db.query.folders.findMany({
+      where: and(
+        eq(folders.userId, userId),
+        eq(folders.type, 'table')
+      ),
+      orderBy: [desc(folders.createdAt)],
+      with: {
+        tables: true
+      }
+    });
+  },
+
+  async createFolder(folderData: {
+    userId: number;
+    name: string;
+    type: string;
+  }) {
+    const [newFolder] = await db.insert(folders).values({
+      userId: folderData.userId,
+      name: folderData.name,
+      type: folderData.type,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+    
+    return newFolder;
+  },
+
+  async updateFolder(userId: number, folderId: number, folderData: Partial<{
+    name: string;
+  }>) {
+    const [updatedFolder] = await db.update(folders)
+      .set({
+        ...folderData,
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(folders.id, folderId),
+          eq(folders.userId, userId)
+        )
+      )
+      .returning();
+    
+    return updatedFolder;
+  },
+
+  async deleteFolder(userId: number, folderId: number) {
+    // First, remove folderId from any tables in this folder
+    await db.update(dataTables)
+      .set({ folderId: null })
+      .where(eq(dataTables.folderId, folderId));
+      
+    // Then delete the folder
+    return await db.delete(folders)
+      .where(
+        and(
+          eq(folders.id, folderId),
+          eq(folders.userId, userId)
+        )
+      )
+      .returning();
+  },
 
 };
