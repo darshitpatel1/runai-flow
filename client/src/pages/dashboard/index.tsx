@@ -125,7 +125,8 @@ export default function Dashboard() {
 
       const data = await response.json();
       
-      if (response.ok && data.success) {
+      if (response.ok && (data.success || data.authRequired)) {
+        // If the connector responds with success OR requires auth (OAuth2), it means the connection is working
         setConnectionStatus(prev => ({ ...prev, [connectorId]: 'connected' }));
       } else {
         setConnectionStatus(prev => ({ ...prev, [connectorId]: 'disconnected' }));
@@ -975,23 +976,10 @@ export default function Dashboard() {
                       <CardDescription>{connector.baseUrl}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Badge variant="outline">
-                            {connector.authType || "No Auth"}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <TooltipProvider>
-                            {getConnectionStatusIcon(connector.id)}
-                          </TooltipProvider>
-                          <span className="text-xs">
-                            {connectionStatus[connector.id] === 'connected' && 'Connected'}
-                            {connectionStatus[connector.id] === 'disconnected' && 'Disconnected'}
-                            {connectionStatus[connector.id] === 'checking' && 'Checking...'}
-                            {(!connectionStatus[connector.id] || connectionStatus[connector.id] === 'unknown') && 'Unknown'}
-                          </span>
-                        </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Badge variant="outline">
+                          {connector.authType || "No Auth"}
+                        </Badge>
                       </div>
                     </CardContent>
                     <CardFooter className="flex justify-between">
@@ -1000,13 +988,18 @@ export default function Dashboard() {
                           Edit
                         </Button>
                       </Link>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => openAddToFolderDialog(connector, 'connector')}
-                      >
-                        <FolderIcon className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <TooltipProvider>
+                          {getConnectionStatusIcon(connector.id)}
+                        </TooltipProvider>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => openAddToFolderDialog(connector, 'connector')}
+                        >
+                          <FolderIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </CardFooter>
                   </Card>
                 ))}
