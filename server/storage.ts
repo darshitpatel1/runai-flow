@@ -243,12 +243,12 @@ export const storage = {
   async createFolder(folderData: {
     userId: number;
     name: string;
-    type: string;
+    type?: string;
   }) {
     const [newFolder] = await db.insert(folders).values({
       userId: folderData.userId,
       name: folderData.name,
-      type: folderData.type,
+      type: folderData.type || 'table',
       createdAt: new Date(),
       updatedAt: new Date()
     }).returning();

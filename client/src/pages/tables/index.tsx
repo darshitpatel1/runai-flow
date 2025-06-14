@@ -42,7 +42,7 @@ export default function TablesPage() {
   });
 
   // Query folders
-  const { data: folders } = useQuery({
+  const { data: folders } = useQuery<Folder[]>({
     queryKey: ['/api/folders'],
     enabled: !!user,
   });
@@ -244,7 +244,7 @@ export default function TablesPage() {
         </div>
         
         {/* Folders section */}
-        {folders && folders.length > 0 && (
+        {folders && Array.isArray(folders) && folders.length > 0 && (
           <div className="mb-6">
             <h3 className="text-sm font-medium text-muted-foreground mb-2">
               Folders
@@ -468,7 +468,7 @@ export default function TablesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No folder (main view)</SelectItem>
-                      {folders && folders.map((folder: Folder) => (
+                      {folders && Array.isArray(folders) && folders.map((folder: Folder) => (
                         <SelectItem key={folder.id} value={folder.id.toString()}>
                           {folder.name}
                         </SelectItem>

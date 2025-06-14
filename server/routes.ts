@@ -1130,7 +1130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = (req as any).user.id;
       const validatedData = insertFolderSchema.parse({
-        ...req.body,
+        name: req.body.name,
         userId,
         type: 'table'
       });
