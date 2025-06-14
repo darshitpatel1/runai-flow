@@ -4,12 +4,37 @@ import { Link } from "wouter";
 import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { PlusIcon, TableIcon, CalendarIcon, FolderIcon, Loader2Icon } from "lucide-react";
+import {
+  PlusIcon,
+  TableIcon,
+  CalendarIcon,
+  FolderIcon,
+  Loader2Icon,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { DataTable } from "@shared/schema";
 import { db } from "@/lib/firebase";
@@ -17,20 +42,24 @@ import { db } from "@/lib/firebase";
 export default function TablesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  
+
   // State for table name filter
-  const [searchQuery, setSearchQuery] = useState('');
-  
+  const [searchQuery, setSearchQuery] = useState("");
+
   // Add to folder state
   const [addToFolderDialogOpen, setAddToFolderDialogOpen] = useState(false);
   const [selectedTable, setSelectedTable] = useState<DataTable | null>(null);
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
   const [isAddingToFolder, setIsAddingToFolder] = useState(false);
   const [folders, setFolders] = useState<any[]>([]);
-  
+
   // Query tables
-  const { data: tables, isLoading, error } = useQuery({
-    queryKey: ['/api/tables'],
+  const {
+    data: tables,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["/api/tables"],
     enabled: !!user,
   });
 
@@ -38,13 +67,13 @@ export default function TablesPage() {
   useEffect(() => {
     const loadFolders = async () => {
       if (!user) return;
-      
+
       try {
         const foldersRef = collection(db, "users", user.uid, "folders");
         const foldersSnapshot = await getDocs(foldersRef);
-        const foldersData = foldersSnapshot.docs.map(doc => ({
+        const foldersData = foldersSnapshot.docs.map((doc) => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         }));
         setFolders(foldersData);
       } catch (error) {
@@ -54,7 +83,7 @@ export default function TablesPage() {
 
     loadFolders();
   }, [user]);
-  
+
   // Handle errors with useEffect
   useEffect(() => {
     if (error) {
@@ -65,17 +94,18 @@ export default function TablesPage() {
       });
     }
   }, [error, toast]);
-  
+
   // Filter tables by name
-  const filteredTables = tables && Array.isArray(tables) 
-    ? tables.filter((table: DataTable) => 
-        table.name.toLowerCase().includes(searchQuery.toLowerCase())
-      ) 
-    : [];
-  
+  const filteredTables =
+    tables && Array.isArray(tables)
+      ? tables.filter((table: DataTable) =>
+          table.name.toLowerCase().includes(searchQuery.toLowerCase()),
+        )
+      : [];
+
   // Format date for display
   const formatDate = (date: string | Date) => {
-    if (!date) return '';
+    if (!date) return "";
     const d = new Date(date);
     return d.toLocaleDateString();
   };
@@ -90,21 +120,34 @@ export default function TablesPage() {
   const handleAddToFolder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTable || !user) return;
-    
+
     setIsAddingToFolder(true);
-    
+
     try {
       // If table currently has a folder assignment, remove it from that folder's items
-      if (selectedTable.folderId && String(selectedTable.folderId) !== selectedFolderId) {
-        const { updateDoc, arrayRemove, doc: firestoreDoc } = await import("firebase/firestore");
-        const oldFolderRef = firestoreDoc(db, "users", user.uid, "folders", String(selectedTable.folderId));
-        
+      if (
+        selectedTable.folderId &&
+        String(selectedTable.folderId) !== selectedFolderId
+      ) {
+        const {
+          updateDoc,
+          arrayRemove,
+          doc: firestoreDoc,
+        } = await import("firebase/firestore");
+        const oldFolderRef = firestoreDoc(
+          db,
+          "users",
+          user.uid,
+          "folders",
+          String(selectedTable.folderId),
+        );
+
         try {
           await updateDoc(oldFolderRef, {
             items: arrayRemove({
               id: selectedTable.id,
               name: selectedTable.name,
-              type: 'table'
+              type: "table",
             }),
             updatedAt: new Date(),
           });
@@ -116,14 +159,20 @@ export default function TablesPage() {
 
       // Always use setDoc to ensure the document exists
       const { setDoc } = await import("firebase/firestore");
-      const tableRef = doc(db, "users", user.uid, "tables", selectedTable.id.toString());
-      
+      const tableRef = doc(
+        db,
+        "users",
+        user.uid,
+        "tables",
+        selectedTable.id.toString(),
+      );
+
       const tableData: any = {
         id: selectedTable.id,
         name: selectedTable.name,
-        type: 'table',
+        type: "table",
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       if (selectedFolderId === "none") {
@@ -136,36 +185,50 @@ export default function TablesPage() {
 
       // Handle folder assignment and show appropriate messages
       let showGenericSuccess = true;
-      
+
       // Also add the table to the folder's items array (like flows and connectors)
       if (selectedFolderId !== "none") {
-        const { updateDoc, getDoc, arrayUnion, arrayRemove, doc: firestoreDoc } = await import("firebase/firestore");
-        const folderRef = firestoreDoc(db, "users", user.uid, "folders", selectedFolderId);
-        
+        const {
+          updateDoc,
+          getDoc,
+          arrayUnion,
+          arrayRemove,
+          doc: firestoreDoc,
+        } = await import("firebase/firestore");
+        const folderRef = firestoreDoc(
+          db,
+          "users",
+          user.uid,
+          "folders",
+          selectedFolderId,
+        );
+
         // Get current folder data to check for existing table
         const folderDoc = await getDoc(folderRef);
         if (folderDoc.exists()) {
           const folderData = folderDoc.data();
           const currentItems = folderData.items || [];
-          
+
           // Check if table already exists in folder
-          const tableExists = currentItems.some((item: any) => 
-            item.type === 'table' && String(item.id) === String(selectedTable.id)
+          const tableExists = currentItems.some(
+            (item: any) =>
+              item.type === "table" &&
+              String(item.id) === String(selectedTable.id),
           );
-          
+
           if (!tableExists) {
             // Add table to folder's items array only if it doesn't exist
             await updateDoc(folderRef, {
               items: arrayUnion({
                 id: selectedTable.id,
                 name: selectedTable.name,
-                type: 'table',
+                type: "table",
                 addedAt: new Date(),
               }),
               updatedAt: new Date(),
             });
             console.log("Table added to folder's items array");
-            
+
             toast({
               title: "Table moved",
               description: "The table has been moved successfully",
@@ -173,7 +236,7 @@ export default function TablesPage() {
             showGenericSuccess = false;
           } else {
             console.log("Table already exists in folder, skipping addition");
-            
+
             toast({
               title: "Already in folder",
               description: "This table is already in the selected folder",
@@ -188,7 +251,7 @@ export default function TablesPage() {
         tableId: selectedTable.id,
         folderId: selectedFolderId,
         tableName: selectedTable.name,
-        documentPath: `users/${user.uid}/tables/${selectedTable.id}`
+        documentPath: `users/${user.uid}/tables/${selectedTable.id}`,
       });
 
       // Only show generic success message if not already handled above
@@ -198,7 +261,7 @@ export default function TablesPage() {
           description: "The table has been removed from its folder",
         });
       }
-      
+
       setAddToFolderDialogOpen(false);
       setSelectedTable(null);
       setSelectedFolderId("");
@@ -210,17 +273,19 @@ export default function TablesPage() {
         variant: "destructive",
       });
     }
-    
+
     setIsAddingToFolder(false);
   };
-  
+
   return (
     <AppLayout>
       <div className="container mx-auto p-6 max-w-6xl">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Data Tables</h1>
-            <p className="text-muted-foreground mt-1">Create and manage your data tables</p>
+            <p className="text-muted-foreground mt-1">
+              Create and manage your data tables
+            </p>
           </div>
           <Link href="/tables/new">
             <Button>
@@ -229,7 +294,7 @@ export default function TablesPage() {
             </Button>
           </Link>
         </div>
-        
+
         {/* Tables section */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {isLoading ? (
@@ -258,7 +323,9 @@ export default function TablesPage() {
                         {table.name}
                       </CardTitle>
                       {table.description && (
-                        <CardDescription className="line-clamp-2">{table.description}</CardDescription>
+                        <CardDescription className="line-clamp-2">
+                          {table.description}
+                        </CardDescription>
                       )}
                     </CardHeader>
                     <CardContent className="pt-0">
@@ -268,8 +335,8 @@ export default function TablesPage() {
                       </div>
                       <div className="mt-2 text-sm flex items-center justify-between">
                         <span>
-                          {Array.isArray(table.columns) && 
-                            `${table.columns.length} column${table.columns.length !== 1 ? 's' : ''}`}
+                          {Array.isArray(table.columns) &&
+                            `${table.columns.length} column${table.columns.length !== 1 ? "s" : ""}`}
                         </span>
                         <Button
                           variant="ghost"
@@ -308,12 +375,15 @@ export default function TablesPage() {
         </div>
 
         {/* Add to Folder Dialog */}
-        <Dialog open={addToFolderDialogOpen} onOpenChange={setAddToFolderDialogOpen}>
+        <Dialog
+          open={addToFolderDialogOpen}
+          onOpenChange={setAddToFolderDialogOpen}
+        >
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Add Table to Folder</DialogTitle>
               <DialogDescription>
-                Select a folder for "{selectedTable?.name}" or remove it from its current folder
+                Select a folder to include this table.
               </DialogDescription>
             </DialogHeader>
 
@@ -321,12 +391,17 @@ export default function TablesPage() {
               <div className="space-y-4 my-4">
                 <div className="space-y-2">
                   <Label htmlFor="folder-select">Folder</Label>
-                  <Select value={selectedFolderId} onValueChange={setSelectedFolderId}>
+                  <Select
+                    value={selectedFolderId}
+                    onValueChange={setSelectedFolderId}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a folder" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No folder (main view)</SelectItem>
+                      <SelectItem value="none">
+                        No folder (main view)
+                      </SelectItem>
                       {folders.map((folder: any) => (
                         <SelectItem key={folder.id} value={folder.id}>
                           {folder.name}
@@ -338,9 +413,9 @@ export default function TablesPage() {
               </div>
 
               <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setAddToFolderDialogOpen(false)}
                 >
                   Cancel
