@@ -40,11 +40,27 @@ export default function Connectors() {
   
   // Get edit parameter from URL - use useMemo to ensure it updates when location changes
   const editId = useMemo(() => {
-    if (!location.includes('?')) return null;
-    const params = new URLSearchParams(location.split('?')[1]);
+    console.log('=== URL DEBUG ===');
+    console.log('Full location:', location);
+    console.log('URL includes ?:', location.includes('?'));
+    
+    if (!location.includes('?')) {
+      console.log('No query parameters found');
+      return null;
+    }
+    
+    const urlParts = location.split('?');
+    console.log('URL split result:', urlParts);
+    
+    const queryString = urlParts[1];
+    console.log('Query string:', queryString);
+    
+    const params = new URLSearchParams(queryString);
     const id = params.get('edit');
-    console.log('Current location:', location);
-    console.log('Edit ID from URL:', id);
+    console.log('Edit ID extracted:', id);
+    console.log('All params:', Object.fromEntries(params.entries()));
+    console.log('================');
+    
     return id;
   }, [location]);
   
@@ -702,7 +718,13 @@ export default function Connectors() {
             <p className="text-muted-foreground">Manage your API connections for flows</p>
           </div>
           
-          <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+          <Dialog open={openDialog} onOpenChange={(open) => {
+            if (!open) {
+              closeDialog();
+            } else {
+              setOpenDialog(true);
+            }
+          }}>
             <DialogTrigger asChild>
               <Button className="flex items-center gap-2">
                 <PlusIcon className="h-4 w-4" />
