@@ -1225,6 +1225,23 @@ export default function Dashboard() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Connector Edit Dialog */}
+      <Dialog open={connectorDialogOpen} onOpenChange={setConnectorDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Connector</DialogTitle>
+            <DialogDescription>
+              Update your API connector settings
+            </DialogDescription>
+          </DialogHeader>
+          <ConnectorForm 
+            initialData={editingConnector}
+            onSubmit={handleUpdateConnector}
+            onCancel={closeConnectorDialog}
+          />
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
