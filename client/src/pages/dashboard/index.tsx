@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   doc,
   collection,
@@ -72,6 +72,7 @@ import { Textarea } from "@/components/ui/textarea";
 export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [location, setLocation] = useLocation();
   const [loading, setLoading] = useState(true);
   const [flows, setFlows] = useState<any[]>([]);
   const [connectors, setConnectors] = useState<any[]>([]);
@@ -101,6 +102,12 @@ export default function Dashboard() {
 
   // Connection status state
   const [connectionStatus, setConnectionStatus] = useState<Record<string, 'connected' | 'disconnected' | 'checking' | 'unknown'>>({});
+
+  // Handle connector editing
+  const handleEditConnector = (connectorId: string) => {
+    console.log('Navigating to edit connector:', connectorId);
+    setLocation(`/connectors?edit=${connectorId}`);
+  };
 
   // Check connection status for a connector
   const checkConnectionStatus = async (connectorId: string) => {
@@ -983,11 +990,13 @@ export default function Dashboard() {
                       </div>
                     </CardContent>
                     <CardFooter className="flex justify-between">
-                      <Link href={`/connectors?edit=${connector.id}`}>
-                        <Button variant="ghost" size="sm">
-                          Edit
-                        </Button>
-                      </Link>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleEditConnector(connector.id)}
+                      >
+                        Edit
+                      </Button>
                       <div className="flex items-center gap-2">
                         <TooltipProvider>
                           {getConnectionStatusIcon(connector.id)}
