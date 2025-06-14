@@ -65,6 +65,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [flows, setFlows] = useState<any[]>([]);
   const [connectors, setConnectors] = useState<any[]>([]);
+  const [tables, setTables] = useState<any[]>([]);
 
   // Flow settings state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
