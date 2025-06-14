@@ -38,31 +38,36 @@ export default function Connectors() {
   // Store connection status persistently
   const [persistentConnections, setPersistentConnections] = useState<Record<string, boolean>>({});
   
-  // Get edit parameter from URL - use useMemo to ensure it updates when location changes
-  const editId = useMemo(() => {
-    console.log('=== URL DEBUG ===');
-    console.log('Full location:', location);
-    console.log('URL includes ?:', location.includes('?'));
+  // Get edit parameter from URL - use window.location.search since wouter doesn't include query params
+  const [editId, setEditId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const checkUrlParams = () => {
+      console.log('=== URL DEBUG ===');
+      console.log('Window location:', window.location.href);
+      console.log('Window search:', window.location.search);
+      console.log('Wouter location:', location);
+      
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('edit');
+      console.log('Edit ID from window.location.search:', id);
+      console.log('All URL params:', Object.fromEntries(params.entries()));
+      console.log('================');
+      
+      setEditId(id);
+    };
     
-    if (!location.includes('?')) {
-      console.log('No query parameters found');
-      return null;
-    }
+    // Check immediately
+    checkUrlParams();
     
-    const urlParts = location.split('?');
-    console.log('URL split result:', urlParts);
+    // Listen for popstate events (back/forward navigation)
+    const handlePopState = () => {
+      checkUrlParams();
+    };
     
-    const queryString = urlParts[1];
-    console.log('Query string:', queryString);
-    
-    const params = new URLSearchParams(queryString);
-    const id = params.get('edit');
-    console.log('Edit ID extracted:', id);
-    console.log('All params:', Object.fromEntries(params.entries()));
-    console.log('================');
-    
-    return id;
-  }, [location]);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [location]); // Still depend on location to trigger when route changes
   
   useEffect(() => {
     const fetchConnectors = async () => {
@@ -206,9 +211,12 @@ export default function Connectors() {
   const closeDialog = () => {
     setOpenDialog(false);
     setEditingConnector(null);
+    setEditId(null);
     
-    // Always remove edit parameter from URL when closing dialog
-    setLocation("/connectors");
+    // Remove edit parameter from URL without changing the route
+    const url = new URL(window.location.href);
+    url.searchParams.delete('edit');
+    window.history.replaceState({}, '', url.toString());
   };
   
   const testConnectorConnection = async (connectorId: string) => {
