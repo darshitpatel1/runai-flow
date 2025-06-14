@@ -94,6 +94,26 @@ export default function TablesPage() {
     setIsAddingToFolder(true);
     
     try {
+      // If table currently has a folder assignment, remove it from that folder's items
+      if (selectedTable.folderId && String(selectedTable.folderId) !== selectedFolderId) {
+        const { updateDoc, arrayRemove, doc: firestoreDoc } = await import("firebase/firestore");
+        const oldFolderRef = firestoreDoc(db, "users", user.uid, "folders", String(selectedTable.folderId));
+        
+        try {
+          await updateDoc(oldFolderRef, {
+            items: arrayRemove({
+              id: selectedTable.id,
+              name: selectedTable.name,
+              type: 'table'
+            }),
+            updatedAt: new Date(),
+          });
+          console.log("Table removed from previous folder's items array");
+        } catch (error) {
+          console.log("Could not remove from old folder:", error);
+        }
+      }
+
       // Always use setDoc to ensure the document exists
       const { setDoc } = await import("firebase/firestore");
       const tableRef = doc(db, "users", user.uid, "tables", selectedTable.id.toString());
@@ -114,17 +134,44 @@ export default function TablesPage() {
 
       await setDoc(tableRef, tableData, { merge: true });
 
+      // Also add the table to the folder's items array (like flows and connectors)
+      if (selectedFolderId !== "none") {
+        const { updateDoc, getDoc, arrayUnion, arrayRemove, doc: firestoreDoc } = await import("firebase/firestore");
+        const folderRef = firestoreDoc(db, "users", user.uid, "folders", selectedFolderId);
+        
+        // First remove any existing table entry to avoid duplicates
+        try {
+          await updateDoc(folderRef, {
+            items: arrayRemove({
+              id: selectedTable.id,
+              name: selectedTable.name,
+              type: 'table'
+            })
+          });
+        } catch (error) {
+          // Ignore if removal fails - item might not exist
+        }
+        
+        // Then add the table to folder's items array
+        await updateDoc(folderRef, {
+          items: arrayUnion({
+            id: selectedTable.id,
+            name: selectedTable.name,
+            type: 'table',
+            addedAt: new Date(),
+          }),
+          updatedAt: new Date(),
+        });
+        
+        console.log("Table added to folder's items array");
+      }
+
       console.log("Table assigned to folder:", {
         tableId: selectedTable.id,
         folderId: selectedFolderId,
         tableName: selectedTable.name,
         documentPath: `users/${user.uid}/tables/${selectedTable.id}`
       });
-
-      // Verify the document was created by reading it back
-      const { getDoc } = await import("firebase/firestore");
-      const verifyDoc = await getDoc(tableRef);
-      console.log("Verification - Document exists:", verifyDoc.exists(), "Data:", verifyDoc.data());
 
       toast({
         title: "Table moved",
