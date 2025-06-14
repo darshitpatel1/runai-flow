@@ -34,6 +34,7 @@ import {
   FolderIcon,
   TrashIcon,
   PencilIcon,
+  TableIcon,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -291,7 +292,7 @@ export default function Dashboard() {
   };
   
   // Open add to folder dialog
-  const openAddToFolderDialog = (item: any, type: 'flow' | 'connector') => {
+  const openAddToFolderDialog = (item: any, type: 'flow' | 'connector' | 'table') => {
     setSelectedItem(item);
     setSelectedItemType(type);
     setSelectedFolderId("");
@@ -361,9 +362,10 @@ export default function Dashboard() {
           : folder
       ));
       
+      const itemTypeLabel = selectedItemType === 'flow' ? 'Flow' : selectedItemType === 'connector' ? 'Connector' : 'Table';
       toast({
         title: "Added to folder",
-        description: `${selectedItemType === 'flow' ? 'Flow' : 'Connector'} has been added to the folder`,
+        description: `${itemTypeLabel} has been added to the folder`,
       });
       
       setAddToFolderDialogOpen(false);
@@ -473,11 +475,11 @@ export default function Dashboard() {
           const firebaseTablesData = firebaseTablesSnapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
-          }));
+          })) as Array<{ id: string; folderId?: string }>;
           
           // Merge table data with Firebase folder assignments
           mergedTables = tablesData.map((table: any) => {
-            const firebaseTable = firebaseTablesData.find((ft: any) => ft.id === table.id.toString());
+            const firebaseTable = firebaseTablesData.find((ft) => ft.id === table.id.toString());
             return {
               ...table,
               folderId: firebaseTable?.folderId || null
@@ -535,6 +537,12 @@ export default function Dashboard() {
               <Button variant="outline" className="flex items-center gap-2">
                 <PlusIcon className="h-4 w-4" />
                 New Connector
+              </Button>
+            </Link>
+            <Link href="/tables/new">
+              <Button variant="outline" className="flex items-center gap-2">
+                <PlusIcon className="h-4 w-4" />
+                New Table
               </Button>
             </Link>
           </div>
