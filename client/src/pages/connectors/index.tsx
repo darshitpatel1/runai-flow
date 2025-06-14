@@ -731,92 +731,117 @@ export default function Connectors() {
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>{connector.name}</span>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => openEditDialog(connector)}
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </Button>
-                      
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-destructive">
-                            <TrashIcon className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Connector</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{connector.name}"? This action cannot be undone and may break flows that use this connector.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleDeleteConnector(connector.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => openEditDialog(connector)}
+                    >
+                      <PencilIcon className="h-4 w-4" />
+                    </Button>
                   </CardTitle>
                   <CardDescription className="truncate">
                     {connector.baseUrl}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline">
-                      {connector.authType || "No Auth"}
+                    <Badge variant="outline" className="text-xs">
+                      {connector.authType === "oauth2" ? "oauth2" : connector.authType || "none"}
                     </Badge>
                     {connector.authType === "oauth2" && (
-                      <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-100">
+                      <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 text-xs">
                         OAuth 2.0
                       </Badge>
                     )}
-                    {connector.authType === "basic" && (
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-100">
-                        Basic Auth
-                      </Badge>
-                    )}
                   </div>
-                  <div className="text-xs text-muted-foreground mb-3">
+                  
+                  <div className="text-xs text-muted-foreground">
                     Created: {connector.createdAt?.toDate ? new Date(connector.createdAt.toDate()).toLocaleDateString() : 'Unknown'}
                   </div>
                   
-                  <Button 
-                    variant={connectionResults[connector.id] === true || persistentConnections[connector.id] === true ? "outline" : 
-                            connectionResults[connector.id] === false || persistentConnections[connector.id] === false ? "destructive" : "outline"}
-                    size="sm"
-                    className="w-full"
-                    onClick={() => testConnectorConnection(connector.id)}
-                    disabled={testingConnections[connector.id]}
-                  >
+                  {/* Connection Status Display */}
+                  <div className="flex items-center justify-center py-3 px-4 rounded-lg border bg-muted/50">
                     {testingConnections[connector.id] ? (
-                      <>
-                        <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-                        Testing...
-                      </>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Loader2Icon className="h-4 w-4 animate-spin" />
+                        Testing connection...
+                      </div>
                     ) : connectionResults[connector.id] === true || persistentConnections[connector.id] === true ? (
-                      <>
-                        <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                      <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+                        <CheckCircle className="h-4 w-4" />
                         Connection Successful
-                      </>
+                      </div>
                     ) : connectionResults[connector.id] === false || persistentConnections[connector.id] === false ? (
-                      <>
-                        <XCircle className="h-4 w-4 mr-2" />
+                      <div className="flex items-center gap-2 text-sm text-red-700 dark:text-red-400">
+                        <XCircle className="h-4 w-4" />
                         Connection Failed
-                      </>
+                      </div>
                     ) : (
-                      "Test Connection"
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="h-2 w-2 rounded-full bg-gray-400"></div>
+                        Not tested
+                      </div>
                     )}
-                  </Button>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => openEditDialog(connector)}
+                    >
+                      Edit
+                    </Button>
+                    <Button 
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => testConnectorConnection(connector.id)}
+                      disabled={testingConnections[connector.id]}
+                    >
+                      Test
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="ghost"
+                          size="sm"
+                          className="px-3 text-destructive hover:text-destructive"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Connector</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{connector.name}"? This action cannot be undone and may break flows that use this connector.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => handleDeleteConnector(connector.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                  
+                  {/* Last Updated Display */}
+                  <div className="text-xs text-muted-foreground text-left pt-2 border-t">
+                    Last updated: {connector.updatedAt?.toDate ? 
+                      new Date(connector.updatedAt.toDate()).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      }) : 'Never'}
+                  </div>
                 </CardContent>
               </Card>
             ))}

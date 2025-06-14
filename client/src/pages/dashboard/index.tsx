@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { ConnectorForm } from "@/components/connectors/ConnectorForm";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,6 +36,8 @@ import {
   TrashIcon,
   PencilIcon,
   TableIcon,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -55,6 +58,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,12 +94,61 @@ export default function Dashboard() {
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
   const [isAddingToFolder, setIsAddingToFolder] = useState(false);
 
+  // Connector modal state
+  const [connectorDialogOpen, setConnectorDialogOpen] = useState(false);
+  const [editingConnector, setEditingConnector] = useState<any>(null);
+  const [connectionResults, setConnectionResults] = useState<Record<string, boolean>>({});
+  const [testingConnections, setTestingConnections] = useState<Record<string, boolean>>({});
+
   // Open settings dialog for a flow
   const openFlowSettings = (flow: any) => {
     setSelectedFlow(flow);
     setFlowName(flow.name);
     setFlowDescription(flow.description || "");
     setEditDialogOpen(true);
+  };
+
+  // Connector handlers
+  const openConnectorEdit = (connector: any) => {
+    setEditingConnector(connector);
+    setConnectorDialogOpen(true);
+  };
+
+  const closeConnectorDialog = () => {
+    setConnectorDialogOpen(false);
+    setEditingConnector(null);
+  };
+
+  const handleUpdateConnector = async (connectorData: any) => {
+    if (!user || !editingConnector) return;
+    
+    try {
+      const connectorRef = doc(db, "users", user.uid, "connectors", editingConnector.id);
+      await updateDoc(connectorRef, {
+        ...connectorData,
+        updatedAt: new Date()
+      });
+      
+      setConnectors(connectors.map(c => 
+        c.id === editingConnector.id 
+          ? { ...c, ...connectorData, updatedAt: new Date() } 
+          : c
+      ));
+      
+      setConnectorDialogOpen(false);
+      setEditingConnector(null);
+      
+      toast({
+        title: "Connector updated",
+        description: `Successfully updated connector: ${connectorData.name}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error updating connector",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   // Handle flow update
@@ -868,24 +921,70 @@ export default function Dashboard() {
             ) : connectors.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {connectors.map((connector) => (
-                  <Card key={connector.id}>
+                  <Card key={connector.id} className="relative">
                     <CardHeader>
-                      <CardTitle>{connector.name}</CardTitle>
-                      <CardDescription>{connector.baseUrl}</CardDescription>
+                      <CardTitle className="flex items-center justify-between">
+                        <span>{connector.name}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => openConnectorEdit(connector)}
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </Button>
+                      </CardTitle>
+                      <CardDescription className="truncate">{connector.baseUrl}</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Badge variant="outline">
-                          {connector.authType || "No Auth"}
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {connector.authType === "oauth2" ? "oauth2" : connector.authType || "none"}
                         </Badge>
+                        {connector.authType === "oauth2" && (
+                          <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 text-xs">
+                            OAuth 2.0
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {/* Connection Status Display */}
+                      <div className="flex items-center justify-center py-2 px-3 rounded-md border bg-muted/30">
+                        {connector.connectionStatus === 'connected' || connectionResults[connector.id] === true ? (
+                          <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+                            <CheckCircle className="h-4 w-4" />
+                            Connected
+                          </div>
+                        ) : connector.connectionStatus === 'failed' || connectionResults[connector.id] === false ? (
+                          <div className="flex items-center gap-2 text-sm text-red-700 dark:text-red-400">
+                            <XCircle className="h-4 w-4" />
+                            Connection Failed
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <div className="h-2 w-2 rounded-full bg-gray-400"></div>
+                            Not Connected
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Last Updated */}
+                      <div className="text-xs text-muted-foreground pt-1 border-t">
+                        Last updated: {connector.updatedAt?.toDate ? 
+                          new Date(connector.updatedAt.toDate()).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          }) : 'Never'}
                       </div>
                     </CardContent>
                     <CardFooter className="flex justify-between">
-                      <Link href={`/connectors?edit=${connector.id}`}>
-                        <Button variant="ghost" size="sm">
-                          Edit
-                        </Button>
-                      </Link>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => openConnectorEdit(connector)}
+                      >
+                        Edit
+                      </Button>
                       <div className="flex gap-2">
                         <Button variant="ghost" size="sm">
                           Test
