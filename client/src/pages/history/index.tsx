@@ -211,7 +211,7 @@ export default function History() {
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">API Calls</p>
                       <p className="text-2xl font-bold">
-                        {statsLoading ? "..." : usageStats?.apiCalls || 0}
+                        {statsLoading ? "..." : (usageStats?.apiCalls ?? 0)}
                       </p>
                     </div>
                     <BarChart3Icon className="h-8 w-8 text-purple-500" />
@@ -226,7 +226,7 @@ export default function History() {
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Avg Response</p>
                       <p className="text-2xl font-bold">
-                        {statsLoading ? "..." : `${usageStats?.avgResponseTime || 0}ms`}
+                        {statsLoading ? "..." : `${usageStats?.avgResponseTime ?? 0}ms`}
                       </p>
                     </div>
                     <ActivityIcon className="h-8 w-8 text-orange-500" />
@@ -272,7 +272,7 @@ export default function History() {
                     <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
                     <p className="text-muted-foreground">Loading recent activity...</p>
                   </div>
-                ) : !recentActivity || recentActivity.length === 0 ? (
+                ) : !recentActivity || (recentActivity && recentActivity.length === 0) ? (
                   <div className="text-center py-12">
                     <BarChart3Icon className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
                     <h4 className="text-lg font-medium mb-2">No usage data available</h4>
@@ -280,7 +280,7 @@ export default function History() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {recentActivity.map((activity: any, index: number) => (
+                    {recentActivity && recentActivity.map((activity: ActivityItem, index: number) => (
                       <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-3">
                           <ActivityIcon className="h-4 w-4 text-muted-foreground" />
