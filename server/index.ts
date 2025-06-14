@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { tokenRefreshService } from "./token-refresh-service";
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
@@ -66,5 +67,21 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start the automatic token refresh service
+    tokenRefreshService.start();
+    
+    // Graceful shutdown handling
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM received, shutting down gracefully');
+      tokenRefreshService.stop();
+      process.exit(0);
+    });
+    
+    process.on('SIGINT', () => {
+      console.log('SIGINT received, shutting down gracefully');
+      tokenRefreshService.stop();
+      process.exit(0);
+    });
   });
 })();

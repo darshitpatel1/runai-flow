@@ -8,6 +8,7 @@ import {
   columnDefinitionSchema
 } from "@shared/schema";
 import { z } from "zod";
+import { ensureValidToken, getValidAccessToken } from "./token-refresh-service";
 
 // Simple authentication middleware that works reliably
 const simpleAuth = async (req: Request, res: Response, next: Function) => {
@@ -650,7 +651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Token refresh endpoint for OAuth2 connectors
+  // Enhanced token refresh endpoint using the automatic refresh service
   app.post('/api/oauth-refresh', async (req, res) => {
     try {
       const { connectorId, userId } = req.body;
@@ -659,66 +660,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Missing required parameters' });
       }
 
-      // Get the connector configuration
-      const connector = await storage.getConnector(userId, connectorId);
-      if (!connector || !connector.authConfig) {
-        return res.status(404).json({ error: 'Connector not found' });
-      }
+      // Use the token refresh service for consistent behavior
+      const { tokenRefreshService } = await import('./token-refresh-service');
+      const success = await tokenRefreshService.refreshSpecificConnector(userId, connectorId);
 
-      const auth = connector.authConfig as any;
-
-      if (!auth.refreshToken) {
-        return res.status(400).json({ error: 'No refresh token available' });
-      }
-
-      // Refresh the access token
-      const tokenResponse = await fetch(auth.tokenUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': `Basic ${Buffer.from(`${auth.clientId}:${auth.clientSecret}`).toString('base64')}`
-        },
-        body: new URLSearchParams({
-          grant_type: 'refresh_token',
-          refresh_token: auth.refreshToken,
-          client_id: auth.clientId
-        }).toString()
-      });
-
-      if (!tokenResponse.ok) {
-        const errorText = await tokenResponse.text();
-        console.error('Token refresh failed:', errorText);
-        return res.status(400).json({ 
+      if (success) {
+        // Get the updated connector to return the new expiry info
+        const connector = await storage.getConnector(userId, connectorId);
+        const auth = connector?.authConfig as any;
+        
+        res.json({
+          success: true,
+          message: 'Token refreshed successfully',
+          tokenExpiresAt: auth?.tokenExpiresAt,
+          lastRefreshed: auth?.lastRefreshed
+        });
+      } else {
+        res.status(400).json({ 
           error: 'Token refresh failed',
-          details: errorText 
+          requiresReauth: true 
         });
       }
-
-      const tokenData = await tokenResponse.json();
-
-      if (!tokenData.access_token) {
-        return res.status(400).json({ error: 'No access token received from refresh' });
-      }
-
-      // Update the connector with the new tokens
-      const updatedAuth = {
-        ...auth,
-        accessToken: tokenData.access_token,
-        refreshToken: tokenData.refresh_token || auth.refreshToken, // Keep old refresh token if new one not provided
-        tokenExpiresAt: tokenData.expires_in ? 
-          new Date(Date.now() + (tokenData.expires_in * 1000)) : null,
-        lastRefreshed: new Date()
-      };
-
-      await storage.updateConnector(userId, connectorId, {
-        authConfig: updatedAuth
-      });
-
-      res.json({
-        success: true,
-        message: 'Token refreshed successfully',
-        expiresIn: tokenData.expires_in
-      });
 
     } catch (error: any) {
       console.error('Token refresh error:', error);
@@ -774,54 +736,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const credentials = Buffer.from(`${auth.username}:${auth.password}`).toString('base64');
         requestHeaders['Authorization'] = `Basic ${credentials}`;
       } else if (authType === 'oauth2') {
-        if (auth?.accessToken) {
-          // Check if token is expired and refresh if needed
-          if (auth.tokenExpiresAt && new Date() >= new Date(auth.tokenExpiresAt)) {
-            if (auth.refreshToken) {
-              // Attempt to refresh the token
-              const refreshResponse = await fetch('/api/oauth-refresh', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ connectorId, userId })
-              });
-
-              if (refreshResponse.ok) {
-                // Get the updated connector with new token
-                const updatedConnector = await storage.getConnector(userId, connectorId);
-                const updatedAuth = updatedConnector?.authConfig as any;
-                if (updatedAuth?.accessToken) {
-                  requestHeaders['Authorization'] = `Bearer ${updatedAuth.accessToken}`;
-                }
-              } else {
-                return res.status(401).json({ 
-                  error: 'Token expired and refresh failed',
-                  requiresReauth: true 
-                });
-              }
-            } else {
-              return res.status(401).json({ 
-                error: 'Token expired and no refresh token available',
-                requiresReauth: true 
-              });
-            }
-          } else {
-            // Token is still valid
-            requestHeaders['Authorization'] = `Bearer ${auth.accessToken}`;
-          }
+        // Use the new automatic token refresh system
+        const accessToken = await getValidAccessToken(userId, connectorId);
+        
+        if (accessToken) {
+          requestHeaders['Authorization'] = `Bearer ${accessToken}`;
         } else {
           return res.status(401).json({ 
-            error: 'No access token available',
+            error: 'Unable to obtain valid access token',
             requiresReauth: true 
           });
         }
       }
 
       // Make the API request
-      const apiResponse = await fetch(fullUrl, {
+      let apiResponse = await fetch(fullUrl, {
         method: method.toUpperCase(),
         headers: requestHeaders,
         body: data && method.toUpperCase() !== 'GET' ? JSON.stringify(data) : undefined
       });
+
+      // Handle 401 Unauthorized responses for OAuth connectors
+      if (apiResponse.status === 401 && authType === 'oauth2') {
+        console.log(`Received 401 for connector ${connectorId}, attempting token refresh`);
+        
+        // Try to refresh the token and retry the request
+        const { tokenRefreshService } = await import('./token-refresh-service');
+        const refreshSuccess = await tokenRefreshService.refreshSpecificConnector(userId, connectorId);
+        
+        if (refreshSuccess) {
+          // Get the new access token and retry the request
+          const newAccessToken = await getValidAccessToken(userId, connectorId);
+          if (newAccessToken) {
+            requestHeaders['Authorization'] = `Bearer ${newAccessToken}`;
+            
+            // Retry the original request
+            apiResponse = await fetch(fullUrl, {
+              method: method.toUpperCase(),
+              headers: requestHeaders,
+              body: data && method.toUpperCase() !== 'GET' ? JSON.stringify(data) : undefined
+            });
+            
+            console.log(`Retried request after token refresh, new status: ${apiResponse.status}`);
+          }
+        }
+        
+        // If we still get 401 after refresh attempt, mark for reauth
+        if (apiResponse.status === 401) {
+          const connector = await storage.getConnector(userId, connectorId);
+          if (connector?.authConfig) {
+            await storage.updateConnector(userId, connectorId, {
+              authConfig: {
+                ...connector.authConfig,
+                needsReauth: true,
+                lastAuthError: new Date()
+              }
+            });
+          }
+        }
+      }
 
       const responseData = await apiResponse.text();
       let parsedData;
@@ -837,7 +810,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: apiResponse.status,
         statusText: apiResponse.statusText,
         data: parsedData,
-        headers: Object.fromEntries(apiResponse.headers.entries())
+        headers: Object.fromEntries(apiResponse.headers.entries()),
+        tokenRefreshed: apiResponse.status !== 401 && authType === 'oauth2' // Indicate if token was refreshed
       });
 
     } catch (error: any) {
