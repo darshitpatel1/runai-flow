@@ -790,33 +790,40 @@ export default function Connectors() {
                     Created: {connector.createdAt?.toDate ? new Date(connector.createdAt.toDate()).toLocaleDateString() : 'Unknown'}
                   </div>
                   
-                  <Button 
-                    variant={connectionResults[connector.id] === true || persistentConnections[connector.id] === true ? "outline" : 
-                            connectionResults[connector.id] === false || persistentConnections[connector.id] === false ? "destructive" : "outline"}
-                    size="sm"
-                    className="w-full"
-                    onClick={() => testConnectorConnection(connector.id)}
-                    disabled={testingConnections[connector.id]}
-                  >
-                    {testingConnections[connector.id] ? (
-                      <>
-                        <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-                        Testing...
-                      </>
-                    ) : connectionResults[connector.id] === true || persistentConnections[connector.id] === true ? (
-                      <>
-                        <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                        Connection Successful
-                      </>
-                    ) : connectionResults[connector.id] === false || persistentConnections[connector.id] === false ? (
-                      <>
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Connection Failed
-                      </>
-                    ) : (
-                      "Test Connection"
-                    )}
-                  </Button>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Connection Status</span>
+                    <div className="flex items-center gap-2">
+                      {testingConnections[connector.id] ? (
+                        <>
+                          <Loader2Icon className="h-4 w-4 animate-spin text-yellow-500" />
+                          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100">
+                            Checking...
+                          </Badge>
+                        </>
+                      ) : connectionResults[connector.id] === true || persistentConnections[connector.id] === true ? (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <Badge variant="outline" className="bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-100">
+                            Connected
+                          </Badge>
+                        </>
+                      ) : connectionResults[connector.id] === false || persistentConnections[connector.id] === false ? (
+                        <>
+                          <XCircle className="h-4 w-4 text-red-500" />
+                          <Badge variant="outline" className="bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-100">
+                            Disconnected
+                          </Badge>
+                        </>
+                      ) : (
+                        <>
+                          <div className="h-4 w-4 rounded-full bg-gray-300 dark:bg-gray-600" />
+                          <Badge variant="outline" className="bg-gray-50 text-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                            Unknown
+                          </Badge>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             ))}
