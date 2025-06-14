@@ -139,31 +139,33 @@ export default function TablesPage() {
         const { updateDoc, getDoc, arrayUnion, arrayRemove, doc: firestoreDoc } = await import("firebase/firestore");
         const folderRef = firestoreDoc(db, "users", user.uid, "folders", selectedFolderId);
         
-        // First remove any existing table entry to avoid duplicates
-        try {
-          await updateDoc(folderRef, {
-            items: arrayRemove({
-              id: selectedTable.id,
-              name: selectedTable.name,
-              type: 'table'
-            })
-          });
-        } catch (error) {
-          // Ignore if removal fails - item might not exist
+        // Get current folder data to check for existing table
+        const folderDoc = await getDoc(folderRef);
+        if (folderDoc.exists()) {
+          const folderData = folderDoc.data();
+          const currentItems = folderData.items || [];
+          
+          // Check if table already exists in folder
+          const tableExists = currentItems.some((item: any) => 
+            item.type === 'table' && String(item.id) === String(selectedTable.id)
+          );
+          
+          if (!tableExists) {
+            // Add table to folder's items array only if it doesn't exist
+            await updateDoc(folderRef, {
+              items: arrayUnion({
+                id: selectedTable.id,
+                name: selectedTable.name,
+                type: 'table',
+                addedAt: new Date(),
+              }),
+              updatedAt: new Date(),
+            });
+            console.log("Table added to folder's items array");
+          } else {
+            console.log("Table already exists in folder, skipping addition");
+          }
         }
-        
-        // Then add the table to folder's items array
-        await updateDoc(folderRef, {
-          items: arrayUnion({
-            id: selectedTable.id,
-            name: selectedTable.name,
-            type: 'table',
-            addedAt: new Date(),
-          }),
-          updatedAt: new Date(),
-        });
-        
-        console.log("Table added to folder's items array");
       }
 
       console.log("Table assigned to folder:", {

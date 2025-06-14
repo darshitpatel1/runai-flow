@@ -524,17 +524,19 @@ export default function Dashboard() {
         
         // Merge table data with Firebase folder assignments
         mergedTables = tablesData.map((table: any) => {
-          const firebaseTable = firebaseTablesData.find((ft) => ft.id === table.id.toString());
+          const firebaseTable = firebaseTablesData.find((ft) => String(ft.id) === String(table.id));
           return {
             ...table,
             folderId: firebaseTable?.folderId || null
           };
         });
         
+        console.log("Firebase tables data:", firebaseTablesData);
+        console.log("PostgreSQL tables data:", tablesData.map((t: any) => ({ id: t.id, name: t.name })));
         console.log("Merged tables data:", {
           totalTables: mergedTables.length,
           tablesWithFolders: mergedTables.filter(t => t.folderId).length,
-          allTables: mergedTables.map(t => ({ id: t.id, name: t.name, folderId: t.folderId }))
+          allTables: mergedTables.map((t: any) => ({ id: t.id, name: t.name, folderId: t.folderId }))
         });
       }
       setTables(mergedTables);
