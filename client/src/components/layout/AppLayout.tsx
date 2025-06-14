@@ -1,35 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Sidebar } from "./Sidebar";
-import { useAuth } from "@/context/AuthContext";
-import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 import { useMobile } from "@/hooks/use-mobile";
 import { MenuIcon, XIcon } from "lucide-react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  const [, setLocation] = useLocation();
-  const { toast } = useToast();
   const isMobile = useMobile();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
-  
-  // Use effect to handle authentication redirect
-  useEffect(() => {
-    if (!loading && !user) {
-      setLocation("/auth");
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to access this page",
-        variant: "destructive",
-      });
-    }
-  }, [loading, user, setLocation, toast]);
-  
-  // Early return if still loading or not authenticated
-  if (loading || !user) {
-    return null;
-  }
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);

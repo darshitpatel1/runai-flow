@@ -53,15 +53,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up the auth state listener
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // If we have a user, make sure they're registered with our backend
+        // Set user immediately but keep loading true until backend registration completes
+        setUser(firebaseUser);
+        
+        // Register with backend in the background
         try {
           await registerUserWithBackend(firebaseUser);
         } catch (error) {
           console.error("Error ensuring user is registered with backend:", error);
+          // Don't fail the auth process if backend registration fails
         }
+      } else {
+        setUser(null);
       }
       
-      setUser(firebaseUser);
+      // Always set loading to false after processing
       setLoading(false);
     });
 
