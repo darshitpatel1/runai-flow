@@ -40,14 +40,18 @@ export default function Auth() {
         title: "Login successful",
         description: "Welcome back to RunAI!",
       });
-      setLocation("/dashboard");
+      
+      // Add a small delay to allow AuthContext to process the authentication
+      setTimeout(() => {
+        setLocation("/dashboard");
+        setLoading(false);
+      }, 500);
     } catch (error: any) {
       toast({
         title: "Login failed",
         description: error.message,
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
@@ -75,14 +79,18 @@ export default function Auth() {
         title: "Account created",
         description: "Welcome to RunAI!",
       });
-      setLocation("/dashboard");
+      
+      // Add a small delay to allow AuthContext to process the authentication
+      setTimeout(() => {
+        setLocation("/dashboard");
+        setLoading(false);
+      }, 500);
     } catch (error: any) {
       toast({
         title: "Registration failed",
         description: error.message,
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
@@ -102,14 +110,18 @@ export default function Auth() {
         title: "Login successful",
         description: "Welcome to RunAI!",
       });
-      setLocation("/dashboard");
+      
+      // Add a small delay to allow AuthContext to process the authentication
+      setTimeout(() => {
+        setLocation("/dashboard");
+        setLoading(false);
+      }, 500);
     } catch (error: any) {
       toast({
         title: "Google login failed",
         description: error.message,
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
