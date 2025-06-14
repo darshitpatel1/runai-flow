@@ -1364,7 +1364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // For now, return placeholder data structure
       // Real implementation would query recent execution history
-      const recentActivity = [];
+      const recentActivity: any[] = [];
       
       res.json(recentActivity);
     } catch (error: any) {

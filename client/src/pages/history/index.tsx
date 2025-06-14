@@ -15,6 +15,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SearchIcon, FilterIcon, BarChart3Icon, ActivityIcon, TrendingUpIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
+
+interface UsageStats {
+  totalExecutions: number;
+  successRate: number;
+  apiCalls: number;
+  avgResponseTime: number;
+  period: string;
+}
+
+interface ActivityItem {
+  flowName: string;
+  timestamp: string;
+  status: 'success' | 'failed' | 'running';
+}
 import { 
   Select,
   SelectContent,
@@ -28,6 +42,27 @@ export default function History() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
+
+  // Usage data queries
+  const { data: usageStats, isLoading: statsLoading } = useQuery<UsageStats>({
+    queryKey: ['/api/usage/statistics'],
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  const { data: dailyUsage, isLoading: dailyLoading } = useQuery<any[]>({
+    queryKey: ['/api/usage/daily'],
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: topFlows, isLoading: flowsLoading } = useQuery<any[]>({
+    queryKey: ['/api/usage/top-flows'],
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: recentActivity, isLoading: activityLoading } = useQuery<ActivityItem[]>({
+    queryKey: ['/api/usage/recent-activity'],
+    staleTime: 5 * 60 * 1000,
+  });
   
   const applyFilters = () => {
     // Filter functionality can be implemented here
@@ -145,7 +180,9 @@ export default function History() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Total Executions</p>
-                      <p className="text-2xl font-bold">0</p>
+                      <p className="text-2xl font-bold">
+                        {statsLoading ? "..." : (usageStats?.totalExecutions ?? 0)}
+                      </p>
                     </div>
                     <ActivityIcon className="h-8 w-8 text-blue-500" />
                   </div>
@@ -158,7 +195,9 @@ export default function History() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Success Rate</p>
-                      <p className="text-2xl font-bold">0%</p>
+                      <p className="text-2xl font-bold">
+                        {statsLoading ? "..." : `${usageStats?.successRate ?? 0}%`}
+                      </p>
                     </div>
                     <TrendingUpIcon className="h-8 w-8 text-green-500" />
                   </div>
@@ -171,7 +210,9 @@ export default function History() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">API Calls</p>
-                      <p className="text-2xl font-bold">0</p>
+                      <p className="text-2xl font-bold">
+                        {statsLoading ? "..." : usageStats?.apiCalls || 0}
+                      </p>
                     </div>
                     <BarChart3Icon className="h-8 w-8 text-purple-500" />
                   </div>
@@ -184,7 +225,9 @@ export default function History() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Avg Response</p>
-                      <p className="text-2xl font-bold">0ms</p>
+                      <p className="text-2xl font-bold">
+                        {statsLoading ? "..." : `${usageStats?.avgResponseTime || 0}ms`}
+                      </p>
                     </div>
                     <ActivityIcon className="h-8 w-8 text-orange-500" />
                   </div>
@@ -224,11 +267,35 @@ export default function History() {
             <Card>
               <CardContent className="p-6">
                 <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-                <div className="text-center py-12">
-                  <BarChart3Icon className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-                  <h4 className="text-lg font-medium mb-2">No usage data available</h4>
-                  <p className="text-muted-foreground">Usage metrics will appear here once you start running flows.</p>
-                </div>
+                {activityLoading ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading recent activity...</p>
+                  </div>
+                ) : !recentActivity || recentActivity.length === 0 ? (
+                  <div className="text-center py-12">
+                    <BarChart3Icon className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+                    <h4 className="text-lg font-medium mb-2">No usage data available</h4>
+                    <p className="text-muted-foreground">Usage metrics will appear here once you start running flows.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {recentActivity.map((activity: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <ActivityIcon className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">{activity.flowName}</p>
+                            <p className="text-sm text-muted-foreground">{activity.timestamp}</p>
+                          </div>
+                        </div>
+                        <Badge variant={activity.status === 'success' ? 'default' : 'destructive'}>
+                          {activity.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
