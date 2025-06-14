@@ -49,22 +49,10 @@ export const tableRows = pgTable("table_rows", {
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 });
 
-// Folders for organizing tables
-export const folders = pgTable("folders", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).notNull(),
-  name: text("name").notNull(),
-  type: text("type").default("table").notNull(), // 'table', 'flow', 'connector'
-  items: jsonb("items").default([]).notNull(), // array of table IDs and metadata
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull()
-});
-
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   connectors: many(connectors),
-  dataTables: many(dataTables),
-  folders: many(folders)
+  dataTables: many(dataTables)
 }));
 
 export const connectorsRelations = relations(connectors, ({ one }) => ({
@@ -91,13 +79,6 @@ export const tableRowsRelations = relations(tableRows, ({ one }) => ({
   })
 }));
 
-export const foldersRelations = relations(folders, ({ one }) => ({
-  user: one(users, {
-    fields: [folders.userId],
-    references: [users.id]
-  })
-}));
-
 // Validation Schemas
 export const insertUserSchema = createInsertSchema(users, {
   email: (schema) => schema.email("Must provide a valid email")
@@ -108,22 +89,17 @@ export const insertDataTableSchema = createInsertSchema(dataTables, {
   name: (schema) => schema.min(1, "Table name is required")
 });
 export const insertTableRowSchema = createInsertSchema(tableRows);
-export const insertFolderSchema = createInsertSchema(folders, {
-  name: (schema) => schema.min(1, "Folder name is required")
-});
 
 // Types
 export type User = typeof users.$inferSelect;
 export type Connector = typeof connectors.$inferSelect;
 export type DataTable = typeof dataTables.$inferSelect;
 export type TableRow = typeof tableRows.$inferSelect;
-export type Folder = typeof folders.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertConnector = z.infer<typeof insertConnectorSchema>;
 export type InsertDataTable = z.infer<typeof insertDataTableSchema>;
 export type InsertTableRow = z.infer<typeof insertTableRowSchema>;
-export type InsertFolder = z.infer<typeof insertFolderSchema>;
 
 // Define a structure for column definition
 export const columnTypeSchema = z.enum(['text', 'number', 'boolean', 'date', 'select']);

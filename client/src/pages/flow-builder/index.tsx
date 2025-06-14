@@ -202,23 +202,23 @@ export default function FlowBuilderPage() {
 
             {/* Chat Input Bar */}
             <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10">
-              <div className="flex items-center bg-indigo-900/40 backdrop-blur-lg border border-indigo-400/20 rounded-full px-4 py-2 shadow-2xl w-[750px] ring-1 ring-indigo-300/15">
+              <div className="flex items-center bg-blue-900/20 backdrop-blur-sm border border-blue-500/20 rounded-lg px-4 py-2 shadow-xl w-[700px]">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="p-1 h-7 w-7 text-indigo-200 hover:text-white hover:bg-indigo-500/40 rounded-full transition-all duration-200 hover:scale-105"
+                  className="p-1 h-8 w-8 text-blue-300 hover:text-white hover:bg-blue-500/40 rounded-md"
                 >
-                  <PlusIcon className="h-3.5 w-3.5" />
+                  <PlusIcon className="h-4 w-4" />
                 </Button>
                 
                 <Input
                   placeholder="Type a message..."
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  className={`flex-1 bg-transparent border-none focus:ring-0 focus-visible:ring-0 focus:outline-none focus:border-none active:border-none text-sm mx-4 h-8 rounded-full ${
+                  className={`flex-1 bg-transparent border-none focus:ring-0 focus-visible:ring-0 focus:outline-none focus:border-none active:border-none text-sm mx-3 ${
                     theme === 'dark' 
-                      ? 'text-white placeholder:text-indigo-200/60' 
-                      : 'text-black placeholder:text-indigo-400/70'
+                      ? 'text-white placeholder:text-blue-300/60' 
+                      : 'text-black placeholder:text-blue-600/60'
                   }`}
                   style={{ boxShadow: 'none' }}
                   onKeyPress={(e) => {
@@ -234,17 +234,17 @@ export default function FlowBuilderPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="p-1 h-7 w-7 text-indigo-200 hover:text-white hover:bg-indigo-500/40 rounded-full mr-2 transition-all duration-200 hover:scale-105"
+                  className="p-1 h-8 w-8 text-blue-300 hover:text-white hover:bg-blue-500/40 rounded-md mr-2"
                 >
-                  <WrenchIcon className="h-3.5 w-3.5" />
+                  <WrenchIcon className="h-4 w-4" />
                 </Button>
                 
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="p-1 h-7 w-7 text-indigo-200 hover:text-white hover:bg-indigo-500/40 rounded-full transition-all duration-200 hover:scale-105"
+                  className="p-1 h-8 w-8 text-blue-300 hover:text-white hover:bg-blue-500/40 rounded-md"
                 >
-                  <MicIcon className="h-3.5 w-3.5" />
+                  <MicIcon className="h-4 w-4" />
                 </Button>
               </div>
             </div>
