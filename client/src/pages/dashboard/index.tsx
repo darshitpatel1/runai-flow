@@ -624,12 +624,7 @@ export default function Dashboard() {
                 New Connector
               </Button>
             </Link>
-            <Link href="/tables/new">
-              <Button variant="outline" className="flex items-center gap-2">
-                <PlusIcon className="h-4 w-4" />
-                New Table
-              </Button>
-            </Link>
+
           </div>
         </div>
 
