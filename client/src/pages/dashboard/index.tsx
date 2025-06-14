@@ -35,6 +35,9 @@ import {
   TrashIcon,
   PencilIcon,
   TableIcon,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -56,6 +59,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -89,6 +98,103 @@ export default function Dashboard() {
   const [selectedItemType, setSelectedItemType] = useState<'flow' | 'connector' | 'table'>('flow');
   const [selectedFolderId, setSelectedFolderId] = useState<string>("");
   const [isAddingToFolder, setIsAddingToFolder] = useState(false);
+
+  // Connection status state
+  const [connectionStatus, setConnectionStatus] = useState<Record<string, 'connected' | 'disconnected' | 'checking' | 'unknown'>>({});
+
+  // Check connection status for a connector
+  const checkConnectionStatus = async (connectorId: string) => {
+    if (!user) return;
+
+    setConnectionStatus(prev => ({ ...prev, [connectorId]: 'checking' }));
+
+    try {
+      const connector = connectors.find(c => c.id === connectorId);
+      if (!connector) {
+        setConnectionStatus(prev => ({ ...prev, [connectorId]: 'unknown' }));
+        return;
+      }
+
+      const response = await fetch('/api/test-connector', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ connector })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setConnectionStatus(prev => ({ ...prev, [connectorId]: 'connected' }));
+      } else {
+        setConnectionStatus(prev => ({ ...prev, [connectorId]: 'disconnected' }));
+      }
+    } catch (error) {
+      setConnectionStatus(prev => ({ ...prev, [connectorId]: 'disconnected' }));
+    }
+  };
+
+  // Check connection status for all connectors when they're loaded
+  useEffect(() => {
+    if (connectors.length > 0) {
+      connectors.forEach(connector => {
+        checkConnectionStatus(connector.id);
+      });
+    }
+  }, [connectors]);
+
+  // Get connection status icon
+  const getConnectionStatusIcon = (connectorId: string) => {
+    const status = connectionStatus[connectorId] || 'unknown';
+    
+    switch (status) {
+      case 'connected':
+        return (
+          <Tooltip>
+            <TooltipTrigger>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Connected</p>
+            </TooltipContent>
+          </Tooltip>
+        );
+      case 'disconnected':
+        return (
+          <Tooltip>
+            <TooltipTrigger>
+              <XCircle className="h-4 w-4 text-red-500" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Disconnected</p>
+            </TooltipContent>
+          </Tooltip>
+        );
+      case 'checking':
+        return (
+          <Tooltip>
+            <TooltipTrigger>
+              <Loader2Icon className="h-4 w-4 text-blue-500 animate-spin" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Checking...</p>
+            </TooltipContent>
+          </Tooltip>
+        );
+      default:
+        return (
+          <Tooltip>
+            <TooltipTrigger>
+              <AlertCircle className="h-4 w-4 text-gray-400" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Unknown status</p>
+            </TooltipContent>
+          </Tooltip>
+        );
+    }
+  };
 
   // Open settings dialog for a flow
   const openFlowSettings = (flow: any) => {
@@ -869,10 +975,23 @@ export default function Dashboard() {
                       <CardDescription>{connector.baseUrl}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Badge variant="outline">
-                          {connector.authType || "No Auth"}
-                        </Badge>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Badge variant="outline">
+                            {connector.authType || "No Auth"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <TooltipProvider>
+                            {getConnectionStatusIcon(connector.id)}
+                          </TooltipProvider>
+                          <span className="text-xs">
+                            {connectionStatus[connector.id] === 'connected' && 'Connected'}
+                            {connectionStatus[connector.id] === 'disconnected' && 'Disconnected'}
+                            {connectionStatus[connector.id] === 'checking' && 'Checking...'}
+                            {(!connectionStatus[connector.id] || connectionStatus[connector.id] === 'unknown') && 'Unknown'}
+                          </span>
+                        </div>
                       </div>
                     </CardContent>
                     <CardFooter className="flex justify-between">
