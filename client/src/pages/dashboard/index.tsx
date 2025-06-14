@@ -1000,18 +1000,13 @@ export default function Dashboard() {
                           Edit
                         </Button>
                       </Link>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
-                          Test
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => openAddToFolderDialog(connector, 'connector')}
-                        >
-                          <FolderIcon className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => openAddToFolderDialog(connector, 'connector')}
+                      >
+                        <FolderIcon className="h-4 w-4" />
+                      </Button>
                     </CardFooter>
                   </Card>
                 ))}
