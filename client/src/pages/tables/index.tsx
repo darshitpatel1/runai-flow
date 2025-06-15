@@ -121,10 +121,25 @@ export default function TablesPage() {
     e.preventDefault();
     if (!selectedTable || !user) return;
 
+    // Add validation for selectedFolderId
+    if (!selectedFolderId) {
+      toast({
+        title: "No folder selected",
+        description: "Please select a folder or choose 'Remove from folder'",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsAddingToFolder(true);
 
     try {
-      // Tables are managed through folderId only, no need to manage folder items arrays
+      console.log("Starting table assignment:", {
+        tableId: selectedTable.id,
+        selectedFolderId,
+        tableName: selectedTable.name,
+        userUid: user.uid
+      });
 
       // Always use setDoc to ensure the document exists
       const { setDoc } = await import("firebase/firestore");
@@ -150,7 +165,14 @@ export default function TablesPage() {
         tableData.folderId = selectedFolderId;
       }
 
+      console.log("Writing to Firebase:", {
+        documentPath: `users/${user.uid}/tables/${selectedTable.id}`,
+        tableData
+      });
+
       await setDoc(tableRef, tableData, { merge: true });
+
+      console.log("Firebase write successful");
 
       // Show appropriate success messages
       if (selectedFolderId === "none") {
@@ -166,13 +188,6 @@ export default function TablesPage() {
         });
       }
 
-      console.log("Table assigned to folder:", {
-        tableId: selectedTable.id,
-        folderId: selectedFolderId,
-        tableName: selectedTable.name,
-        documentPath: `users/${user.uid}/tables/${selectedTable.id}`,
-      });
-
       setAddToFolderDialogOpen(false);
       setSelectedTable(null);
       setSelectedFolderId("");
@@ -180,7 +195,7 @@ export default function TablesPage() {
       console.error("Error assigning table to folder:", error);
       toast({
         title: "Error moving table",
-        description: error.message,
+        description: error.message || "Failed to update table assignment",
         variant: "destructive",
       });
     }
