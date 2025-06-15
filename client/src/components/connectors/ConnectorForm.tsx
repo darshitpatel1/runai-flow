@@ -397,13 +397,28 @@ export function ConnectorForm({ initialData, onSubmit, onCancel }: ConnectorForm
         </Button>
       </div>
       
-      <div className="flex justify-end space-x-3">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit">
-          {initialData ? "Update Connector" : "Create Connector"}
-        </Button>
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-muted-foreground">
+          {initialData && initialData.updatedAt && (
+            <span>
+              Last updated: {new Date(initialData.updatedAt.seconds * 1000).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </span>
+          )}
+        </div>
+        <div className="flex space-x-3">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit">
+            {initialData ? "Update Connector" : "Create Connector"}
+          </Button>
+        </div>
       </div>
     </form>
   );
