@@ -746,7 +746,17 @@ export default function Connectors() {
           }}>
             <Button 
               className="flex items-center gap-2"
-              onClick={() => setLocation('/connectors?create=true')}
+              onClick={() => {
+                // Update URL and force dialog to open
+                const url = new URL(window.location.href);
+                url.searchParams.set('create', 'true');
+                window.history.pushState({}, '', url.toString());
+                
+                // Manually trigger the dialog opening
+                setShouldCreate(true);
+                setEditingConnector(null);
+                setOpenDialog(true);
+              }}
             >
               <PlusIcon className="h-4 w-4" />
               New Connector
