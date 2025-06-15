@@ -134,17 +134,33 @@ export default function TablesPage() {
     setIsAddingToFolder(true);
 
     try {
-      // Check if table is already in the selected folder
-      if (selectedFolderId !== "none" && selectedTable.folderId === selectedFolderId) {
-        const folderName = folders.find(f => f.id === selectedFolderId)?.name || "folder";
-        toast({
-          title: "Table already in folder",
-          description: `This table is already in ${folderName}`,
-          variant: "destructive",
-        });
-        setAddToFolderDialogOpen(false);
-        setIsAddingToFolder(false);
-        return;
+      // Check if table is already in the selected folder by checking Firebase
+      if (selectedFolderId !== "none") {
+        try {
+          const { getDoc } = await import("firebase/firestore");
+          const tableRef = doc(
+            db,
+            "users",
+            user.uid,
+            "tables",
+            selectedTable.id.toString(),
+          );
+          const tableDoc = await getDoc(tableRef);
+          
+          if (tableDoc.exists() && String(tableDoc.data().folderId) === String(selectedFolderId)) {
+            const folderName = folders.find(f => f.id === selectedFolderId)?.name || "folder";
+            toast({
+              title: "Table already in folder",
+              description: `This table is already in ${folderName}`,
+              variant: "destructive",
+            });
+            setAddToFolderDialogOpen(false);
+            setIsAddingToFolder(false);
+            return;
+          }
+        } catch (error) {
+          console.warn("Could not check existing folder assignment:", error);
+        }
       }
 
       console.log("Starting table assignment:", {

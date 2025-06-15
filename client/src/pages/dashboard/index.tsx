@@ -616,16 +616,26 @@ export default function Dashboard() {
           updatedAt: new Date(),
         });
         
-        // Update local state
-        setFolders(folders.map(folder => 
-          folder.id === folderId 
-            ? { 
-                ...folder, 
-                items: updatedItems,
-                updatedAt: { toDate: () => new Date() },
-              } 
-            : folder
-        ));
+        // Update local state - recalculate folder contents to include tables
+        setFolders(folders.map(folder => {
+          if (folder.id === folderId) {
+            // For the updated folder, combine the remaining items with tables
+            const folderTables = tables.filter(table => table.folderId === folder.id);
+            const tableItems = folderTables.map(table => ({ ...table, type: 'table' }));
+            
+            const allItems = [
+              ...updatedItems,
+              ...tableItems
+            ];
+            
+            return { 
+              ...folder, 
+              items: allItems,
+              updatedAt: { toDate: () => new Date() },
+            };
+          }
+          return folder;
+        }));
       }
       
       toast({
