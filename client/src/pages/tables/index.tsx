@@ -152,11 +152,19 @@ export default function TablesPage() {
 
       await setDoc(tableRef, tableData, { merge: true });
 
-      // Handle folder assignment and show appropriate messages
-      let showGenericSuccess = true;
-
-      // For tables, we only use folderId assignment, not folder items array
-      // The dashboard will automatically calculate folder contents based on folderId
+      // Show appropriate success messages
+      if (selectedFolderId === "none") {
+        toast({
+          title: "Table moved",
+          description: "The table has been removed from its folder",
+        });
+      } else {
+        const folderName = folders.find(f => f.id === selectedFolderId)?.name || "folder";
+        toast({
+          title: "Table moved",
+          description: `The table has been added to ${folderName}`,
+        });
+      }
 
       console.log("Table assigned to folder:", {
         tableId: selectedTable.id,
@@ -164,14 +172,6 @@ export default function TablesPage() {
         tableName: selectedTable.name,
         documentPath: `users/${user.uid}/tables/${selectedTable.id}`,
       });
-
-      // Only show generic success message if not already handled above
-      if (showGenericSuccess && selectedFolderId === "none") {
-        toast({
-          title: "Table moved",
-          description: "The table has been removed from its folder",
-        });
-      }
 
       setAddToFolderDialogOpen(false);
       setSelectedTable(null);
