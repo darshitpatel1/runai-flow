@@ -744,12 +744,13 @@ export default function Connectors() {
               setOpenDialog(true);
             }
           }}>
-            <DialogTrigger asChild>
-              <Button className="flex items-center gap-2">
-                <PlusIcon className="h-4 w-4" />
-                New Connector
-              </Button>
-            </DialogTrigger>
+            <Button 
+              className="flex items-center gap-2"
+              onClick={() => setLocation('/connectors?create=true')}
+            >
+              <PlusIcon className="h-4 w-4" />
+              New Connector
+            </Button>
             <DialogContent className="sm:max-w-[600px] h-[90vh] overflow-auto">
               <DialogHeader>
                 <DialogTitle>
