@@ -134,11 +134,25 @@ export default function TablesPage() {
     setIsAddingToFolder(true);
 
     try {
+      // Check if table is already in the selected folder
+      if (selectedFolderId !== "none" && selectedTable.folderId === selectedFolderId) {
+        const folderName = folders.find(f => f.id === selectedFolderId)?.name || "folder";
+        toast({
+          title: "Table already in folder",
+          description: `This table is already in ${folderName}`,
+          variant: "destructive",
+        });
+        setAddToFolderDialogOpen(false);
+        setIsAddingToFolder(false);
+        return;
+      }
+
       console.log("Starting table assignment:", {
         tableId: selectedTable.id,
         selectedFolderId,
         tableName: selectedTable.name,
-        userUid: user.uid
+        userUid: user.uid,
+        currentFolderId: selectedTable.folderId
       });
 
       // Always use setDoc to ensure the document exists

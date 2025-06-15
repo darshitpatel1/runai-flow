@@ -434,14 +434,23 @@ export default function Dashboard() {
       const items = folderData.items || [];
       
       // Check if item already exists in folder
-      const itemExists = items.some((item: any) => 
-        item.id === selectedItem.id && item.type === selectedItemType
-      );
+      let itemExists = false;
+      
+      if (selectedItemType === 'table') {
+        // For tables, check if it already has this folderId assigned
+        itemExists = selectedItem.folderId === selectedFolderId;
+      } else {
+        // For flows and connectors, check the folder's items array
+        itemExists = items.some((item: any) => 
+          item.id === selectedItem.id && item.type === selectedItemType
+        );
+      }
       
       if (itemExists) {
+        const folderName = folders.find(f => f.id === selectedFolderId)?.name || "folder";
         toast({
           title: "Item already in folder",
-          description: `This ${selectedItemType} is already in the selected folder`,
+          description: `This ${selectedItemType} is already in ${folderName}`,
           variant: "destructive",
         });
         setAddToFolderDialogOpen(false);
@@ -511,16 +520,26 @@ export default function Dashboard() {
           updatedAt: new Date(),
         });
         
-        // Update local state
-        setFolders(folders.map(folder => 
-          folder.id === selectedFolderId 
-            ? { 
-                ...folder, 
-                items: updatedItems,
-                updatedAt: { toDate: () => new Date() },
-              } 
-            : folder
-        ));
+        // Update local state - recalculate all folder contents to include tables
+        setFolders(folders.map(folder => {
+          if (folder.id === selectedFolderId) {
+            // For the updated folder, combine the new items with tables
+            const folderTables = tables.filter(table => table.folderId === folder.id);
+            const tableItems = folderTables.map(table => ({ ...table, type: 'table' }));
+            
+            const allItems = [
+              ...updatedItems,
+              ...tableItems
+            ];
+            
+            return { 
+              ...folder, 
+              items: allItems,
+              updatedAt: { toDate: () => new Date() },
+            };
+          }
+          return folder;
+        }));
       }
       
       const itemTypeLabel = selectedItemType === 'flow' ? 'Flow' : selectedItemType === 'connector' ? 'Connector' : 'Table';
