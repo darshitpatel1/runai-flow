@@ -697,11 +697,28 @@ export default function Dashboard() {
       })) as Array<{ id: string; items?: any[]; name: string }>;
 
       // Calculate folder contents by combining existing items with tables
-      const foldersWithItems = foldersData.map(folder => {
+      const foldersWithItems = await Promise.all(foldersData.map(async folder => {
         // Keep existing items (flows and connectors already in the folder)
         const existingItems = (folder as any).items || [];
         
-        // Add tables that have this folder assigned
+        // Remove any existing table items from the folder's items array to avoid duplicates
+        const nonTableItems = existingItems.filter((item: any) => item.type !== 'table');
+        
+        // Clean up folder items array in Firebase if it contained table items
+        if (existingItems.length !== nonTableItems.length) {
+          try {
+            const folderRef = doc(db, "users", user.uid, "folders", folder.id);
+            await updateDoc(folderRef, {
+              items: nonTableItems,
+              updatedAt: new Date(),
+            });
+            console.log(`Cleaned up table items from folder ${folder.name}`);
+          } catch (error) {
+            console.warn(`Could not clean up folder ${folder.name}:`, error);
+          }
+        }
+        
+        // Add tables that have this folder assigned (based on folderId, not items array)
         const folderTables = mergedTables.filter(table => table.folderId === folder.id);
         const tableItems = folderTables.map(table => ({ ...table, type: 'table' }));
         
@@ -709,11 +726,9 @@ export default function Dashboard() {
           folderId: folder.id,
           allTables: mergedTables.length,
           folderTables: folderTables.length,
-          tableItems: tableItems.map(t => ({ id: t.id, name: t.name, folderId: t.folderId }))
+          tableItems: tableItems.map(t => ({ id: t.id, name: t.name, folderId: t.folderId })),
+          cleanedItems: existingItems.length - nonTableItems.length
         });
-        
-        // Remove any existing table items to avoid duplicates
-        const nonTableItems = existingItems.filter((item: any) => item.type !== 'table');
         
         const allItems = [
           ...nonTableItems,
@@ -724,7 +739,7 @@ export default function Dashboard() {
           ...folder,
           items: allItems
         };
-      });
+      }));
       
       setFolders(foldersWithItems);
     } catch (error: any) {
