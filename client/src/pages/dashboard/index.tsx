@@ -450,6 +450,15 @@ export default function Dashboard() {
       
       // For tables, we don't update the folder's items array - we set the folderId on the table
       if (selectedItemType === 'table') {
+        // First, if the table is currently in another folder, remove it from there
+        if (selectedItem.folderId && selectedItem.folderId !== selectedFolderId) {
+          const oldTableRef = doc(db, "users", user.uid, "tables", selectedItem.id.toString());
+          await updateDoc(oldTableRef, {
+            folderId: null,
+            updatedAt: new Date()
+          });
+        }
+        
         // Update the table's folder assignment in Firebase
         const tableRef = doc(db, "users", user.uid, "tables", selectedItem.id.toString());
         await updateDoc(tableRef, {
@@ -458,36 +467,29 @@ export default function Dashboard() {
         });
         
         // Update local tables state
-        setTables(tables.map(table => 
+        const updatedTables = tables.map(table => 
           table.id === selectedItem.id 
             ? { ...table, folderId: selectedFolderId }
             : table
-        ));
+        );
+        setTables(updatedTables);
         
-        // Recalculate folder contents - preserve existing items and add new table
+        // Recalculate ALL folder contents to ensure consistency
         const updatedFolders = folders.map(folder => {
-          if (folder.id === selectedFolderId) {
-            // Keep existing non-table items
-            const existingItems = folder.items || [];
-            const nonTableItems = existingItems.filter((item: any) => item.type !== 'table');
-            
-            // Get updated tables for this folder
-            const folderTables = tables.map(table => 
-              table.id === selectedItem.id 
-                ? { ...table, folderId: selectedFolderId }
-                : table
-            ).filter(table => table.folderId === folder.id);
-            
-            const tableItems = folderTables.map(table => ({ ...table, type: 'table' }));
-            
-            const allItems = [
-              ...nonTableItems,
-              ...tableItems
-            ];
-            
-            return { ...folder, items: allItems };
-          }
-          return folder;
+          // Keep existing non-table items
+          const existingItems = folder.items || [];
+          const nonTableItems = existingItems.filter((item: any) => item.type !== 'table');
+          
+          // Get tables for this specific folder
+          const folderTables = updatedTables.filter(table => table.folderId === folder.id);
+          const tableItems = folderTables.map(table => ({ ...table, type: 'table' }));
+          
+          const allItems = [
+            ...nonTableItems,
+            ...tableItems
+          ];
+          
+          return { ...folder, items: allItems };
         });
         
         setFolders(updatedFolders);
@@ -544,39 +546,68 @@ export default function Dashboard() {
     if (!user) return;
     
     try {
-      const folderRef = doc(db, "users", user.uid, "folders", folderId);
-      const folderSnap = await getDoc(folderRef);
-      
-      if (!folderSnap.exists()) {
-        throw new Error("Folder does not exist");
+      // For tables, we need to clear the folderId assignment instead of updating folder items
+      if (itemType === 'table') {
+        // Update the table's folder assignment in Firebase
+        const tableRef = doc(db, "users", user.uid, "tables", itemId.toString());
+        await updateDoc(tableRef, {
+          folderId: null,
+          updatedAt: new Date()
+        });
+        
+        // Update local tables state
+        setTables(tables.map(table => 
+          table.id.toString() === itemId.toString() 
+            ? { ...table, folderId: null }
+            : table
+        ));
+        
+        // Update local folders state to remove the table from folder items
+        setFolders(folders.map(folder => {
+          if (folder.id === folderId) {
+            const updatedItems = (folder.items || []).filter((item: any) => 
+              !(item.id.toString() === itemId.toString() && item.type === itemType)
+            );
+            return { ...folder, items: updatedItems };
+          }
+          return folder;
+        }));
+      } else {
+        // For flows and connectors, update the folder's items array
+        const folderRef = doc(db, "users", user.uid, "folders", folderId);
+        const folderSnap = await getDoc(folderRef);
+        
+        if (!folderSnap.exists()) {
+          throw new Error("Folder does not exist");
+        }
+        
+        const folderData = folderSnap.data();
+        
+        // Get current items
+        const items = folderData.items || [];
+        
+        // Filter out the item to remove
+        const updatedItems = items.filter((item: any) => 
+          !(item.id === itemId && item.type === itemType)
+        );
+        
+        // Update folder document
+        await updateDoc(folderRef, {
+          items: updatedItems,
+          updatedAt: new Date(),
+        });
+        
+        // Update local state
+        setFolders(folders.map(folder => 
+          folder.id === folderId 
+            ? { 
+                ...folder, 
+                items: updatedItems,
+                updatedAt: { toDate: () => new Date() },
+              } 
+            : folder
+        ));
       }
-      
-      const folderData = folderSnap.data();
-      
-      // Get current items
-      const items = folderData.items || [];
-      
-      // Filter out the item to remove
-      const updatedItems = items.filter((item: any) => 
-        !(item.id === itemId && item.type === itemType)
-      );
-      
-      // Update folder document
-      await updateDoc(folderRef, {
-        items: updatedItems,
-        updatedAt: new Date(),
-      });
-      
-      // Update local state
-      setFolders(folders.map(folder => 
-        folder.id === folderId 
-          ? { 
-              ...folder, 
-              items: updatedItems,
-              updatedAt: { toDate: () => new Date() },
-            } 
-          : folder
-      ));
       
       toast({
         title: "Removed from folder",

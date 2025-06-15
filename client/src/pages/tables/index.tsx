@@ -124,38 +124,7 @@ export default function TablesPage() {
     setIsAddingToFolder(true);
 
     try {
-      // If table currently has a folder assignment, remove it from that folder's items
-      if (
-        selectedTable.folderId &&
-        String(selectedTable.folderId) !== selectedFolderId
-      ) {
-        const {
-          updateDoc,
-          arrayRemove,
-          doc: firestoreDoc,
-        } = await import("firebase/firestore");
-        const oldFolderRef = firestoreDoc(
-          db,
-          "users",
-          user.uid,
-          "folders",
-          String(selectedTable.folderId),
-        );
-
-        try {
-          await updateDoc(oldFolderRef, {
-            items: arrayRemove({
-              id: selectedTable.id,
-              name: selectedTable.name,
-              type: "table",
-            }),
-            updatedAt: new Date(),
-          });
-          console.log("Table removed from previous folder's items array");
-        } catch (error) {
-          console.log("Could not remove from old folder:", error);
-        }
-      }
+      // Tables are managed through folderId only, no need to manage folder items arrays
 
       // Always use setDoc to ensure the document exists
       const { setDoc } = await import("firebase/firestore");
@@ -186,66 +155,8 @@ export default function TablesPage() {
       // Handle folder assignment and show appropriate messages
       let showGenericSuccess = true;
 
-      // Also add the table to the folder's items array (like flows and connectors)
-      if (selectedFolderId !== "none") {
-        const {
-          updateDoc,
-          getDoc,
-          arrayUnion,
-          arrayRemove,
-          doc: firestoreDoc,
-        } = await import("firebase/firestore");
-        const folderRef = firestoreDoc(
-          db,
-          "users",
-          user.uid,
-          "folders",
-          selectedFolderId,
-        );
-
-        // Get current folder data to check for existing table
-        const folderDoc = await getDoc(folderRef);
-        if (folderDoc.exists()) {
-          const folderData = folderDoc.data();
-          const currentItems = folderData.items || [];
-
-          // Check if table already exists in folder
-          const tableExists = currentItems.some(
-            (item: any) =>
-              item.type === "table" &&
-              String(item.id) === String(selectedTable.id),
-          );
-
-          if (!tableExists) {
-            // Add table to folder's items array only if it doesn't exist
-            await updateDoc(folderRef, {
-              items: arrayUnion({
-                id: selectedTable.id,
-                name: selectedTable.name,
-                type: "table",
-                addedAt: new Date(),
-              }),
-              updatedAt: new Date(),
-            });
-            console.log("Table added to folder's items array");
-
-            toast({
-              title: "Table moved",
-              description: "The table has been moved successfully",
-            });
-            showGenericSuccess = false;
-          } else {
-            console.log("Table already exists in folder, skipping addition");
-
-            toast({
-              title: "Already in folder",
-              description: "This table is already in the selected folder",
-              variant: "default",
-            });
-            showGenericSuccess = false;
-          }
-        }
-      }
+      // For tables, we only use folderId assignment, not folder items array
+      // The dashboard will automatically calculate folder contents based on folderId
 
       console.log("Table assigned to folder:", {
         tableId: selectedTable.id,
