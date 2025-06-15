@@ -38,8 +38,9 @@ export default function Connectors() {
   // Store connection status persistently
   const [persistentConnections, setPersistentConnections] = useState<Record<string, boolean>>({});
   
-  // Get edit parameter from URL - use window.location.search since wouter doesn't include query params
+  // Get URL parameters - use window.location.search since wouter doesn't include query params
   const [editId, setEditId] = useState<string | null>(null);
+  const [shouldCreate, setShouldCreate] = useState<boolean>(false);
   
   useEffect(() => {
     const checkUrlParams = () => {
@@ -50,11 +51,15 @@ export default function Connectors() {
       
       const params = new URLSearchParams(window.location.search);
       const id = params.get('edit');
+      const create = params.get('create') === 'true';
+      
       console.log('Edit ID from window.location.search:', id);
+      console.log('Create flag from window.location.search:', create);
       console.log('All URL params:', Object.fromEntries(params.entries()));
       console.log('================');
       
       setEditId(id);
+      setShouldCreate(create);
     };
     
     // Check immediately
@@ -95,7 +100,7 @@ export default function Connectors() {
     fetchConnectors();
   }, [user, toast]);
 
-  // Separate useEffect to handle edit dialog opening when URL changes
+  // Handle both edit and create dialog opening when URL changes
   useEffect(() => {
     if (editId && connectors.length > 0) {
       console.log('Edit ID found in URL:', editId);
@@ -107,8 +112,12 @@ export default function Connectors() {
       } else {
         console.log('Connector not found in data:', connectors);
       }
+    } else if (shouldCreate) {
+      console.log('Create flag found in URL, opening new connector dialog');
+      setEditingConnector(null); // Ensure we're in create mode
+      setOpenDialog(true);
     }
-  }, [editId, connectors]);
+  }, [editId, shouldCreate, connectors]);
   
   const handleCreateConnector = async (connectorData: any) => {
     if (!user) return;
@@ -212,10 +221,12 @@ export default function Connectors() {
     setOpenDialog(false);
     setEditingConnector(null);
     setEditId(null);
+    setShouldCreate(false);
     
-    // Remove edit parameter from URL without changing the route
+    // Remove both edit and create parameters from URL without changing the route
     const url = new URL(window.location.href);
     url.searchParams.delete('edit');
+    url.searchParams.delete('create');
     window.history.replaceState({}, '', url.toString());
   };
   

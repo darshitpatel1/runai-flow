@@ -732,7 +732,7 @@ export default function Dashboard() {
                 New Flow
               </Button>
             </Link>
-            <Link href="/connectors">
+            <Link href="/connectors?create=true">
               <Button variant="outline" className="flex items-center gap-2">
                 <PlusIcon className="h-4 w-4" />
                 New Connector
